@@ -13,65 +13,39 @@
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
 
-# BEGIN cPanel-generated php ini directives, do not edit
-# Manual editing of this file may result in unexpected behavior.
-# To make changes to this file, use the cPanel MultiPHP INI Editor (Home >> Software >> MultiPHP INI Editor)
-# For more information, read our documentation (https://go.cpanel.net/EA4ModifyINI)
-<IfModule php8_module>
-   php_flag display_errors Off
-   php_value max_execution_time 15
-   php_value max_input_time 30
-   php_value max_input_vars 500
-   php_value memory_limit 256M
-   php_value post_max_size 2M
-   php_value session.gc_maxlifetime 720
-   php_value session.save_path "/var/cpanel/php/sessions/ea-php81"
-   php_value upload_max_filesize 2M
-   php_flag zlib.output_compression On
-</IfModule>
-<IfModule lsapi_module>
-   php_flag display_errors Off
-   php_value max_execution_time 15
-   php_value max_input_time 30
-   php_value max_input_vars 500
-   php_value memory_limit 256M
-   php_value post_max_size 2M
-   php_value session.gc_maxlifetime 720
-   php_value session.save_path "/var/cpanel/php/sessions/ea-php81"
-   php_value upload_max_filesize 2M
-   php_flag zlib.output_compression On
-</IfModule>
-# END cPanel-generated php ini directives, do not edit
-
-# BEGIN cPanel-generated php ini directives, do not edit
-# Manual editing of this file may result in unexpected behavior.
-# To make changes to this file, use the cPanel MultiPHP INI Editor (Home >> Software >> MultiPHP INI Editor)
-# For more information, read our documentation (https://go.cpanel.net/EA4ModifyINI)
+# BEGIN cPanel-generated php ini directives
+# Section generee par cPanel, dedupliquee et corrigee manuellement.
+# Ces directives ne s'appliquent qu'en mod_php ou LiteSpeed (LSAPI) ; sous PHP-FPM
+# elles sont ignorees et seul l'editeur INI de cPanel fait foi. Garder les deux
+# sources coherentes.
+#
+# /!\ Si l'editeur "MultiPHP INI Editor" de cPanel est reutilise, il reinjectera
+#     sa propre section ici : verifier alors qu'elle ne fait pas doublon.
+#
+# Regle a respecter : memory_limit >= post_max_size >= upload_max_filesize
 <IfModule php8_module>
    php_flag display_errors Off
    php_value max_execution_time 150
-   php_value max_input_time 60
-   php_value max_input_vars 500
+   php_value max_input_time 120
+   php_value max_input_vars 2000
    php_value memory_limit 256M
    php_value post_max_size 14M
-   php_value session.gc_maxlifetime 720
-   php_value session.save_path "/var/cpanel/php/sessions/ea-php81"
-   php_value upload_max_filesize 2M
+   php_value upload_max_filesize 10M
+   php_value session.gc_maxlifetime 1440
    php_flag zlib.output_compression On
 </IfModule>
 <IfModule lsapi_module>
    php_flag display_errors Off
    php_value max_execution_time 150
-   php_value max_input_time 60
-   php_value max_input_vars 500
+   php_value max_input_time 120
+   php_value max_input_vars 2000
    php_value memory_limit 256M
    php_value post_max_size 14M
-   php_value session.gc_maxlifetime 720
-   php_value session.save_path "/var/cpanel/php/sessions/ea-php81"
-   php_value upload_max_filesize 2M
+   php_value upload_max_filesize 10M
+   php_value session.gc_maxlifetime 1440
    php_flag zlib.output_compression On
 </IfModule>
-# END cPanel-generated php ini directives, do not edit
+# END cPanel-generated php ini directives
 
 # php -- BEGIN cPanel-generated handler, do not edit
 # Set the “ea-php81” package as the default “PHP” programming language.
