@@ -1,0 +1,35 @@
+{# Écran E3.8 : dépôt d'un dossier pour un candidat déjà préinscrit en ligne (F3.7). #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Reprise de dossier — {{ centre.nom }}{% endblock %}
+
+{% block body %}
+{{ ui.bandeau(
+    'Reprise de dossier',
+    'Déposez le dossier d\'un candidat déjà préinscrit en ligne — ' ~ centre.nom,
+    'folder-plus'
+) }}
+
+{# ===== Recherche d'un dossier par numéro VAE ===== #}
+<div class="bg-white rounded-lg border border-slate-200 p-6 mb-6">
+    {{ ui.section('Retrouver un dossier', 'Saisissez le numéro VAE d\'un dossier déjà déposé dans votre centre', 'magnifying-glass', 'indigo') }}
+
+    <form method="get" class="flex flex-col sm:flex-row gap-3">
+        <label for="recherche-numero" class="sr-only">Numéro VAE</label>
+        <input type="search" id="recherche-numero" name="numero" value="{{ numero }}" required
+               placeholder="VAE26001"
+               class="flex-1 min-h-[44px] px-3.5 py-2.5 rounded-lg border border-slate-500 font-mono text-sm text-slate-700 uppercase
+                      placeholder:normal-case placeholder:text-slate-500
+                      focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition duration-200">
+        <button type="submit"
+                class="inline-flex min-h-[44px] items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-white
+                       bg-indigo-600 hover:bg-indigo-700 transition duration-200 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+            <i class="fas fa-magnifying-glass text-xs" aria-hidden="true"></i>Rechercher le dossier
+        </button>
+    </form>
+</div>
+
+
+{% endblock %}
+

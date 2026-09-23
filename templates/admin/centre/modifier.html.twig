@@ -1,0 +1,8 @@
+{# Écran E2.5 : modification d'un centre. #}
+{% extends 'admin/_modifier.html.twig' %}
+
+{% set titre = 'Modifier un centre' %}
+{% set sous_titre = centre.nom %}
+{% set icone = 'building' %}
+{% set route_retour = 'app_admin_centre_index' %}
+{% set champs = ['type', 'localite', 'nom'] %}

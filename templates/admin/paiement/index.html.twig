@@ -1,0 +1,148 @@
+{# Écran E5.6 : suivi des règlements par l'administration (F5.10). #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Paiements — Administration VAE{% endblock %}
+
+{% block body %}
+{{ ui.bandeau(
+    'Suivi des paiements',
+    'Règlements des frais de dossier, d\'accompagnement et d\'examen.',
+    'money-bill-transfer',
+    pagination.getTotalItemCount,
+    'règlement(s)'
+) }}
+
+{% if simulation %}
+    <div class="mb-6 rounded-lg bg-amber-50 border border-amber-200 p-4">
+        <div class="flex items-start gap-3">
+            <i class="fas fa-flask text-amber-500 mt-0.5"></i>
+            <p class="text-xs text-amber-800 leading-relaxed">
+                <strong>Mode simulation</strong> — la passerelle Trésor Pay n'est pas raccordée.
+                Les montants affichés ne correspondent à aucun encaissement réel.
+            </p>
+        </div>
+    </div>
+{% endif %}
+
+{# ===== Encaissements par type ===== #}
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
+    {% for cle, libelle in {'dossier': 'Frais de dossier', 'accompagnement': 'Accompagnement', 'examen': 'Examen'} %}
+        {% set total = totaux[cle]|default({'effectif': 0, 'montant': '0'}) %}
+        <div class="bg-white rounded-lg border border-green-200 p-5">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">{{ libelle }}</p>
+            <p class="text-2xl font-bold text-slate-800 tabular-nums mt-1.5">
+                {{ total.montant|number_format(0, ',', ' ') }}
+                <span class="text-xs font-medium text-slate-600">FCFA</span>
+            </p>
+            <p class="text-xs text-slate-600 mt-1">{{ total.effectif }} règlement(s) abouti(s)</p>
+        </div>
+    {% endfor %}
+</div>
+
+<div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+    <div class="px-6 py-5 border-b border-slate-200">
+        <form method="get" class="flex flex-col sm:flex-row flex-wrap gap-3">
+            <div class="relative flex-1 min-w-[16rem]">
+                <i class="fas fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                <input type="search" name="q" value="{{ recherche }}" placeholder="Numéro VAE, référence ou nom"
+                       class="w-full pl-10 pr-3.5 py-2.5 rounded-lg border border-slate-500 text-sm text-slate-700
+                              focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition duration-200">
+            </div>
+
+            <select name="type" onchange="this.form.submit()"
+                    class="px-3.5 py-2.5 rounded-lg border border-slate-500 text-sm text-slate-700 bg-white
+                           focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition duration-200">
+                <option value="">Tous les frais</option>
+                {% for cle, libelle in {'dossier': 'Frais de dossier', 'accompagnement': 'Accompagnement', 'examen': 'Examen'} %}
+                    <option value="{{ cle }}" {{ filtre_type and filtre_type.value == cle ? 'selected' : '' }}>{{ libelle }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="statut" onchange="this.form.submit()"
+                    class="px-3.5 py-2.5 rounded-lg border border-slate-500 text-sm text-slate-700 bg-white
+                           focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition duration-200">
+                <option value="">Tous les statuts</option>
+                {% for cle, libelle in {'en_attente': 'En attente', 'reussi': 'Payé', 'echoue': 'Échoué', 'annule': 'Annulé', 'rembourse': 'Remboursé'} %}
+                    <option value="{{ cle }}" {{ filtre_statut and filtre_statut.value == cle ? 'selected' : '' }}>{{ libelle }}</option>
+                {% endfor %}
+            </select>
+
+            <button type="submit"
+                    class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition duration-200">
+                Filtrer
+            </button>
+        </form>
+    </div>
+
+    {% if pagination.getTotalItemCount > 0 %}
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[900px]">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        {{ ui.th('Référence') }}
+                        {{ ui.th('Candidat') }}
+                        {{ ui.th('Frais') }}
+                        {{ ui.th('Montant') }}
+                        {{ ui.th('Statut') }}
+                        {{ ui.th('Date') }}
+                        {{ ui.th('', 'text-right') }}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for paiement in pagination %}
+                        <tr class="hover:bg-slate-50/70 transition duration-200">
+                            <td class="px-6 py-4">
+                                <p class="font-mono text-xs font-semibold text-indigo-600">
+                                    {{ paiement.referencePaiement ?: '—' }}
+                                </p>
+                                <p class="font-mono text-xs text-slate-600 mt-0.5">
+                                    {{ paiement.candidature ? paiement.candidature.numero : '—' }}
+                                </p>
+                            </td>
+                            <td class="px-6 py-4">
+                                <p class="text-sm text-slate-700">
+                                    {{ paiement.candidature and paiement.candidature.user
+                                        ? paiement.candidature.user.nomComplet : '—' }}
+                                </p>
+                                <p class="text-xs text-slate-600 mt-0.5">
+                                    {{ paiement.candidature and paiement.candidature.centre
+                                        ? paiement.candidature.centre.nom : '—' }}
+                                </p>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-slate-600">{{ paiement.type.libelle }}</td>
+                            <td class="px-6 py-4 text-sm font-semibold text-slate-700 tabular-nums">
+                                {{ paiement.montant|number_format(0, ',', ' ') }}
+                            </td>
+                            <td class="px-6 py-4">
+                                {{ ui.badge(paiement.statut.libelle, paiement.statut.couleur) }}
+                            </td>
+                            <td class="px-6 py-4 text-xs text-slate-500">
+                                {{ paiement.datePaiement ? paiement.datePaiement|date('d/m/Y') : '—' }}
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                {{ ui.bouton_lien(
+                                    path('app_admin_paiement_detail', {id: paiement.id}),
+                                    'eye',
+                                    'Consulter le règlement',
+                                    'indigo'
+                                ) }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {{ ui.pagination(pagination) }}
+    {% else %}
+        {{ ui.etat_vide(
+            'money-bill-transfer',
+            'Aucun règlement',
+            recherche or filtre_type or filtre_statut
+                ? 'Aucun règlement ne correspond à vos critères.'
+                : 'Aucun règlement n\'a encore été enregistré.'
+        ) }}
+    {% endif %}
+</div>
+{% endblock %}

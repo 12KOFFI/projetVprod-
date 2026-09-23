@@ -1,0 +1,170 @@
+{# Écran E2.4 : liste des métiers filtrable par filière et statut, avec bascule actif/inactif (R2.7). #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Métiers — Administration VAE{% endblock %}
+
+{% block body %}
+<div x-data="{ modale: {{ form.vars.submitted and not form.vars.valid ? 'true' : 'false' }} }">
+
+    {{ ui.bandeau(
+        'Métiers',
+        filtre_filiere ? filtre_filiere.libelle : 'Offre de qualification ouverte à la validation des acquis.',
+        'screwdriver-wrench',
+        pagination.getTotalItemCount,
+        'enregistré(s)'
+    ) }}
+
+    <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <div class="px-6 py-5 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <form method="get" class="flex flex-col sm:flex-row gap-3 flex-1">
+                <div class="relative flex-1 max-w-xs">
+                    <i class="fas fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                    <input type="search" name="q" value="{{ recherche }}" placeholder="Rechercher un métier"
+                           class="w-full pl-10 pr-3.5 py-2.5 rounded-lg border border-slate-500 text-sm text-slate-700
+                                  focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition duration-200">
+                </div>
+
+                <select name="filiere" onchange="this.form.submit()"
+                        class="px-3.5 py-2.5 rounded-lg border border-slate-500 text-sm text-slate-700 bg-white
+                               focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition duration-200">
+                    <option value="">Toutes les filières</option>
+                    {% for filiere in filieres %}
+                        <option value="{{ filiere.id }}" {{ filtre_filiere and filtre_filiere.id == filiere.id ? 'selected' : '' }}>
+                            {{ filiere.libelle }}
+                        </option>
+                    {% endfor %}
+                </select>
+
+                <select name="statut" onchange="this.form.submit()"
+                        class="px-3.5 py-2.5 rounded-lg border border-slate-500 text-sm text-slate-700 bg-white
+                               focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition duration-200">
+                    <option value="">Tous les statuts</option>
+                    <option value="actif" {{ filtre_statut == 'actif' ? 'selected' : '' }}>Actifs</option>
+                    <option value="inactif" {{ filtre_statut == 'inactif' ? 'selected' : '' }}>Inactifs</option>
+                </select>
+
+                <button type="submit"
+                        class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition duration-200">
+                    Filtrer
+                </button>
+            </form>
+
+            <button type="button" @click="modale = true"
+                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white
+                           bg-indigo-600 hover:bg-indigo-700 transition duration-200 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                <i class="fas fa-plus text-xs"></i>
+                Nouveau métier
+            </button>
+        </div>
+
+        {% if pagination.getTotalItemCount > 0 %}
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[760px]">
+                    <thead class="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            {{ ui.th('Métier') }}
+                            {{ ui.th('Filière') }}
+                            {{ ui.th('Statut') }}
+                            {{ ui.th('Actions', 'text-right') }}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for metier in pagination %}
+                            <tr class="hover:bg-slate-50/70 transition duration-200 {{ metier.statut == 'inactif' ? 'opacity-60' : '' }}">
+                                <td class="px-6 py-4 text-sm font-medium text-slate-700">{{ metier.libelle }}</td>
+                                <td class="px-6 py-4 text-sm text-slate-500">
+                                    {{ metier.filiere ? metier.filiere.libelle : '—' }}
+                                </td>
+                                <td class="px-6 py-4">
+                                    {% if metier.statut == 'actif' %}
+                                        {{ ui.badge('Actif', 'green') }}
+                                    {% else %}
+                                        {{ ui.badge('Inactif', 'slate') }}
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center justify-end gap-2">
+                                        {% if metier.statut == 'actif' %}
+                                            {{ ui.bouton_post(
+                                                path('app_admin_metier_basculer_statut', {id: metier.id}),
+                                                'statut_metier_' ~ metier.id,
+                                                'eye-slash', 'Rendre inactif', 'slate',
+                                                'Rendre « ' ~ metier.libelle ~ ' » inactif ? Il ne sera plus proposé aux nouveaux candidats.'
+                                            ) }}
+                                        {% else %}
+                                            {{ ui.bouton_post(
+                                                path('app_admin_metier_basculer_statut', {id: metier.id}),
+                                                'statut_metier_' ~ metier.id,
+                                                'eye', 'Réactiver', 'green'
+                                            ) }}
+                                        {% endif %}
+                                        {{ ui.bouton_lien(
+                                            path('app_admin_metier_modifier', {id: metier.id}),
+                                            'pen', 'Modifier'
+                                        ) }}
+                                        {{ ui.bouton_post(
+                                            path('app_admin_metier_supprimer', {id: metier.id}),
+                                            'supprimer_metier_' ~ metier.id,
+                                            'trash', 'Supprimer', 'red',
+                                            'Supprimer « ' ~ metier.libelle ~ ' » ? Préférez le statut inactif si des dossiers existent.'
+                                        ) }}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {{ ui.pagination(pagination) }}
+        {% else %}
+            {{ ui.etat_vide(
+                'screwdriver-wrench',
+                recherche or filtre_filiere or filtre_statut ? 'Aucun résultat' : 'Aucun métier',
+                recherche or filtre_filiere or filtre_statut
+                    ? 'Aucun métier ne correspond aux critères sélectionnés.'
+                    : 'Les métiers actifs sont ceux que les candidats pourront choisir, une fois ouverts dans un centre.',
+                recherche or filtre_filiere or filtre_statut ? null : 'Utilisez le bouton « Nouveau métier »'
+            ) }}
+        {% endif %}
+    </div>
+
+    <div x-show="modale" style="display: none" class="fixed inset-0 z-40 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="modale = false"></div>
+
+        <div x-show="modale"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 translate-y-3"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             class="relative bg-white rounded-lg shadow-xl border border-slate-200 w-full max-w-md">
+            <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
+                <h2 class="text-base font-semibold text-slate-800">Nouveau métier</h2>
+                <button type="button" @click="modale = false"
+                        class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition duration-150">
+                    <i class="fas fa-xmark text-xs"></i>
+                </button>
+            </div>
+
+            {{ form_start(form, {attr: {class: 'px-6 py-6 space-y-5'}}) }}
+                {{ ui.champ(form.filiere) }}
+                {{ ui.champ(form.libelle) }}
+                {{ ui.champ(form.statut) }}
+
+                <div class="flex items-center justify-end gap-3 pt-2">
+                    <button type="button" @click="modale = false"
+                            class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-100 transition duration-200">
+                        Annuler
+                    </button>
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white
+                                   bg-indigo-600 hover:bg-indigo-700 transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                        <i class="fas fa-check text-xs"></i>
+                        Enregistrer
+                    </button>
+                </div>
+            {{ form_end(form) }}
+        </div>
+    </div>
+</div>
+{% endblock %}

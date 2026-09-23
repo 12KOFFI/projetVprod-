@@ -1,0 +1,8 @@
+{# Écran E2.1 : modification d'une direction régionale. #}
+{% extends 'admin/_modifier.html.twig' %}
+
+{% set titre = 'Modifier une direction régionale' %}
+{% set sous_titre = direction_regionale.libelle %}
+{% set icone = 'sitemap' %}
+{% set route_retour = 'app_admin_direction_regionale_index' %}
+{% set champs = ['libelle'] %}

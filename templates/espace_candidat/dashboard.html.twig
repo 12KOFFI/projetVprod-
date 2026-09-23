@@ -1,0 +1,237 @@
+{# Écran E3.1 : tableau de bord du candidat. #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Mon espace candidat — VAE Côte d'Ivoire{% endblock %}
+
+{% block body %}
+{% if candidature %}
+    {# ===== Dossier en cours ===== #}
+    <div class="relative mb-6 overflow-hidden rounded-2xl border border-primary-200 bg-primary-100 p-6 text-primary-900 md:p-8">
+
+        <div class="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+            <div class="flex items-center gap-4">
+                <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-primary-200 bg-white text-2xl text-primary-700">
+                    <i class="fas fa-folder-open" aria-hidden="true"></i>
+                </div>
+                <div>
+                    <p class="text-primary-800 text-xs uppercase tracking-wide">Mon dossier VAE</p>
+                    <h1 class="text-2xl font-bold tracking-tight text-primary-900 md:text-3xl mt-0.5">
+                        {{ candidature.metier ? candidature.metier.libelle : 'Métier non renseigné' }}
+                    </h1>
+                    <p class="text-primary-800 text-sm mt-1">
+                        <i class="fas fa-building mr-1.5 text-[#ED8F33]" aria-hidden="true"></i>{{ candidature.centre ? candidature.centre.nom : '—' }}
+                    </p>
+                </div>
+            </div>
+
+            <div class="rounded-xl border border-primary-200 bg-white px-5 py-4">
+                <p class="text-xs text-primary-800 uppercase tracking-wide mb-1.5">Numéro d'inscription</p>
+                <p class="font-mono text-lg font-bold tracking-tight">{{ candidature.numero }}</p>
+            </div>
+        </div>
+            <div class="absolute inset-x-0 bottom-0 h-1 bg-[#ED8F33]" aria-hidden="true"></div>
+    </div>
+
+    {# ===== Prochaine action attendue ===== #}
+    {% if prochaine_action %}
+        <div class="bg-white rounded-lg border border-indigo-200 p-5 mb-8">
+            <div class="flex items-start gap-3">
+                <div class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0">
+                    <i class="fas fa-compass text-sm"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">Où en êtes-vous ?</p>
+                    <p class="text-sm text-slate-700 mt-1.5 leading-relaxed">{{ prochaine_action }}</p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {# Étude refusée : le dossier reste préinscrit, mais le candidat doit connaître le motif. #}
+    {% if statut_candidature(candidature).name == 'PREINSCRIT' and candidature.resultatEtude and candidature.resultatEtude.name == 'REFUSE' %}
+        <div class="bg-white rounded-lg border border-amber-200 p-5 mb-8">
+            <div class="flex items-start gap-3">
+                <div class="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                    <i class="fas fa-triangle-exclamation text-sm" aria-hidden="true"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-slate-800">
+                        L'étude de votre dossier n'a pas abouti
+                        {% if candidature.etuDate %}<span class="font-normal text-slate-600 tabular-nums"> — {{ candidature.etuDate|date('d/m/Y') }}</span>{% endif %}
+                    </p>
+                    {% if candidature.etuCom %}
+                        <p class="text-sm text-slate-700 mt-1.5 leading-relaxed">{{ candidature.etuCom }}</p>
+                    {% endif %}
+                    <p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                        Votre dossier reste préinscrit : complétez-le, il pourra être étudié à nouveau.
+                    </p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {# Démarche close par un refus : le candidat doit savoir qu'il peut engager une nouvelle démarche. #}
+    {% if statut_candidature(candidature).estTerminal and statut_candidature(candidature).name != 'ADMIS_DEFINITIF' %}
+        <div class="bg-white rounded-lg border border-red-200 p-5 mb-8">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-start gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-red-50 text-red-500 flex items-center justify-center shrink-0">
+                        <i class="fas fa-circle-info text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-slate-800">
+                            Votre démarche s'est arrêtée à l'étape « {{ statut_candidature(candidature).libelle }} »
+                        </p>
+                        {% if peut_deposer %}
+                            <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                                Vous pouvez engager une nouvelle démarche VAE.
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if peut_deposer %}
+                    <a href="{{ path('app_candidat_candidature_nouvelle') }}"
+                       class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white
+                              bg-indigo-600 hover:bg-indigo-700 transition duration-200 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                        <i class="fas fa-plus text-xs"></i>Nouveau dossier
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {# ===== Suivi des étapes ===== #}
+        <div class="lg:col-span-2 bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-200">
+                <h2 class="text-sm font-bold text-slate-800">Suivi des étapes</h2>
+                <p class="text-xs text-slate-600 mt-0.5">Avancement de votre parcours de certification</p>
+            </div>
+            <div class="p-6">
+                {{ include('partials/_timeline_parcours.html.twig', { etapes: etapes }) }}
+            </div>
+        </div>
+
+        {# ===== Récapitulatif du dossier ===== #}
+        <div class="space-y-6">
+            <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                <div class="px-6 py-5 border-b border-slate-200">
+                    <h2 class="text-sm font-bold text-slate-800">Mon dossier</h2>
+                </div>
+                <dl class="divide-y divide-slate-100">
+                    <div class="px-6 py-3.5 flex items-center justify-between gap-3">
+                        <dt class="text-xs text-slate-600">Statut</dt>
+                        <dd>{{ include('partials/_statut_badge.html.twig', { statut: statut_candidature(candidature) }) }}</dd>
+                    </div>
+                    {# L'étude n'a plus de statut propre : son résultat (etu_statut) est
+                       affiché ici tant que le dossier est préinscrit. Au-delà, elle est
+                       nécessairement acceptée et le suivi des étapes en rend compte. #}
+                    {% if statut_candidature(candidature).name == 'PREINSCRIT' %}
+                        {% set etude = candidature.resultatEtude %}
+                        <div class="px-6 py-3.5 flex items-center justify-between gap-3">
+                            <dt class="text-xs text-slate-600">Étude de dossier</dt>
+                            <dd>
+                                {% if etude and etude.name != 'EN_ATTENTE' %}
+                                    {{ ui.badge(etude.libelleParcours, etude.couleur) }}
+                                {% else %}
+                                    {{ ui.badge('Étude en cours', 'amber') }}
+                                {% endif %}
+                            </dd>
+                        </div>
+                    {% endif %}
+                    <div class="px-6 py-3.5 flex items-center justify-between gap-3">
+                        <dt class="text-xs text-slate-600">Diplôme visé</dt>
+                        <dd class="text-xs font-semibold text-slate-700">{{ candidature.diplomedemande ?: '—' }}</dd>
+                    </div>
+                    <div class="px-6 py-3.5 flex items-center justify-between gap-3">
+                        <dt class="text-xs text-slate-600">Expérience</dt>
+                        <dd class="text-xs font-semibold text-slate-700">{{ candidature.nbAnneesExperience }} an(s)</dd>
+                    </div>
+                    <div class="px-6 py-3.5 flex items-center justify-between gap-3">
+                        <dt class="text-xs text-slate-600">Déposé le</dt>
+                        <dd class="text-xs font-semibold text-slate-700">
+                            {{ candidature.creation ? candidature.creation|date('d/m/Y') : '—' }}
+                        </dd>
+                    </div>
+                </dl>
+
+                {% if is_granted('CANDIDATURE_EDIT', candidature) %}
+                    <div class="px-6 py-4 border-t border-slate-200">
+                        <a href="{{ path('app_candidat_candidature_modifier', {id: candidature.id}) }}"
+                           class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium
+                                  text-slate-600 bg-slate-100 hover:bg-slate-200 transition duration-200">
+                            <i class="fas fa-pen text-xs"></i>Modifier mon dossier
+                        </a>
+                        <p class="text-xs text-slate-600 mt-2 text-center leading-relaxed">
+                            Modification possible tant que l'étude de votre dossier n'est pas acceptée.
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+
+            {# ===== Mes documents et règlements ===== #}
+            <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                <div class="px-6 py-5 border-b border-slate-200">
+                    <h2 class="text-sm font-bold text-slate-800">Démarches</h2>
+                </div>
+                <div class="p-6 space-y-3">
+                    <a href="{{ path('app_candidat_paiements') }}"
+                       class="w-full inline-flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium
+                              text-slate-700 bg-slate-100 hover:bg-slate-200 transition duration-200">
+                        <i class="fas fa-credit-card text-slate-600"></i>
+                        <span class="text-left">
+                            Mes paiements
+                            <span class="block text-xs font-normal text-slate-600">Frais du parcours et reçus</span>
+                        </span>
+                    </a>
+
+                    <a href="{{ path('app_impressions') }}"
+                       class="w-full inline-flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium
+                              text-slate-700 bg-slate-100 hover:bg-slate-200 transition duration-200">
+                        <i class="fas fa-print text-slate-600"></i>
+                        <span class="text-left">
+                            Mes documents
+                            <span class="block text-xs font-normal text-slate-600">Fiche d'inscription et reçus à imprimer</span>
+                        </span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% else %}
+    {# ===== Aucun dossier déposé ===== #}
+    {{ ui.bandeau(
+        'Mon espace candidat',
+        'Déposez votre dossier pour engager votre démarche de validation des acquis.',
+        'user-graduate'
+    ) }}
+
+    <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        {% if peut_deposer %}
+            <div class="px-6 py-16 text-center">
+                <div class="w-16 h-16 mx-auto mb-5 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center">
+                    <i class="fas fa-file-circle-plus text-2xl text-indigo-600"></i>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-700">Aucun dossier déposé</h3>
+                <p class="text-sm text-slate-600 mt-1.5 max-w-md mx-auto leading-relaxed">
+                    Déposez votre dossier de candidature pour recevoir votre numéro d'inscription
+                    et suivre l'avancement de votre parcours VAE.
+                </p>
+                <a href="{{ path('app_candidat_candidature_nouvelle') }}"
+                   class="inline-flex items-center gap-2 mt-6 px-5 py-2.5 rounded-lg text-sm font-medium text-white
+                          bg-indigo-600 hover:bg-indigo-700 transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                    <i class="fas fa-plus text-xs"></i>Déposer mon dossier
+                </a>
+            </div>
+        {% else %}
+            {{ ui.etat_vide(
+                'circle-info',
+                'Dépôt indisponible',
+                'Votre compte ne permet pas de déposer un nouveau dossier de candidature pour le moment.'
+            ) }}
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %}

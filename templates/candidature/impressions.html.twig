@@ -1,0 +1,359 @@
+{% extends is_granted('IS_AUTHENTICATED_FULLY') ? 'base_dashboard.html.twig' : 'base.html.twig' %}
+
+{% block title %}Impressions | {{ parent() }}{% endblock %}
+
+{% block body %}
+<div class="mx-auto px-4 pb-16">
+    <!-- En-tête -->
+    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 mb-8 text-white">
+        <div class="flex items-center gap-4">
+            <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                <i class="fas fa-print text-3xl"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold">Impressions</h1>
+                <p class="text-white/80">Générez vos fiches, convocations et statistiques</p>
+            </div>
+        </div>
+    </div>
+
+    {% include 'partials/_flash_messages.html.twig' %}
+
+    <!-- Blocs en ligne verticale -->
+    <div class="flex flex-col space-y-6">
+        <!-- Fiche d'inscription -->
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden hover:shadow-2xl transition-all duration-300">
+            <div class="border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-4">
+                <h5 class="text-lg font-semibold text-indigo-800 flex items-center">
+                    <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                        <i class="fas fa-id-card text-indigo-600"></i>
+                    </div>
+                    Fiche d'inscription
+                </h5>
+            </div>
+            <div class="p-6">
+                <form action="{{ path('app_candidature_print') }}" method="get" target="_blank">
+                    <input type="hidden" name="type" value="fiche">
+                    
+                    <div class="flex flex-col md:flex-row gap-3">
+                        <div class="flex-1">
+                            <input type="text" 
+                                   name="numero" 
+                                   required 
+                                   class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                                   placeholder="Numéro d'inscription">
+                        </div>
+                        
+                        <button type="submit" 
+                                class="md:w-auto w-full px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-lg hover:from-indigo-700 hover:to-purple-700 transition transform hover:scale-[1.02] shadow-lg flex items-center justify-center">
+                            <i class="fas fa-print mr-2"></i>
+                            Générer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Convocation -->
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden hover:shadow-2xl transition-all duration-300">
+            <div class="border-b border-slate-200 bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4">
+                <h5 class="text-lg font-semibold text-green-800 flex items-center">
+                    <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                        <i class="fas fa-envelope-open-text text-green-600"></i>
+                    </div>
+                    Convocation
+                </h5>
+            </div>
+            <div class="p-6">
+                <form action="{{ path('app_candidature_print') }}" method="get" target="_blank">
+                    <input type="hidden" name="type" value="convocation">
+                    
+                    <div class="flex flex-col md:flex-row gap-3">
+                        <div class="flex-1">
+                            <input type="text" 
+                                   name="numero" 
+                                   required 
+                                   class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                                   placeholder="Numéro d'inscription">
+                        </div>
+                        
+                        <button type="submit" 
+                                class="md:w-auto w-full px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-lg hover:from-green-700 hover:to-emerald-700 transition transform hover:scale-[1.02] shadow-lg flex items-center justify-center">
+                            <i class="fas fa-print mr-2"></i>
+                            Générer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+      {% if is_granted('ROLE_ENT') or is_granted('ROLE_ADMIN') %}
+<!-- Statistiques -->
+<div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden hover:shadow-2xl transition-all duration-300">
+    <div class="border-b border-slate-200 bg-gradient-to-r from-blue-50 to-cyan-50 px-6 py-4">
+        <h5 class="text-lg font-semibold text-blue-800 flex items-center">
+            <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                <i class="fas fa-chart-bar text-blue-600"></i>
+            </div>
+            Statistiques
+        </h5>
+    </div>
+    <div class="p-6">
+        <form action="{{ path('app_candidature_print') }}" method="get" target="_blank">
+            <input type="hidden" name="type" value="stat">
+            
+            <div class="flex flex-col md:flex-row gap-3">
+                <div class="flex-1">
+                    <select name="metier" 
+                            class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white">
+                        <option value="">Tous les métiers</option>
+                        {% for metier in metiers %}
+                            <option value="{{ metier.id }}">{{ metier.nom }}</option>
+                        {% else %}
+                            {% if is_granted('ROLE_ENT') %}
+                                <option value="" disabled>Aucun métier associé</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="md:w-48 w-full">
+                    <select name="stat_type" 
+                            class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white">
+                        <option value="stat">Tableau général</option>
+                        <option value="centre">Par centre</option>
+                    </select>
+                </div>
+                
+                <button type="submit" 
+                        class="md:w-auto w-full px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-cyan-700 transition transform hover:scale-[1.02] shadow-lg flex items-center justify-center">
+                    <i class="fas fa-chart-pie mr-2"></i>
+                    Générer
+                </button>
+            </div>
+        </form>
+        
+        {# Message d'information pour les ENT sans métiers #}
+        {% if is_granted('ROLE_ENT') and metiers is empty %}
+        <div class="mt-4 p-3 bg-amber-50 rounded-lg text-sm text-amber-700">
+            <i class="fas fa-info-circle mr-2"></i>
+            Aucun métier n'est associé à votre établissement.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% if is_granted('ROLE_ADMIN') or is_granted('ROLE_ENT') or is_granted('ROLE_JURY') %}
+{% set selectedEtablissement = app.request.request.get('etablissement_liste') %}
+{% set selectedMetier = app.request.request.get('metier_liste') %}
+<div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden hover:shadow-2xl transition-all duration-300">
+    <div class="border-b border-slate-200 bg-gradient-to-r from-violet-50 to-fuchsia-50 px-6 py-4">
+        <h5 class="text-lg font-semibold text-violet-800 flex items-center">
+            <div class="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center mr-3">
+                <i class="fas fa-file-excel text-violet-600"></i>
+            </div>
+            Liste des candidats inscrits
+        </h5>
+    </div>
+    <div class="p-6">
+        <form action="{{ path('app_candidature_impressions') }}" method="post">
+            <input type="hidden" name="action" value="export_liste_candidats_inscrits">
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {% if is_granted('ROLE_ADMIN') %}
+                    <div>
+                        <select id="export-liste-etablissement"
+                                name="etablissement_liste"
+                                required
+                                class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition bg-white">
+                            <option value="">Sélectionner un établissement</option>
+                            {% for etablissement in etablissements %}
+                                <option value="{{ etablissement.id }}" {% if selectedEtablissement == (etablissement.id ~ '') %}selected{% endif %}>
+                                    {{ etablissement.nom }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                {% else %}
+                    {% set etablissementLie = etablissements|first %}
+                    <input type="hidden" name="etablissement_liste" value="{{ etablissementLie ? etablissementLie.id : '' }}">
+                    <div>
+                        <input type="text"
+                               value="{{ etablissementLie ? etablissementLie.nom : 'Aucun établissement associé' }}"
+                               disabled
+                               class="w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-slate-100 text-slate-600">
+                    </div>
+                {% endif %}
+
+                <div>
+                    <select id="export-liste-metier"
+                            name="metier_liste"
+                            class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition bg-white"
+                            {% if is_granted('ROLE_ADMIN') %}disabled{% endif %}>
+                        <option value="TOUS" {% if selectedMetier is empty or selectedMetier == 'TOUS' %}selected{% endif %}>Tous les métiers</option>
+                        {% if not is_granted('ROLE_ADMIN') %}
+                            {% for metier in metiers %}
+                                <option value="{{ metier.id }}" {% if selectedMetier == (metier.id ~ '') %}selected{% endif %}>{{ metier.nom }}</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+
+                <button type="submit"
+                        class="md:w-auto w-full px-6 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-medium rounded-lg hover:from-violet-700 hover:to-fuchsia-700 transition transform hover:scale-[1.02] shadow-lg flex items-center justify-center">
+                    <i class="fas fa-download mr-2"></i>
+                    Exporter Excel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+    <!-- Recherche de convocation (publique) -->
+    {% if not is_granted('IS_AUTHENTICATED_FULLY') %}
+    <div class="mt-8">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+            <div class="border-b border-slate-200 bg-gradient-to-r from-amber-50 to-yellow-50 px-6 py-4">
+                <h5 class="text-lg font-semibold text-amber-800 flex items-center">
+                    <div class="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center mr-3">
+                        <i class="fas fa-search text-amber-600"></i>
+                    </div>
+                    Rechercher ma convocation
+                </h5>
+            </div>
+            <div class="p-6">
+                <form action="{{ path('app_candidature_recherche_convocation') }}" method="get">
+                    <div class="flex flex-col md:flex-row gap-3">
+                        <div class="flex-1">
+                            <input type="text" 
+                                   name="numero" 
+                                   value="{{ app.request.get('numero') }}" 
+                                   required 
+                                   class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition"
+                                   placeholder="Votre numéro d'inscription">
+                        </div>
+                        
+                        <button type="submit" 
+                                class="md:w-auto w-full px-6 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-medium rounded-lg hover:from-amber-600 hover:to-yellow-600 transition shadow-md flex items-center justify-center">
+                            <i class="fas fa-search mr-2"></i>
+                            Rechercher
+                        </button>
+                    </div>
+                </form>
+
+                {% if resultats is defined and resultats|length > 0 %}
+                    <div class="mt-8 pt-6 border-t border-slate-200">
+                        <h6 class="text-md font-semibold text-slate-800 mb-4 flex items-center">
+                            <i class="fas fa-check-circle text-green-600 mr-2"></i>
+                            Résultat trouvé
+                        </h6>
+                        
+                        {% for resultat in resultats %}
+                        <div class="bg-green-50 rounded-lg p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div>
+                                <p class="text-sm text-slate-600">Numéro: <span class="font-mono font-semibold text-indigo-600">{{ resultat.numero }}</span></p>
+                                <p class="text-sm text-slate-600">Centre: {{ resultat.etablissement ? resultat.etablissement.nom : '' }} {% if resultat.jury %}- Jury {{ resultat.jury }}{% endif %}</p>
+                            </div>
+                            <a href="{{ path('app_candidature_print', {'type': 'convocation', 'numero': resultat.numero}) }}" 
+                               target="_blank"
+                               class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition">
+                                <i class="fas fa-print mr-2"></i>
+                                Imprimer ma convocation
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% elseif app.request.get('numero') %}
+                    <div class="mt-8 p-6 bg-amber-50 rounded-lg text-center">
+                        <i class="fas fa-exclamation-circle text-amber-500 text-3xl mb-3"></i>
+                        <p class="text-amber-700">Aucune convocation trouvée pour le numéro {{ app.request.get('numero') }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+{% if is_granted('ROLE_ADMIN') %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const etablissementSelect = document.getElementById('export-liste-etablissement');
+    const metierSelect = document.getElementById('export-liste-metier');
+
+    if (!etablissementSelect || !metierSelect) {
+        return;
+    }
+
+    const selectedMetier = '{{ app.request.request.get('metier_liste')|default('TOUS') }}';
+    const metiersUrlTemplate = '{{ path('app_etablissement_metiers', {'id': '__ID__'}) }}';
+
+    const resetMetiers = function () {
+        metierSelect.innerHTML = '';
+        const option = document.createElement('option');
+        option.value = 'TOUS';
+        option.textContent = 'Tous les métiers';
+        option.selected = true;
+        metierSelect.appendChild(option);
+        metierSelect.disabled = true;
+    };
+
+    const loadMetiers = function (etablissementId, preselectedMetier) {
+        if (!etablissementId) {
+            resetMetiers();
+            return;
+        }
+
+        metierSelect.disabled = true;
+        const url = metiersUrlTemplate.replace('__ID__', encodeURIComponent(etablissementId));
+
+        fetch(url)
+            .then(response => response.ok ? response.json() : [])
+            .then(data => {
+                metierSelect.innerHTML = '';
+
+                const allOption = document.createElement('option');
+                allOption.value = 'TOUS';
+                allOption.textContent = 'Tous les métiers';
+                metierSelect.appendChild(allOption);
+
+                data.forEach(function (metier) {
+                    const option = document.createElement('option');
+                    option.value = String(metier.id);
+                    option.textContent = metier.nom;
+                    if (String(preselectedMetier) === String(metier.id)) {
+                        option.selected = true;
+                    }
+                    metierSelect.appendChild(option);
+                });
+
+                if (String(preselectedMetier) === 'TOUS' || String(preselectedMetier) === '') {
+                    allOption.selected = true;
+                }
+
+                metierSelect.disabled = false;
+            })
+            .catch(function () {
+                resetMetiers();
+            });
+    };
+
+    etablissementSelect.addEventListener('change', function () {
+        loadMetiers(this.value, 'TOUS');
+    });
+
+    if (etablissementSelect.value) {
+        loadMetiers(etablissementSelect.value, selectedMetier);
+    } else {
+        resetMetiers();
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

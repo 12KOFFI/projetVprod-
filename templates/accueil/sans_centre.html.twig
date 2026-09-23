@@ -1,0 +1,25 @@
+{#
+    Repli lorsqu'un agent d'accueil n'est rattaché à aucun centre.
+
+    Le périmètre de données étant porté par le centre, un compte sans
+    rattachement ne doit rien voir plutôt que tout voir (règle métier R9.2).
+#}
+{% extends 'base_dashboard.html.twig' %}
+
+{% block title %}Espace accueil — VAE Côte d'Ivoire{% endblock %}
+
+{% block body %}
+<div class="max-w-lg mx-auto bg-white rounded-lg border border-slate-200 overflow-hidden">
+    <div class="px-6 py-14 text-center">
+        <div class="w-16 h-16 mx-auto mb-5 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center">
+            <i class="fas fa-triangle-exclamation text-2xl text-amber-400"></i>
+        </div>
+        <h3 class="text-sm font-semibold text-slate-700">Aucun centre de rattachement</h3>
+        <p class="text-sm text-slate-600 mt-2 leading-relaxed">
+            Votre compte n'est rattaché à aucun centre : les préinscriptions et le suivi des
+            candidatures sont indisponibles. Contactez l'administrateur pour qu'il complète
+            votre rattachement.
+        </p>
+    </div>
+</div>
+{% endblock %}

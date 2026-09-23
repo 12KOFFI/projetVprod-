@@ -1,0 +1,185 @@
+{# Écrans E6.3 et E6.4 : dépôt du fichier de décisions du jury central. #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Décisions du jury — {{ type.libelle }} — Administration VAE{% endblock %}
+
+{% block body %}
+{{ ui.bandeau(
+    'Décisions du jury — ' ~ type.libelle,
+    type.description,
+    type.icone
+) }}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    {# ===== Dépôt du fichier ===== #}
+    <div class="lg:col-span-2 space-y-6">
+        <div class="bg-white rounded-lg border border-slate-200 p-6">
+            {{ ui.section(
+                'Déposer le fichier du jury',
+                'Classeur Excel conforme au modèle — ' ~ taille_max_mo ~ ' Mo maximum',
+                'file-excel',
+                'indigo'
+            ) }}
+
+            <form method="post" enctype="multipart/form-data" x-data="{ nom: '' }">
+                <input type="hidden" name="_token" value="{{ csrf_token('import_' ~ type.value) }}">
+
+                <label class="block rounded-lg border-2 border-dashed border-slate-200 bg-white p-8 text-center cursor-pointer
+                              hover:border-indigo-400 hover:bg-indigo-50/30 transition-all duration-200">
+                    <input type="file" name="fichier" accept=".xlsx,.xls" required class="sr-only"
+                           @change="nom = $event.target.files.length ? $event.target.files[0].name : ''">
+
+                    <div class="w-14 h-14 mx-auto mb-4 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center">
+                        <i class="fas fa-file-excel text-2xl text-green-500"></i>
+                    </div>
+
+                    <p class="text-sm font-semibold text-slate-700" x-show="!nom">
+                        Cliquez pour choisir le fichier
+                    </p>
+                    <p class="text-sm font-semibold text-indigo-600 font-mono" x-show="nom" x-cloak x-text="nom"></p>
+                    <p class="text-xs text-slate-600 mt-1.5">
+                        Formats acceptés : .xlsx ou .xls — feuille « {{ type.feuille }} »
+                    </p>
+                </label>
+
+                <div class="mt-5 flex flex-col sm:flex-row gap-3 justify-end">
+                    <a href="{{ path('app_admin_jury_modele', {type: type.value}) }}"
+                       class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium
+                              text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 transition duration-200">
+                        <i class="fas fa-download text-xs"></i>Télécharger le modèle
+                    </a>
+                    <button type="submit" :disabled="!nom"
+                            class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-white
+                                   bg-indigo-600 hover:bg-indigo-700 transition duration-200
+                                   disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                        <i class="fas fa-upload text-xs"></i>Lancer l'import
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {# ===== Historique des imports ===== #}
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-200">
+                <h2 class="text-sm font-bold text-slate-800">Imports précédents</h2>
+                <p class="text-xs text-slate-600 mt-0.5">Les vingt derniers imports de ce type</p>
+            </div>
+
+            {% if historique is not empty %}
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[720px]">
+                        <thead class="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                {{ ui.th('Fichier') }}
+                                {{ ui.th('Statut') }}
+                                {{ ui.th('Traitées') }}
+                                {{ ui.th('Ignorées') }}
+                                {{ ui.th('Erreurs') }}
+                                {{ ui.th('', 'text-right') }}
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for import in historique %}
+                                <tr class="hover:bg-slate-50/70 transition duration-200">
+                                    <td class="px-6 py-4">
+                                        <p class="text-sm font-medium text-slate-700 truncate max-w-[16rem]">
+                                            {{ import.nomFichier }}
+                                        </p>
+                                        <p class="text-xs text-slate-600 mt-0.5">
+                                            {{ import.creation|date('d/m/Y à H\\hi') }}
+                                            · {{ import.auteur ? import.auteur.nomComplet : '—' }}
+                                        </p>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        {{ ui.badge(import.statut.libelle, import.statut.couleur) }}
+                                    </td>
+                                    <td class="px-6 py-4 text-sm font-semibold text-green-600 tabular-nums">
+                                        {{ import.lignesTraitees }}
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-slate-500 tabular-nums">
+                                        {{ import.lignesIgnorees }}
+                                    </td>
+                                    <td class="px-6 py-4 text-sm font-semibold tabular-nums
+                                               {{ import.lignesErreur > 0 ? 'text-red-600' : 'text-slate-600' }}">
+                                        {{ import.lignesErreur }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        {{ ui.bouton_lien(
+                                            path('app_admin_jury_rapport', {id: import.id}),
+                                            'file-lines',
+                                            'Consulter le rapport',
+                                            'indigo'
+                                        ) }}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                {{ ui.etat_vide(
+                    'file-excel',
+                    'Aucun import',
+                    'Aucun fichier de décisions n\'a encore été importé pour ' ~ type.libelle|lower ~ '.',
+                    'Commencez par télécharger le modèle'
+                ) }}
+            {% endif %}
+        </div>
+    </div>
+
+    {# ===== Mode d'emploi ===== #}
+    <div class="bg-white rounded-lg border border-slate-200 overflow-hidden self-start">
+        <div class="px-6 py-5 border-b border-slate-200">
+            <h2 class="text-sm font-bold text-slate-800">Structure attendue</h2>
+        </div>
+
+        <div class="p-6 space-y-4">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2">Colonnes</p>
+                <div class="space-y-1.5">
+                    {% for colonne in type.colonnes %}
+                        <div class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full shrink-0
+                                         {{ colonne in type.colonnesObligatoires ? 'bg-indigo-500' : 'bg-slate-300' }}"></span>
+                            <span class="text-xs font-mono {{ colonne in type.colonnesObligatoires ? 'text-slate-700 font-semibold' : 'text-slate-600' }}">
+                                {{ colonne }}
+                            </span>
+                        </div>
+                    {% endfor %}
+                </div>
+                <p class="text-xs text-slate-600 mt-2.5">
+                    En indigo : colonnes obligatoires. Les autres sont indicatives.
+                </p>
+            </div>
+
+            <div class="pt-4 border-t border-slate-100">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2">Décisions admises</p>
+                <div class="flex flex-wrap gap-2">
+                    {% for decision, statut in type.decisions %}
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-mono font-semibold
+                                     bg-slate-100 text-slate-600">{{ decision }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-100">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2">Dossiers traités</p>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Seuls les dossiers au statut
+                    <strong>« {{ type.statutRequis.libelle }} »</strong> sont mis à jour.
+                    Les autres sont signalés dans le rapport sans être modifiés.
+                </p>
+            </div>
+
+            <div class="rounded-lg bg-amber-50 border border-amber-200 p-3.5">
+                <p class="text-xs text-amber-800 leading-relaxed">
+                    <i class="fas fa-shield-halved mr-1.5"></i>
+                    Si plus de la moitié des lignes sont en erreur, l'import entier est annulé :
+                    aucune décision n'est appliquée.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

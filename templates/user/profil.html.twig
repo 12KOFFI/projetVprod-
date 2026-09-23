@@ -1,0 +1,36 @@
+{% extends 'base.html.twig' %}
+{% block title %}Candidat | {{ parent() }}{% endblock %}
+{% block body %}
+<div class='row'>
+    <div class='col-md-12 grid-margin'>
+        <div class='card'>
+            <div class='card-body'>
+                <div class='table-responsive'>
+                    <table id='dataTableExample' class='table'>
+                        <thead>
+                            <tr>
+                                <th>N°</th>
+                                <th>Email</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for user in users %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td class='w-100'><a href='{{ path('app_user_edit', {'id': user.id}) }}'>{{ user.email }}</a></td>
+                                <td><a href='{{ path('app_user_edit', {'id': user.id}) }}' class='btn btn-inverse-warning btn-xs' data-bs-toggle='tooltip' data-bs-placement='top' title='Modifier'><i class='fa fa-pencil'></i></a></td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan='9'>no records found</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

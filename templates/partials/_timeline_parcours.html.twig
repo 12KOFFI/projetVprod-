@@ -1,0 +1,84 @@
+{#
+    Timeline « Suivi des étapes » du candidat (écran E3.4).
+
+    Les états sont calculés par App\Service\Candidature\SuiviParcours : ce
+    template ne décide de rien, il met en forme. Pastilles rounded-full,
+    étape courante en indigo, étapes franchies en green, à venir en slate.
+
+    Usage : {{ include('partials/_timeline_parcours.html.twig', { etapes: etapes }) }}
+#}
+<ol class="relative">
+    {% for etape in etapes %}
+        {% set est_derniere = loop.last %}
+        <li class="relative flex gap-4 {{ est_derniere ? '' : 'pb-6' }}">
+            {# Filet vertical reliant les pastilles, interrompu sur la dernière. #}
+            {% if not est_derniere %}
+                <span class="absolute left-[15px] top-8 bottom-0 w-px
+                             {{ etape.etat == 'franchie' ? 'bg-green-200' : 'bg-slate-200' }}"
+                      aria-hidden="true"></span>
+            {% endif %}
+
+            <span class="relative z-10 w-8 h-8 rounded-full flex items-center justify-center shrink-0
+                         text-xs font-bold transition-all duration-200
+                         {% if etape.etat == 'franchie' %}bg-green-500 text-white
+                         {% elseif etape.etat == 'courante' %}bg-indigo-600 text-white ring-4 ring-indigo-100
+                         {% elseif etape.etat == 'echec' %}bg-red-500 text-white
+                         {% else %}bg-slate-100 text-slate-600 border border-slate-200{% endif %}">
+                {% if etape.etat == 'franchie' %}
+                    <i class="fas fa-check"></i>
+                {% elseif etape.etat == 'echec' %}
+                    <i class="fas fa-xmark"></i>
+                {% elseif etape.etat == 'courante' %}
+                    <i class="fas fa-circle-dot"></i>
+                {% else %}
+                    {{ loop.index }}
+                {% endif %}
+            </span>
+
+            <div class="flex-1 min-w-0 pt-0.5">
+                <div class="flex flex-wrap items-center gap-2">
+                    <p class="text-sm font-semibold
+                              {% if etape.etat == 'courante' %}text-indigo-700
+                              {% elseif etape.etat == 'echec' %}text-red-700
+                              {% elseif etape.etat == 'franchie' %}text-slate-700
+                              {% else %}text-slate-600{% endif %}">
+                        {{ etape.libelle }}
+                    </p>
+
+                    {% if etape.etat == 'courante' %}
+                        <span class="px-2 py-0.5 rounded-lg text-xs font-semibold uppercase tracking-wider
+                                     bg-indigo-50 text-indigo-600">Étape en cours</span>
+                    {% elseif etape.etat == 'franchie' %}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold uppercase tracking-wider
+                                     bg-green-50 text-green-700">
+                            <i class="fas fa-check text-[0.65rem]" aria-hidden="true"></i>Terminé
+                        </span>
+                    {% endif %}
+                </div>
+
+                <p class="text-xs mt-1 leading-relaxed
+                          {{ etape.etat == 'a_venir' ? 'text-slate-500' : 'text-slate-500' }}">
+                    {{ etape.description }}
+                </p>
+
+                {% if etape.date %}
+                    <p class="text-xs text-slate-600 mt-1.5">
+                        <i class="fas fa-clock mr-1 opacity-60"></i>{{ etape.date|date('d/m/Y à H\\hi') }}
+                    </p>
+                {% endif %}
+
+                {# N'existe que sur la fenêtre exacte où le paiement des frais de
+                   dossier est ouvert (App\Service\Candidature\SuiviParcours) :
+                   disparaît de lui-même une fois le règlement confirmé. #}
+                {% if etape.action %}
+                    <a href="{{ etape.action.url }}"
+                       class="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-green-600 px-4 text-sm font-semibold text-white
+                              transition duration-150 motion-reduce:transition-none hover:bg-green-700
+                              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2">
+                        <i class="fas fa-credit-card text-xs" aria-hidden="true"></i>{{ etape.action.libelle }}
+                    </a>
+                {% endif %}
+            </div>
+        </li>
+    {% endfor %}
+</ol>

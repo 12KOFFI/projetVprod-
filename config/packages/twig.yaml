@@ -1,0 +1,17 @@
+twig:
+    default_path: '%kernel.project_dir%/templates'
+    form_themes: ['form/erreurs.html.twig']
+    globals:
+        dir_image: '/public/image/'
+        dir_media: '/public/media/'
+        webhost: 'https://localhost/daip/'
+        # Pilote l'affichage du menu « Jury central ». La garde qui compte est
+        # dans JuryController : ce drapeau n'évite qu'un menu menant à un 404.
+        jury_imports_actifs: '%app.jury.imports_actifs%'
+    number_format:
+        decimals: 1
+        decimal_point: '.'
+        thousands_separator: ' '
+when@test:
+    twig:
+        strict_variables: false

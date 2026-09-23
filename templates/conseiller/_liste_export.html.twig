@@ -1,0 +1,102 @@
+{#
+    Liste exportable de l'espace conseiller, partagée par les écrans E4.6 et
+    E4.7 : leur structure est identique, seule la colonne de décision change.
+
+    Paramètres : candidatures, titre, sous_titre, icone, route, colonne_decision
+                 ('etude' ou 'recevabilite'), vide_titre, vide_texte, export (booléen,
+                 vrai par défaut : les exports sont regroupés dans l'écran
+                 Impressions, les autres listes s'affichent sans barre d'export),
+                 action_libelle (texte du bouton d'action de chaque ligne,
+                 'Consulter le dossier' par défaut)
+#}
+{% import 'partials/_ui.html.twig' as ui %}
+{% set export = export ?? true %}
+{% set action_libelle = action_libelle ?? 'Consulter le dossier' %}
+
+{{ ui.bandeau(titre, sous_titre, icone, candidatures|length, 'dossier(s)') }}
+
+<div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+    {% if export %}
+        <div class="px-6 py-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <p class="text-xs text-slate-600">
+                Export de la liste complète, dans le périmètre de votre centre.
+            </p>
+
+            <div class="flex gap-2">
+                <a href="{{ path(route, {export: 'excel'}) }}"
+                   class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium
+                          text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 transition duration-200">
+                    <i class="fas fa-file-excel text-xs"></i>Excel
+                </a>
+                <a href="{{ path(route, {export: 'pdf'}) }}" target="_blank" rel="noopener"
+                   class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium
+                          text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 transition duration-200">
+                    <i class="fas fa-file-pdf text-xs"></i>PDF
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if candidatures is not empty %}
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[840px]">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        {{ ui.th('Numéro') }}
+                        {{ ui.th('Candidat') }}
+                        {{ ui.th('Métier') }}
+                        {{ ui.th(colonne_decision == 'etude' ? 'Étude du dossier' : 'Recevabilité') }}
+                        {{ ui.th('Date') }}
+                        {{ ui.th('Statut') }}
+                        {{ ui.th('', 'text-right') }}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for candidature in candidatures %}
+                        {% set decision = colonne_decision == 'etude'
+                            ? candidature.resultatEtude
+                            : candidature.resultatRecevabilite %}
+                        {% set date = colonne_decision == 'etude'
+                            ? candidature.etuDate
+                            : candidature.recDate %}
+
+                        <tr class="hover:bg-slate-50/70 transition duration-200">
+                            <td class="px-6 py-4">
+                                <span class="font-mono text-xs font-semibold text-indigo-600">{{ candidature.numero }}</span>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-slate-700">
+                                {{ candidature.user ? candidature.user.nomComplet : '—' }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-slate-600">
+                                {{ candidature.metier ? candidature.metier.libelle : '—' }}
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if decision %}
+                                    {{ ui.badge(decision.libelle, decision.couleur) }}
+                                {% else %}
+                                    <span class="text-xs text-slate-600">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-xs text-slate-600 tabular-nums">
+                                {{ date ? date|date('d/m/Y') : '—' }}
+                            </td>
+                            <td class="px-6 py-4">
+                                {{ include('partials/_statut_badge.html.twig', { statut: statut_candidature(candidature) }) }}
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                {{ ui.bouton_lien(
+                                    path('app_conseiller_candidature', {id: candidature.id}),
+                                    'eye',
+                                    action_libelle,
+                                    'indigo'
+                                ) }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        {{ ui.etat_vide(icone, vide_titre, vide_texte) }}
+    {% endif %}
+</div>

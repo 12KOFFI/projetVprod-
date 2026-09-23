@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang='fr'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>DAIP - CONVOCATION CANDIDAT</title>
+    <style>
+        @page{
+            size: A4;
+            margin: 0cm;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        .container {
+            margin: 0.4cm;
+        }
+        .row{
+            display:flex;
+            justify-content:flex-start;
+            align-items:stretch;
+            flex-wrap:nowrap;
+            padding-bottom : 10px;
+        }
+        .row_large{
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            justify-content: space-between;
+            align-items: stretch;
+            align-content: stretch;
+        }
+        .cell{
+            min-height: 21px;
+            flex-grow: 1;
+            flex-basis: 100%;
+            padding: 1px;
+        }
+        .info{
+            margin-left: 0px;
+        }
+        .title{
+            text-align: center;
+            font-size: 1em;
+            margin-top: 10px;
+        }
+        .subtitle {
+            padding: 3px;
+            font-size: 1em;
+            text-align: center;
+            background: lightgreen;
+        }
+        .subtitle2 {
+            padding: 2px;
+            font-style: italic;
+            text-decoration: none;
+        }
+        .subtitle3 {
+            text-align:center;
+            text-decoration: none;
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+        .title2{
+            flex-grow: 1;
+            flex-basis: 100%;
+            text-align: left;
+            margin: 7px 20px 7px 0;
+            border-bottom: 1px solid silver;
+            border-width: thin;
+            margin-left: 20px;
+        }
+        .label{
+            font-size: 1em;
+        }
+        .result{
+            font-weight: bold;
+            font-size: .9em;
+        }
+        @media (max-width: 768px){
+            .row{
+                flex-wrap: wrap;
+            }
+        }
+        .footer {
+            position: fixed;
+            bottom: 10;
+            width: 100%;
+            text-align: center;
+        }
+        .footer img {
+            display: block;
+            margin: 0 auto;
+        }
+        .table {
+            width: 100%;
+            text-align: center;
+            border-collapse: collapse;
+        }
+        .table th, .table td {
+            border: 1px solid black;
+            padding: 8px;
+        }
+        .badge {
+            color: #ff0040;
+        }
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <img src='{{ image.entete ?? '' }}' style='width: 100%'>
+        
+        <br><br>
+        
+        <section for='title'>
+            <div class='row'>
+                <div class='cell'>
+                    <div class='subtitle'>1 JEUNE 1 METIER <br> CONVOCATION - ENTRETIEN DE SÉLECTION</div>
+                </div>
+            </div>
+        </section>
+        <br>
+        <section>
+            {% set user = candidature.user %}
+            <table style="width: 100%; border: none; text-align: left">
+                <tr><td style="width: 25%; font-weight: bold">Numéro d'inscription</td><td>: <span class="badge">{{ candidature.numero }}</span> <small>(Ce numéro vous servira à consulter votre résultat)</small></td></tr>
+                <tr><td style="font-weight: bold">Nom</td><td>: {% if user and user.sexe == "FEMININ" and user.situationmat == "MARIE(E)" %}Mme{% elseif user and user.sexe == "FEMININ" and user.situationmat == "CELIBATAIRE" %}Mlle{% else %}M.{% endif %}&nbsp;{{ user ? user.nom|upper : '' }}</td></tr>
+                <tr><td style="font-weight: bold">Prénom(s)</td><td>: {{ user ? user.prenoms|upper : '' }}</td></tr>
+                <tr><td style="font-weight: bold">Date & lieu de naissance</td><td>: {{ user and user.datenaissance ? user.datenaissance|date('d/m/Y') : '' }} &nbsp; à &nbsp; {{ user ? user.lieunaissance|upper : '' }}</td></tr>
+            </table>
+            
+            <br><br>
+            
+            <table class='table' cellspacing="0">
+                <thead style='background: #f1f1f1'>
+                    <tr>
+                        <th>CENTRE</th>
+                        <th>JURY</th>
+                        <th>DATE</th>
+                        <th>HEURE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{ candidature.etablissement ? candidature.etablissement.nom : '' }}</td>
+                        <td>{{ candidature.jury ?: 'À déterminer' }}</td>
+                        <td>{{ candidature.entdate ? candidature.entdate|date('d/m/Y') : '' }}</td>
+                        <td>08h00 - 15h00</td>
+                    </tr>
+                    <tr>
+                        <td colspan='4' style='background: #fbfbfb; padding: 5px 0 5px 0'>
+                            <small>
+                                <b>MÉTIER</b> : {{ candidature.metier ? candidature.metier.nom : '' }}
+                            </small>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <br><br>
+            
+            <b>N.B</b>
+            <ul>
+                <li>Une pièce d'identité et cette convocation sont exigées à l'entrée de la salle d'entretien ;</li>
+                <li>Présentez-vous 30 minutes avant l'heure prévue.</li>
+            </ul>
+        </section>
+        <section class='footer'>
+            <img src='https://api.qrserver.com/v1/create-qr-code/?size=70x70&data={{ candidature.numero }}'><br>
+            <small>©{{ "now"|date('Y') }} - METFPA/DAIP. Tous Droits Réservés</small>
+        </section>
+    </div>
+</body>
+</html>

@@ -1,0 +1,148 @@
+{% set input_class = input_class|default('w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition') %}
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    {% for field, config in document_labels %}
+        {# Récupération du nom du fichier via le getter #}
+        {% set fileName = attribute(candidature, field) %}
+        {% set fileExists = fileName is not null and fileName != '' %}
+        {% set isImage = fileName matches '/\\.(jpg|jpeg|png|gif|webp|svg)$/i' %}
+        {# Déterminer l'URL du fichier existant - à adapter selon votre configuration #}
+        {% set fileUrl = asset('media/' ~ candidature.numero ~ '/' ~ fileName) %}
+        
+        <div class="transform transition-all duration-300">
+            <div class="bg-white rounded-lg p-5 border-2 border-dashed border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all group cursor-pointer upload-area" data-field="{{ field }}">
+                <div class="flex flex-col items-center text-center">
+                    <!-- Cadre d'aperçu (toujours visible) -->
+                    <div class="w-full mb-3 bg-slate-50 rounded-lg border border-slate-200 overflow-hidden" style="height: 120px;">
+                        <div class="w-full h-full flex items-center justify-center preview-container" id="preview-{{ field }}">
+                            {% if fileExists and isImage %}
+                                <img src="{{ fileUrl }}" 
+                                     alt="Aperçu {{ config.text }}" 
+                                     class="w-full h-full object-contain p-1"
+                                     onerror="this.parentElement.innerHTML = '<i class=\'fas fa-exclamation-triangle text-red-500 text-2xl\'></i><span class=\'text-xs text-red-500 ml-1\'>Erreur</span>'">
+                            {% elseif fileExists and not isImage %}
+                                {# Pour les PDF, afficher une icône avec lien #}
+                                <div class="flex flex-col items-center justify-center text-slate-600">
+                                    <i class="fas fa-file-pdf text-4xl text-red-500 mb-1"></i>
+                                    <span class="text-xs">PDF</span>
+                                </div>
+                            {% else %}
+                                <div class="flex flex-col items-center justify-center text-slate-600">
+                                    <i class="fas fa-{{ config.icon }} text-3xl mb-1"></i>
+                                    <span class="text-xs">Aucun fichier</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                {{ form_widget(attribute(form, field), {'attr': {
+                    'class': 'hidden file-input',
+                    'data-field': field,
+                    'accept': config.accept,
+                    'data-max-size': '10485760',
+                    'data-current-file': fileName ?? ''
+                }}) }}
+                {# 10 Mo (à ajuster selon votre limite) #}
+                    
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">
+                        {{ config.text }}
+                        <span class="text-xs font-normal text-slate-500 ml-1">({{ config.formats }})</span>
+                    </label>
+
+                    {# Lien de téléchargement pour le fichier existant (si PDF ou autre) #}
+                    {% if fileExists %}
+                        <div class="mt-4 w-full">
+                            <a href="{{ fileUrl }}" target="_blank" class="inline-flex items-center justify-center w-full sm:w-auto px-4 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition shadow-sm hover:shadow focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2">
+                                <i class="fas fa-download mr-2"></i> Télécharger
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gestion du clic sur la zone d'upload
+    document.querySelectorAll('.upload-area').forEach(area => {
+        area.addEventListener('click', function(e) {
+            // Ne pas déclencher si on clique sur un lien (comme le téléchargement)
+            if (e.target.tagName === 'A' || e.target.closest('a')) {
+                return;
+            }
+            
+            const field = this.dataset.field;
+            const fileInput = document.querySelector(`.file-input[data-field="${field}"]`);
+            if (fileInput) {
+                fileInput.click();
+            }
+        });
+    });
+
+    // Gestion du changement de fichier
+    document.querySelectorAll('.file-input').forEach(input => {
+        input.addEventListener('change', function(e) {
+            const field = this.dataset.field;
+            const file = e.target.files[0];
+            
+            // Vérifier la taille du fichier
+            if (file && file.size > parseInt(this.dataset.maxSize)) {
+                alert('Le fichier dépasse la limite de ' + (parseInt(this.dataset.maxSize) / 1048576) + ' Mo.');
+                this.value = '';
+                return;
+            }
+            
+            if (file) {
+                // Mettre à jour l'aperçu
+                const previewContainer = document.getElementById(`preview-${field}`);
+                
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(readerEvent) {
+                        previewContainer.innerHTML = `<img src="${readerEvent.target.result}" alt="Aperçu" class="w-full h-full object-contain p-1">`;
+                    }
+                    reader.readAsDataURL(file);
+                } else {
+                    // Pour les PDF, afficher une icône PDF
+                    previewContainer.innerHTML = `
+                        <div class="flex flex-col items-center justify-center text-slate-600">
+                            <i class="fas fa-file-pdf text-4xl text-red-500 mb-1"></i>
+                            <span class="text-xs">PDF sélectionné</span>
+                        </div>
+                    `;
+                }
+            }
+        });
+    });
+});
+</script>
+
+<style>
+.upload-area {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.1);
+}
+
+.preview-container {
+    transition: all 0.2s ease;
+}
+
+.upload-area:hover .preview-container {
+    background-color: rgba(79, 70, 229, 0.05);
+}
+
+/* Style pour le cadre d'aperçu */
+.bg-slate-50 {
+    background-color: #f8fafc;
+}
+
+.object-contain {
+    object-fit: contain;
+}
+</style>

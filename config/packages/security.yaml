@@ -1,0 +1,91 @@
+security:
+  enable_authenticator_manager: true
+
+  password_hashers:
+    Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: "auto"
+
+  providers:
+    app_user_provider:
+      entity:
+        class: App\Entity\User
+        property: email
+
+  firewalls:
+    dev:
+      pattern: ^/(_(profiler|wdt)|css|images|js)/
+      security: true
+
+    main:
+      lazy: false
+      provider: app_user_provider
+      access_denied_handler: App\Security\AccessDeniedHandler
+
+      # Authenticator personnalisé
+      entry_point: App\Security\AppAuthenticator
+      custom_authenticator: App\Security\AppAuthenticator
+
+      logout:
+        path: app_logout
+        target: app_home
+
+      switch_user: false
+
+  # Les règles sont évaluées dans l'ordre : SEULE la première qui correspond
+  # s'applique (elles ne s'empilent pas). Une règle requires_channel placée
+  # en dernier ne protégerait donc que les chemins ne correspondant à aucune
+  # règle de rôle précédente — pas /admin, /conseiller, etc.
+  #
+  # L'application ne force donc pas le schéma HTTPS ici : c'est le rôle du
+  # proxy inverse / load balancer en production (terminaison TLS + redirection
+  # HTTP -> HTTPS), configuration standard qui fonctionne quel que soit
+  # l'environnement local (serveur PHP intégré, Symfony CLI avec ou sans TLS).
+  # Si l'application est un jour placée derrière un tel proxy, penser à
+  # configurer framework.trusted_proxies pour que Request::isSecure()
+  # reflète le schéma d'origine (en-tête X-Forwarded-Proto).
+  access_control:
+    - { path: "^/connexion", roles: PUBLIC_ACCESS }
+    - { path: "^/inscription", roles: PUBLIC_ACCESS }
+    - { path: "^/mot-de-passe-oublie", roles: PUBLIC_ACCESS }
+    - { path: "^/resultats", roles: PUBLIC_ACCESS }
+
+    # Écrans transverses. Les Indicateurs sont fermés au candidat (des
+    # statistiques sur un unique dossier n'auraient pas de sens, son suivi
+    # d'étapes remplit déjà ce rôle) et à l'agent d'accueil, dont la mission se
+    # limite à l'inscription et à la reprise des dossiers. Ni l'un ni l'autre
+    # n'hérite de ces rôles : l'exclusion est déclarative, sans test dans le
+    # contrôleur. ROLE_ADMIN, qui hérite de tous, reste admis par ROLE_CONSEILLER.
+    - { path: "^/indicateurs", roles: [ROLE_CONSEILLER, ROLE_ACCOMPAGNATEUR] }
+    - { path: "^/impressions", roles: ROLE_USER }
+
+    - { path: "^/admin", roles: ROLE_ADMIN }
+    - { path: "^/conseiller", roles: ROLE_CONSEILLER }
+    - { path: "^/accueil", roles: ROLE_AGENT_ACCEUIL }
+    - { path: "^/accompagnement", roles: ROLE_ACCOMPAGNATEUR }
+    - { path: "^/espace-candidat", roles: ROLE_CANDIDAT }
+    - { path: "^/api/candidature", roles: ROLE_USER }
+    - { path: "^/tableau-de-bord", roles: ROLE_USER }
+    - { path: "^/mon-profil", roles: ROLE_USER }
+
+  role_hierarchy:
+    ROLE_CANDIDAT: ROLE_USER
+    ROLE_AGENT_ACCEUIL: ROLE_USER
+    ROLE_CONSEILLER: ROLE_USER
+    ROLE_JURY: ROLE_USER
+    ROLE_ACCOMPAGNATEUR: ROLE_USER
+
+    ROLE_ADMIN:
+      - ROLE_CANDIDAT
+      - ROLE_AGENT_ACCEUIL
+      - ROLE_CONSEILLER
+      - ROLE_JURY
+      - ROLE_ACCOMPAGNATEUR
+      - ROLE_ALLOWED_TO_SWITCH
+
+when@test:
+  security:
+    password_hashers:
+      Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
+        algorithm: auto
+        cost: 5
+        time_cost: 4
+        memory_cost: 11

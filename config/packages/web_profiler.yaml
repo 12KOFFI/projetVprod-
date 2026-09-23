@@ -1,0 +1,19 @@
+# L'interception des redirections masque les redirections réelles derrière une
+# page du profiler : elle rend illisibles les parcours qui en enchaînent
+# plusieurs (connexion, dépôt de dossier, refus d'accès). Laissée désactivée,
+# conformément au réglage par défaut de Symfony.
+when@dev:
+    web_profiler:
+        toolbar: true
+        intercept_redirects: false
+
+    framework:
+        profiler: { only_exceptions: false }
+
+when@test:
+    web_profiler:
+        toolbar: false
+        intercept_redirects: false
+
+    framework:
+        profiler: { collect: false }

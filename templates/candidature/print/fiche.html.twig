@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang='fr'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>DAIP - FICHE D'INSCRIPTION CANDIDAT</title>
+    <style>
+        @page{
+            size: A4;
+            margin: 0cm;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .container {
+            margin: 0.8cm;
+            position: relative;
+            min-height: 28cm;
+        }
+        .header-section {
+            margin-bottom: 15px;
+        }
+        .header-section img {
+            width: 100%;
+        }
+        .title {
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.8em;
+            letter-spacing: 1px;
+            margin: 20px 0 20px;
+        }
+        .subtitle {
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.5em;
+            margin: 0 0 20px 0;
+            padding: 5px 0;
+            border: 1px solid;
+            width: 100%;
+            border-radius: 6px;
+        }
+        .info-section {
+            margin-bottom: 25px;
+            position: relative;
+        }
+        .section-title {
+            font-weight: bold;
+            color: #0055a4;
+            font-size: 1.3em;
+            margin: 5px 0 8px 0;
+        }
+        .section-content {
+            padding: 5px 0 0 10px;
+        }
+        .row {
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-start;
+            flex-wrap: nowrap;
+            padding: 4px 0;
+            min-height: 22px;
+        }
+        .cell {
+            min-height: 22px;
+            flex-grow: 1;
+            flex-basis: 100%;
+            padding: 0 5px;
+        }
+        .label {
+            font-weight: 600;
+            color: #444;
+            min-width: 150px;
+            display: inline-block;
+            font-size: 13px;
+        }
+        .result {
+            font-size: 15px;
+        }
+        .qr-code-section {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 70px;
+            text-align: center;
+        }
+        .qr-code-section img {
+            width: 70px;
+            height: 70px;
+            border: 1px solid #ddd;
+            padding: 3px;
+            background: white;
+        }
+        .qr-code-section small {
+            font-size: 7px;
+            color: #666;
+            display: block;
+        }
+        .footer {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            padding: 15px 0 0;
+            font-size: 11px;
+        }
+        .badge {
+            background: #e6f0fa;
+            color: #0055a4;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <!-- En-tête avec logo -->
+        <div class="header-section">
+            <img src='{{ image.entete ?? '' }}' alt=''>
+        </div>
+
+        <!-- Titre principal -->
+        <div class='title'>1 JEUNE 1 MÉTIER</div>
+        <div class='subtitle'>FICHE D'INSCRIPTION CANDIDAT</div>
+
+        {% set user = candidature.user %}
+        {% set etablissement = candidature.etablissement %}
+        {% set localite = etablissement ? etablissement.localite : null %}
+        {% set direction = localite ? localite.directionRegionale : null %}
+        {% set metier = candidature.metier %}
+        {% set secteur = metier ? metier.secteur : null %}
+        {% set etablissementMetier = (etablissement and metier) ? etablissement.etablissementMetiers|filter(em => em.metier and em.metier.id == metier.id)|first : null %}
+
+        <!-- Section 1 : CANDIDAT avec QR Code à droite -->
+        <div class="info-section">
+            <div class="section-title">1. CANDIDAT</div>
+            
+            <!-- QR Code placé à droite -->
+            <div class="qr-code-section">
+                <img src='https://api.qrserver.com/v1/create-qr-code/?size=70x70&data={{ candidature.numero }}' alt='QR Code'>
+                <small>Scan pour vérifier</small>
+            </div>
+            
+            <div class="section-content" style="padding-right: 80px;">
+                <div class="row">
+                    <div class="cell">
+                        <span class="label">Numéro :</span>
+                        <span class="result"><strong>{{ candidature.numero }}</strong></span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="cell">
+                        <span class="label">Nom & Prénoms :</span>
+                        <span class="result">
+                            {% set civilite = (user and user.sexe == 'MASCULIN') ? 'M.' : 'Mme' %}
+                            <strong>{{ civilite }} {{ user ? user.nom|upper : '' }} {{ user ? user.prenoms|title : '' }}</strong>
+                            {% if user and user.nomjeunefille %}
+                                <span style="color:#666;"> née {{ user.nomjeunefille|upper }}</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="cell">
+                        <span class="label">Né(e) le :</span>
+                        <span class="result">{{ user and user.datenaissance ? user.datenaissance|date('d/m/Y') : '' }} à {{ user ? user.lieunaissance|upper : '' }}</span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="cell">
+                        <span class="label">Contact :</span>
+                        <span class="result">{{ user ? user.contact : '' }}</span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="cell">
+                        <span class="label">Date d'inscription :</span>
+                        <span class="result">{{ candidature.creation|date('d/m/Y à H:i') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2 : CENTRE DE FORMATION -->
+        <div class="info-section">
+            <div class="section-title">2. CENTRE DE FORMATION</div>
+            <div class="section-content">
+                <div class="row">
+                    <div class="cell">
+                        <span class="label">Établissement :</span>
+                        <span class="result"><strong>{{ etablissement ? etablissement.nom : '' }}</strong></span>
+                    </div>
+                </div>
+                {% if localite %}
+                <div class="row">
+                    <div class="cell">
+                        <span class="label">Localité :</span>
+                        <span class="result">{{ localite.nom }} - DR {{ direction ? direction.nom : '' }}</span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Section 3 : MÉTIER ET FORMATION -->
+        <div class="info-section">
+            <div class="section-title">3. MÉTIER ET FORMATION</div>
+            <div class="section-content">
+                <div class="row">
+                    <div class="cell">
+                        <span class="label">Métier :</span>
+                        <span class="result"><strong>{{ metier ? metier.nom : '' }}</strong></span>
+                    </div>
+                </div>
+                {% if secteur %}
+                <div class="row">
+                    <div class="cell">
+                        <span class="label">Secteur :</span>
+                        <span class="result">{{ secteur.nom }} (Niveau {{ etablissementMetier ? etablissementMetier.niveauRequis ?: '-' : '-' }}, {{ etablissementMetier ? etablissementMetier.dureeFormation ?: '-' : '-' }} de formation)</span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class='footer'>
+            <div class="generation-date">
+                Généré le {{ "now"|date('d/m/Y à H:i') }}
+            </div>
+            <div>© {{ "now"|date('Y') }} METFPA/DAIP</div>
+        </div>
+    </div>
+</body>
+</html>

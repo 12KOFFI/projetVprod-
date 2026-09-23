@@ -1,0 +1,88 @@
+{# Écran E3.6 : tableau de bord de l'agent d'accueil. #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Accueil — {{ centre.nom }}{% endblock %}
+
+{% block body %}
+{{ ui.bandeau(
+    'Espace accueil',
+    centre.nom ~ ' — préinscription et suivi des candidats du centre.',
+    'bell-concierge',
+    total,
+    'dossier(s)'
+) }}
+
+{# ===== Indicateurs ===== #}
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+    {{ ui.stat('Dossiers du centre', total, 'folder-open', 'indigo') }}
+    {{ ui.stat("Déposés aujourd'hui", aujourdhui, 'calendar-day', 'green') }}
+    {{ ui.stat('En attente de prise en charge', par_statut[10]|default(0), 'hourglass-half', 'amber') }}
+    {{ ui.stat('Conseillers du centre', conseillers|length, 'user-tie', 'purple') }}
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    {# ===== Actions ===== #}
+    <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <div class="px-6 py-5 border-b border-slate-200">
+            <h2 class="text-sm font-bold text-slate-800">Préinscrire un candidat</h2>
+            <p class="text-xs text-slate-600 mt-0.5">Accompagnement d'un candidat au guichet</p>
+        </div>
+
+        <div class="p-6 space-y-3">
+            <a href="{{ path('app_accueil_inscription') }}"
+               class="w-full inline-flex items-center gap-3 px-4 py-3.5 rounded-lg text-sm font-medium text-white
+                      bg-indigo-600 hover:bg-indigo-700 transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                <i class="fas fa-user-plus"></i>
+                <span class="text-left">
+                    Nouvelle préinscription
+                    <span class="block text-xs font-normal text-white/70">Créer le compte et déposer le dossier</span>
+                </span>
+            </a>
+
+            <a href="{{ path('app_accueil_reprise') }}"
+               class="w-full inline-flex items-center gap-3 px-4 py-3.5 rounded-lg text-sm font-medium
+                      text-slate-700 bg-slate-100 hover:bg-slate-200 transition duration-200">
+                <i class="fas fa-folder-plus text-slate-600"></i>
+                <span class="text-left">
+                    Reprise de dossier
+                    <span class="block text-xs font-normal text-slate-600">Candidat déjà préinscrit en ligne</span>
+                </span>
+            </a>
+        </div>
+    </div>
+
+    {# ===== Charge des conseillers ===== #}
+    <div class="lg:col-span-2 bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between gap-3">
+            <div>
+                <h2 class="text-sm font-bold text-slate-800">Conseillers VAE du centre</h2>
+                <p class="text-xs text-slate-600 mt-0.5">Orientez le candidat vers un conseiller peu chargé</p>
+            </div>
+            <a href="{{ path('app_accueil_conseillers') }}"
+               class="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition duration-200 shrink-0">
+                Tout voir<i class="fas fa-arrow-right ml-1.5 text-xs"></i>
+            </a>
+        </div>
+
+        {% if conseillers is not empty %}
+            <div class="divide-y divide-slate-100">
+                {% for ligne in conseillers|slice(0, 5) %}
+                    <div class="px-6 py-4 flex items-center justify-between gap-4">
+                        <p class="text-sm font-medium text-slate-700 truncate min-w-0">{{ ligne.conseiller.nomComplet ?: '—' }}</p>
+                        <span class="text-xs font-semibold text-slate-600 tabular-nums shrink-0">
+                            {{ ligne.charge }} dossier(s)
+                        </span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            {{ ui.etat_vide(
+                'user-tie',
+                'Aucun conseiller rattaché',
+                'Aucun conseiller VAE n\'est encore rattaché à ce centre. Contactez l\'administrateur.'
+            ) }}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

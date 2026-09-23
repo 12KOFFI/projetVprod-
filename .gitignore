@@ -1,0 +1,51 @@
+/node_modules/
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+*.log
+*.cache
+.php-cs-fixer.cache
+
+# Fichiers televerses par les utilisateurs : on versionne les dossiers vides, pas leur contenu.
+/public/media/*
+!/public/media/.gitkeep
+/public/image/partenaire/*
+!/public/image/partenaire/.gitkeep
+
+# vendor/ et var/ sont volontairement VERSIONNES (hebergement mutualise sans Composer/CLI).
+# Seul le contenu genere localement (cache compile, logs, sessions) reste ignore :
+# il contient des chemins absolus propres a la machine et doit etre regenere en prod.
+/var/cache/*
+!/var/cache/.gitkeep
+/var/log/*
+!/var/log/.gitkeep
+/var/sessions/*
+!/var/sessions/.gitkeep
+/var/imports/*
+!/var/imports/.gitkeep
+
+###> symfony/framework-bundle ###
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+###< symfony/framework-bundle ###
+
+###> symfony/webpack-encore-bundle ###
+# /public/build/ est volontairement VERSIONNE : pas de Node/npm sur l'hebergement mutualise,
+# les assets compiles doivent donc partir avec le depot.
+/node_modules/
+npm-debug.log
+yarn-error.log
+###< symfony/webpack-encore-bundle ###
+
+# Fichier d'environnement local : ne doit jamais partir sur le dépôt.
+/.env
+
+###> symfony/phpunit-bridge ###
+.phpunit.result.cache
+/phpunit.xml
+###< symfony/phpunit-bridge ###

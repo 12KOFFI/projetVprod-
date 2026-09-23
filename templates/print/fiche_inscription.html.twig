@@ -1,0 +1,301 @@
+{#
+    Fiche d'inscription remise au candidat après le règlement des frais de
+    dossier (F5.8).
+
+    Sections et ordre de FICHE_INSCRIPTION/nouvelle-fiche-inscription.docx,
+    présentés comme un document généré (« libellé : valeur », sans lignes de
+    saisie) avec les couleurs de FICHE_INSCRIPTION/modele3.pdf. Une donnée
+    absente masque sa ligne, sauf dans la section I où chaque rubrique est due.
+
+    Page 1 : en-tête, I - Identification, II - Récépissé détachable.
+    Page 2 : pièces à joindre, situation professionnelle, suivi post-VAE.
+
+    Rendue par Dompdf : ni flexbox ni grid, mise en page par tableaux.
+#}
+{% set candidat_present = candidat is not null %}
+{% set sexe = candidat_present ? candidat.sexe|upper : '' %}
+{% set sexe_libelle = sexe starts with 'M' ? 'Masculin' : (sexe starts with 'F' ? 'Féminin' : '') %}
+{% set nom_complet = candidat_present ? candidat.nomComplet : '' %}
+{% set naissance = candidat_present and candidat.datenaissance ? candidat.datenaissance|date('d/m/Y') : '' %}
+{% set lieu_naissance = candidat_present ? candidat.lieunaissance : '' %}
+{% set session = candidature.creation ? candidature.creation|date('Y') : edite_le|date('Y') %}
+{% set metier = candidature.metier ? candidature.metier.libelle : '' %}
+{% set centre = candidature.centre ? candidature.centre.nom : '' %}
+{% set experience = candidature.nbAnneesExperience ?? 0 %}
+
+{% set langue = candidature.langue|upper %}
+{% set langue_libelle = langue == 'FRANCAIS' ? 'Français'
+    : (langue == 'LANGUE LOCALE' ? 'Langue locale' : (langue == 'AUTRE' ? 'Autre' : candidature.langue)) %}
+{% if candidature.preciserlangue %}{% set langue_libelle = langue_libelle ~ ' (' ~ candidature.preciserlangue ~ ')' %}{% endif %}
+
+{% set libelles_situation = {
+    'ARTISAN A SON COMPTE': 'Indépendant (auto-emploi)',
+    'SALARIE': 'Salarié',
+    'APPRENTI': 'Autre : apprenti',
+    'AIDE FAMILIAL': 'Autre : aide familial',
+    'SANS EMPLOI': 'Autre : sans emploi'
+} %}
+{% set diplome = candidature.diplome == 'SUPERIEUR' ? 'Supérieur au BAC' : candidature.diplome %}
+
+{# Section I : toutes les rubriques sont dues, sauf le nom de jeune fille,
+   affiché seulement s'il est renseigné. #}
+{% set nom_jeune_fille = candidat_present ? candidat.nomJeuneFille : '' %}
+{% set identification = [{libelle: 'Nom et prénoms', valeur: nom_complet}]
+    |merge(nom_jeune_fille ? [{libelle: 'Nom de jeune fille', valeur: nom_jeune_fille}] : [])
+    |merge([
+        {libelle: 'Date de naissance', valeur: naissance},
+        {libelle: 'Lieu de naissance', valeur: lieu_naissance},
+        {libelle: 'Sexe', valeur: sexe_libelle},
+        {libelle: 'Spécialité / Métier', valeur: metier},
+        {libelle: "Nombre d'années d'expérience", valeur: experience ~ ' an' ~ (experience > 1 ? 's')},
+        {libelle: 'Diplôme académique obtenu(e)', valeur: diplome ?: 'Aucun'},
+        {libelle: 'Centre de validation choisi', valeur: centre},
+        {libelle: "Langue d'évaluation", valeur: langue_libelle}
+    ]) %}
+
+{# Rubriques facultatives : une valeur vide retire la ligne. #}
+{% set situation_pro = [
+    {libelle: 'Situation professionnelle', valeur: libelles_situation[candidature.situationPro] ?? candidature.situationPro},
+    {libelle: "Entreprise, organisme ou administration d'attache", valeur: candidature.nomEntreprise},
+    {libelle: "Lieu d'exercice (Région, Département, Sous-préfecture)", valeur: candidature.lieuExercice},
+    {libelle: 'Direction, service', valeur: candidature.directionService},
+    {libelle: 'Poste de travail', valeur: candidature.fonction},
+    {libelle: 'Référence du contrat de travail', valeur: candidature.refContrat},
+    {libelle: 'Références entreprise', valeur: candidature.refentreprise}
+] %}
+
+{% set suivi = [
+    {libelle: 'Noms et prénoms', valeur: nom_complet},
+    {libelle: 'Né(e) le', valeur: naissance ~ (naissance and lieu_naissance ? ' à ' : '') ~ lieu_naissance},
+    {libelle: 'Sexe', valeur: sexe_libelle},
+    {libelle: 'Nationalité', valeur: candidat_present ? candidat.nationalite : ''},
+    {libelle: 'Téléphone (1) fixe', valeur: candidat_present ? candidat.contact2 : ''},
+    {libelle: 'Téléphone (2) portable', valeur: candidat_present ? candidat.contact : ''},
+    {libelle: 'Boîte postale', valeur: candidat_present ? candidat.boitePostale : ''},
+    {libelle: 'Ville', valeur: candidat_present ? candidat.residence : ''},
+    {libelle: 'E-mail personnel', valeur: candidat_present ? candidat.email : '', casse_libre: true},
+    {libelle: 'Diplôme académique', valeur: diplome},
+    {libelle: 'Titre professionnel', valeur: candidature.titrepro},
+    {libelle: 'Emploi / métier exercé', valeur: metier}
+] %}
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Fiche d'inscription {{ candidature.numero }}</title>
+    <style>
+        @page { margin: 12mm 14mm 12mm; }
+
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 9.5pt; color: #000; margin: 0; }
+
+        table { border-collapse: collapse; }
+        td { padding: 0; vertical-align: top; }
+
+        /* ===== En-tête ===== */
+        table.entete { width: 100%; }
+        td.entete-logo { width: 34mm; }
+        td.entete-logo img { width: 26mm; }
+        td.entete-photo { width: 33mm; text-align: right; }
+
+        .bandeau-titre {
+            background-color: #198754; color: #fff; text-align: center;
+            font-weight: bold; padding: 2.4mm 3mm;
+        }
+        .bandeau-titre .surtitre { font-size: 9pt; letter-spacing: .5pt; }
+        .bandeau-titre .titre { font-size: 13pt; letter-spacing: .5pt; margin-top: .8mm; }
+
+        table.references { width: 100%; margin-top: 3mm; }
+        table.references td { padding: .9mm 0; vertical-align: middle; }
+        .numero { font-size: 14pt; font-weight: bold; color: #FF0000; letter-spacing: .6pt; }
+        .session-demande { font-weight: bold; margin-top: 1.5mm; }
+
+        .photo {
+            width: 30mm; height: 34mm; border: .7pt solid #292929;
+            overflow: hidden; text-align: center; margin-left: auto;
+        }
+        .photo img { height: 34mm; }
+        .photo-consigne { font-size: 7.5pt; line-height: 1.35; padding: 10mm 2mm 0; color: #333; }
+
+        /* ===== Sections ===== */
+        .section { border: .6pt solid #CCCCCC; margin-top: 5mm; }
+        .section-titre {
+            background-color: #CCCCCC; font-weight: bold; font-size: 9.5pt;
+            letter-spacing: .3pt; padding: 1.6mm 3mm;
+        }
+        .section-titre .precision { font-weight: normal; font-size: 8.5pt; letter-spacing: 0; }
+        .section-corps { padding: 2.5mm 3mm 2.5mm; }
+
+        /* Libellé : valeur sur des colonnes fixes */
+        table.donnees { width: 100%; }
+        table.donnees td { padding: 1.1mm 0; }
+        td.num { width: 7mm; font-weight: bold; }
+        td.lib { color: #222; }
+        td.sep { width: 4mm; color: #222; }
+        td.val { font-weight: bold; text-transform: uppercase; }
+        td.val.casse-libre { text-transform: none; }
+
+        /* ===== Récépissé ===== */
+        .decoupe { border-top: 1pt dashed #292929; margin: 7mm -6mm 0; }
+        table.recepisse { width: 100%; }
+        table.recepisse > tbody > tr > td { vertical-align: top; }
+        td.recepisse-gauche { width: 45%; padding-right: 4mm; }
+        td.recepisse-droite { border-left: .6pt solid #292929; padding-left: 4mm; }
+        td.recepisse-photo { width: 33mm; padding-left: 3mm; }
+        td.recepisse-gauche { width: 38%; }
+        .empile { margin-bottom: 1.8mm; }
+        .empile .lib { font-size: 8pt; color: #222; }
+        .empile .val { font-weight: bold; font-size: 9pt; text-transform: uppercase; margin-top: .3mm; }
+        .signature-responsable { font-weight: bold; margin-top: 3mm; height: 18mm; }
+
+        /* ===== Page 2 ===== */
+        .saut-page { page-break-before: always; }
+        .saut-page + .section { margin-top: 0; }
+
+        ul.pieces { list-style: none; margin: 0; padding: 0; }
+        ul.pieces li { padding: 1.1mm 0; text-transform: uppercase; font-size: 9pt; }
+
+        .attestation { font-weight: bold; margin-top: 3mm; }
+        .signature { margin-top: 2mm; height: 16mm; color: #222; }
+
+        .section-suivi { border: 1pt dashed #292929; }
+        .section-suivi .section-titre { text-align: center; }
+        .section-suivi .signature { text-align: right; font-weight: bold; color: #000; }
+    </style>
+</head>
+<body>
+
+    {# ===================== EN-TÊTE ===================== #}
+    <table class="entete">
+        <tr>
+            <td class="entete-logo">
+                {% if logo %}<img src="{{ logo }}" alt="République de Côte d'Ivoire — Ministère de l'Enseignement technique, de la Formation professionnelle et de l'Apprentissage">{% endif %}
+            </td>
+            <td style="vertical-align: bottom;">
+                <div class="bandeau-titre">
+                    <div class="surtitre">VALIDATION DES ACQUIS DE L'EXPÉRIENCE</div>
+                    <div class="titre">FICHE D'INSCRIPTION CANDIDAT</div>
+                </div>
+            </td>
+            <td class="entete-photo">
+                <div class="photo">
+                    {% if photo_candidat %}
+                        <img src="{{ photo_candidat }}" alt="Photo d'identité du candidat">
+                    {% else %}
+                        <div class="photo-consigne">Agrafer ici une photo en couleur format 4x4</div>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="references">
+        <tr>
+            <td class="lib" style="width: 60mm;">N° d'enregistrement</td><td class="sep">:</td>
+            <td><span class="numero">{{ candidature.numero }}</span></td>
+        </tr>
+        <tr>
+            <td class="lib">Intitulé du diplôme / option visé</td><td class="sep">:</td>
+            <td class="val">{{ candidature.diplomedemande }}</td>
+        </tr>
+    </table>
+    <div class="session-demande">DEMANDE D'INSCRIPTION À LA SESSION DE {{ session }}</div>
+
+    {# ===================== I : IDENTIFICATION ===================== #}
+    <div class="section">
+        <div class="section-titre">I : IDENTIFICATION DU CANDIDAT</div>
+        <div class="section-corps">
+            <table class="donnees">
+                {% for ligne in identification %}
+                    <tr>
+                        <td class="num">{{ loop.index }}-</td>
+                        <td class="lib" style="width: 76mm;">{{ ligne.libelle }}</td><td class="sep">:</td>
+                        <td class="val">{{ ligne.valeur }}</td>
+                    </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    {# ===================== II : RÉCÉPISSÉ ===================== #}
+    <div class="decoupe"></div>
+
+    <div class="section">
+        <div class="section-titre">II : RÉCÉPISSÉ <span class="precision">(À détacher et à remettre au candidat.)</span></div>
+        <div class="section-corps">
+            <table class="recepisse">
+                <tr>
+                    {# Colonnes étroites : chaque libellé passe au-dessus de sa valeur. #}
+                    <td class="recepisse-gauche">
+                        <div class="empile"><div class="lib">Noms et prénoms</div><div class="val">{{ nom_complet }}</div></div>
+                        <div class="empile"><div class="lib">Date et lieu de naissance</div><div class="val">{{ naissance }}{{ naissance and lieu_naissance ? ' à ' }}{{ lieu_naissance }}</div></div>
+                        <div class="empile"><div class="lib">Date de dépôt de la fiche</div><div class="val">{{ candidature.creation ? candidature.creation|date('d/m/Y') }}</div></div>
+                    </td>
+                    <td class="recepisse-droite">
+                        <div class="empile"><div class="lib">N° d'enregistrement</div><div class="val" style="color: #FF0000;">{{ candidature.numero }}</div></div>
+                        <div class="empile"><div class="lib">Session de validation</div><div class="val">{{ session }}</div></div>
+                        <div class="empile"><div class="lib">Centre de validation</div><div class="val">{{ centre }}</div></div>
+                        <div class="empile"><div class="lib">Spécialité</div><div class="val">{{ metier }}</div></div>
+                    </td>
+                    <td class="recepisse-photo">
+                        <div class="photo">
+                            {% if photo_candidat %}
+                                <img src="{{ photo_candidat }}" alt="Photo d'identité du candidat">
+                            {% else %}
+                                <div class="photo-consigne">Agrafer ici une photo format 4x4</div>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+            </table>
+            <div class="signature-responsable">Signature et cachet du responsable de la session de validation</div>
+        </div>
+    </div>
+
+    {# ===================== PAGE 2 ===================== #}
+    <div class="saut-page"></div>
+
+    <div class="section">
+        <div class="section-titre">LISTE DES DOCUMENTS À JOINDRE À LA FICHE D'INSCRIPTION</div>
+        <div class="section-corps">
+            <ul class="pieces">
+                <li>&ndash;&nbsp;&nbsp;Un extrait d'acte de naissance (original et copie)</li>
+                <li>&ndash;&nbsp;&nbsp;Trois photos d'identité en couleur au format 4x4</li>
+                <li>&ndash;&nbsp;&nbsp;Un document d'identité comportant une photo d'identité</li>
+                <li>&ndash;&nbsp;&nbsp;Un état de situation professionnelle (voir document en annexe)</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-titre">SITUATION PROFESSIONNELLE</div>
+        <div class="section-corps">
+            <table class="donnees">
+                {% for ligne in situation_pro|filter(l => l.valeur is not empty) %}
+                    <tr>
+                        <td class="lib" style="width: 88mm;">{{ ligne.libelle }}</td><td class="sep">:</td>
+                        <td class="val">{{ ligne.valeur }}</td>
+                    </tr>
+                {% endfor %}
+            </table>
+            <div class="attestation">Certifie exactes sur l'honneur toutes les informations ci-dessus.</div>
+            <div class="signature">Signature du candidat</div>
+        </div>
+    </div>
+
+    <div class="section section-suivi">
+        <div class="section-titre">Fiche de renseignements pour suivi post-VAE par les Services de l'Emploi</div>
+        <div class="section-corps">
+            <table class="donnees">
+                {% for ligne in suivi|filter(l => l.valeur is not empty) %}
+                    <tr>
+                        <td class="lib" style="width: 50mm;">{{ ligne.libelle }}</td><td class="sep">:</td>
+                        <td class="val{{ ligne.casse_libre ?? false ? ' casse-libre' }}">{{ ligne.valeur }}</td>
+                    </tr>
+                {% endfor %}
+            </table>
+            <div class="signature">Signature du candidat</div>
+        </div>
+    </div>
+</body>
+</html>

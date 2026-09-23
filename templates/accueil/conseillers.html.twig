@@ -1,0 +1,59 @@
+{# Écran E3.10 : charge des conseillers du centre (F3.9). #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Conseillers VAE — {{ centre.nom }}{% endblock %}
+
+{% block body %}
+{{ ui.bandeau(
+    'Conseillers VAE du centre',
+    centre.nom ~ " — orientez le candidat vers un conseiller peu chargé.",
+    'user-tie',
+    conseillers|length,
+    'conseiller(s)'
+) }}
+
+<div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+    {% if conseillers is not empty %}
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[700px]">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        {{ ui.th('Conseiller') }}
+                        {{ ui.th('Dossiers en charge') }}
+                        {{ ui.th('Contact') }}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for ligne in conseillers %}
+                        <tr class="hover:bg-slate-50/70 transition duration-200">
+                            <td class="px-6 py-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-full bg-indigo-600
+                                                flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                        {{ ligne.conseiller.nom|default('?')|slice(0, 1)|upper }}
+                                    </div>
+                                    <p class="text-sm font-medium text-slate-700">{{ ligne.conseiller.nomComplet ?: '—' }}</p>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="text-sm font-semibold text-slate-700 tabular-nums">{{ ligne.charge }}</span>
+                                <span class="text-xs text-slate-600 ml-1">dossier(s)</span>
+                            </td>
+                            <td class="px-6 py-4 text-xs text-slate-500">
+                                {{ ligne.conseiller.contact ?: ligne.conseiller.email ?: '—' }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        {{ ui.etat_vide(
+            'user-tie',
+            'Aucun conseiller rattaché',
+            'Aucun conseiller VAE n\'est rattaché à ce centre. Contactez l\'administrateur pour en affecter un.'
+        ) }}
+    {% endif %}
+</div>
+{% endblock %}

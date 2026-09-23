@@ -1,0 +1,1187 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}DAIP - Direction de l'Apprentissage et de l'Insertion Professionnelle{% endblock %}
+
+{% block meta %}
+{{ parent() }}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<meta name="keywords" content="daip, recrutement, 4000 jeunes, formation professionnelle, apprentissage, cqp">
+<meta name="description" content="Recrutement de 4000 jeunes pour la formation au Certificat de Qualification Professionnelle (CQP). Inscriptions du 16 au 28 février 2026.">
+{% endblock %}
+
+{% block body %}
+
+<!-- ==================== HERO SECTION ==================== -->
+<section class="hero relative min-h-[600px] flex items-center justify-center bg-gradient-to-br from-indigo-700 via-purple-700 to-blue-700">
+    
+    <!-- Éléments décoratifs - FIXED: contain overflow -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-0 left-0 w-64 h-64 bg-indigo-50 rounded-full filter blur-3xl opacity-5 animate-pulse-glow"></div>
+        <div class="absolute bottom-0 right-0 w-64 h-64 bg-purple-50 rounded-full filter blur-3xl opacity-5 animate-pulse-glow animation-delay-2000"></div>
+        
+        <!-- Animations de fond - FIXED: contained within inset-0 -->
+        <div class="absolute -top-40 -right-40 w-80 h-80 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+        <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-pink-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+    </div>
+    
+    <div class="container mx-auto px-4 relative z-10 w-full max-w-full">
+        <div class="max-w-4xl mx-auto text-center">
+            <!-- Badge -->
+            <div class="inline-flex items-center rounded-full border px-4 py-1.5 text-sm font-semibold bg-white text-purple-400 border-white mb-6 animate-fade-up animation-delay-200">
+                <span class="flex h-2 w-2 rounded-full bg-green-400 mr-2 animate-pulse"></span>
+                RECRUTEMENT
+            </div>
+            
+            <!-- Titre - FIXED: text size for mobile -->
+            <h1 class="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight animate-fade-up animation-delay-400 break-words">
+                recrutement 4000 
+                <span class="bg-gradient-to-r from-indigo-200 via-purple-200 to-pink-200 bg-clip-text text-transparent">
+                    jeunes pour formation au CQP
+                </span>
+            </h1>
+            
+            <!-- Description -->
+            <p class="text-base sm:text-lg md:text-xl text-white/80 mb-8 max-w-2xl mx-auto px-2 animate-fade-up animation-delay-600">
+                Rejoignez les 4000 jeunes qui seront formés aux métiers d'avenir dans 10 secteurs d'activité
+            </p>
+            
+            <!-- Stats rapides - FIXED: better mobile grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-4 max-w-4xl mx-auto mb-10">
+                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-2 sm:p-4 border border-white/10 animate-fade-up animation-delay-800">
+                    <div class="text-lg sm:text-2xl font-bold text-white">{{ stats.metiers }}</div>
+                    <div class="text-[10px] sm:text-xs text-white/60">Métiers</div>
+                </div>
+                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-2 sm:p-4 border border-white/10 animate-fade-up animation-delay-1000">
+                    <div class="text-lg sm:text-2xl font-bold text-white">{{ stats.secteurs }}</div>
+                    <div class="text-[10px] sm:text-xs text-white/60">Secteurs</div>
+                </div>
+                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-2 sm:p-4 border border-white/10 animate-fade-up animation-delay-1200">
+                    <div class="text-lg sm:text-2xl font-bold text-white">{{ stats.etablissements }}</div>
+                    <div class="text-[10px] sm:text-xs text-white/60">etablissements</div>
+                </div>
+                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-2 sm:p-4 border border-white/10 animate-fade-up animation-delay-1400">
+                    <div class="text-lg sm:text-2xl font-bold text-white">{{ stats.places }}</div>
+                    <div class="text-[10px] sm:text-xs text-white/60">Places</div>
+                </div>
+                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-2 sm:p-4 border border-white/10 animate-fade-up animation-delay-1600 col-span-2 sm:col-span-1">
+                    <div class="text-lg sm:text-2xl font-bold text-white">{{ stats.candidatures }}</div>
+                    <div class="text-[10px] sm:text-xs text-white/60">Candidatures</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scroll indicator -->
+    <a href="#presentation" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
+        <div class="w-6 h-10 rounded-full border-2 border-white/30 flex justify-center">
+            <div class="w-1 h-3 bg-white/60 rounded-full mt-2 animate-pulse"></div>
+        </div>
+    </a>
+</section>
+
+<!-- ==================== PRÉSENTATION SECTION ==================== -->
+<section id="presentation" class="relative py-12 sm:py-20 bg-white w-full overflow-hidden">
+    <!-- Conteneur de graffitis animés -->
+    <div id="graffiti-container" class="absolute inset-0 overflow-hidden pointer-events-none"></div>
+    
+    <div class="container mx-auto px-4 relative z-10 w-full max-w-full">
+        <div class="grid lg:grid-cols-5 gap-8 lg:gap-12 items-start">
+            <!-- Colonne gauche : Texte (3/5) -->
+            <div class="lg:col-span-3 space-y-4 text-slate-700 leading-relaxed">
+                <p class="text-base sm:text-lg md:text-xl text-slate-800 font-light leading-relaxed">
+                    Il est ouvert, au titre de l'année 2026, un recrutement de 
+                    <span class="relative inline-block px-2">
+                        <span class="absolute inset-0 bg-indigo-100 rounded-lg -rotate-1"></span>
+                        <strong class="relative text-indigo-700 font-bold">quatre mille (4 000) jeunes</strong>
+                    </span>
+                    pour la formation au Certificat de Qualification Professionnelle (CQP) dans divers métiers. 
+                    Les candidatures sont reçues en ligne sur le site 
+                    <a href="https://1jeune1metier.daip.ci/" class="text-indigo-600 font-medium hover:text-indigo-700 underline underline-offset-2 transition break-all" target="_blank">1jeune1metier.daip.ci</a> 
+                    ou de façon physique dans les différentes structures de formation.
+                </p>
+                
+                <p class="text-base sm:text-lg md:text-xl text-slate-800 font-light">
+                    Pour faire acte de candidature vous devez remplir les conditions suivantes :
+                </p>
+                <div class="space-y-3">
+                    <!-- Puce 1 : Niveau scolaire -->
+                    <div class="flex items-start gap-3 sm:gap-4 group">
+                        <div class="relative flex-shrink-0">
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-md group-hover:shadow-indigo-200">
+                                <i class="fas fa-graduation-cap text-indigo-600 text-sm sm:text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1 pt-1">
+                            <p class="text-sm sm:text-base text-slate-700">
+                                <span class="font-semibold text-indigo-700">Niveau scolaire requis :</span>
+                                <span class="block text-slate-600 mt-1">Avoir au moins le niveau de la classe de 5ème ou 3ème (selon le secteur d'activité)</span>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Puce 2 : Âge -->
+                    <div class="flex items-start gap-3 sm:gap-4 group">
+                        <div class="relative flex-shrink-0">
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-md group-hover:shadow-purple-200">
+                                <i class="fas fa-birthday-cake text-purple-600 text-sm sm:text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1 pt-1">
+                            <p class="text-sm sm:text-base text-slate-700">
+                                <span class="font-semibold text-purple-700">Tranche d'âge :</span>
+                                <span class="block text-slate-600 mt-1">Être âgé de 16 à 40 ans au 31 décembre 2025</span>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Puce 3 : Nationalité -->
+                    <div class="flex items-start gap-3 sm:gap-4 group">
+                        <div class="relative flex-shrink-0">
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-pink-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-md group-hover:shadow-pink-200">
+                                <i class="fas fa-flag text-pink-600 text-sm sm:text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1 pt-1">
+                            <p class="text-sm sm:text-base text-slate-700">
+                                <span class="font-semibold text-pink-700">Nationalité :</span>
+                                <span class="block text-slate-600 mt-1">Être de nationalité ivoirienne</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Colonne droite : Illustration (2/5) - FIXED: hide on very small screens if needed -->
+            <div class="lg:col-span-2 relative hidden sm:block">
+                <!-- Illustration principale -->
+                <div class="relative rounded-2xl overflow-hidden shadow-2xl">
+                    <img src="{{ asset('public/svg/candidate.svg') }}" alt="Illustration formation professionnelle" class="w-full h-auto object-cover" onerror="this.onerror=null; this.src='{{ asset('public/svg/certificate_cqps.svg') }}'">
+                    
+                    <!-- Overlay léger -->
+                    <div class="absolute inset-0 bg-gradient-to-tr from-indigo-600/10 to-purple-600/10 mix-blend-overlay"></div>
+                </div>
+                
+                <!-- Éléments décoratifs flottants -->
+                <div class="absolute -top-6 -right-6 w-20 h-20 bg-indigo-200 rounded-full opacity-20 animate-pulse-glow"></div>
+                <div class="absolute -bottom-6 -left-6 w-28 h-28 bg-purple-200 rounded-full opacity-20 animate-pulse-glow animation-delay-2000"></div>
+                
+                <!-- Badge flottant avec statistique -->
+                <div class="absolute -bottom-4 -right-4 bg-white rounded-xl shadow-lg p-3 animate-float">
+                    <div class="flex items-center gap-2">
+                        <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-graduation-cap text-indigo-600 text-lg"></i>
+                        </div>
+                        <div>
+                            <p class="text-xl font-bold text-indigo-600">4000+</p>
+                            <p class="text-xs text-slate-500">jeunes formés</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== PROCESSUS SECTION ==================== -->
+<section class="py-12 sm:py-20 bg-gradient-to-br from-indigo-50 to-purple-50 border-y border-indigo-200">
+    <div class="container mx-auto px-4 w-full max-w-full">
+        <div class="text-center mb-8 sm:mb-12">
+            <div class="inline-flex items-center rounded-full border border-indigo-200 bg-white px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-indigo-600 mb-4 shadow-sm">
+                <i class="fas fa-clock mr-2"></i>
+                PROCESSUS DE SÉLECTION
+            </div>
+            <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-4 px-2">
+                3 étapes pour réussir
+            </h2>
+            <p class="text-sm sm:text-base md:text-lg text-slate-600 max-w-2xl mx-auto px-4">
+                Un processus simple et transparent en trois étapes
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mx-auto">
+            <!-- Étape 1 -->
+            <div class="relative bg-white rounded-2xl p-6 sm:p-8 shadow-lg border border-indigo-200 hover:shadow-xl transition-all hover:-translate-y-2 group">
+                <div class="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-100 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition">
+                    <i class="fas fa-file-alt text-xl sm:text-2xl text-indigo-600"></i>
+                </div>
+                <h3 class="text-lg sm:text-xl font-bold mb-2 sm:mb-3 text-slate-900">Analyse des dossiers</h3>
+                <p class="text-sm sm:text-base text-slate-600">Vérification de la conformité des pièces fournies et des critères d'éligibilité</p>
+            </div>
+            
+            <!-- Étape 2 -->
+            <div class="relative bg-white rounded-2xl p-6 sm:p-8 shadow-lg border border-purple-200 hover:shadow-xl transition-all hover:-translate-y-2 group">
+                <div class="w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition">
+                    <i class="fas fa-users text-xl sm:text-2xl text-purple-600"></i>
+                </div>
+                <h3 class="text-lg sm:text-xl font-bold mb-2 sm:mb-3 text-slate-900">Entretien de motivation</h3>
+                <p class="text-sm sm:text-base text-slate-600">Épreuves écrites et orales pour évaluer la motivation et les aptitudes</p>
+            </div>
+            
+            <!-- Étape 3 -->
+            <div class="relative bg-white rounded-2xl p-6 sm:p-8 shadow-lg border border-pink-200 hover:shadow-xl transition-all hover:-translate-y-2 group sm:col-span-2 md:col-span-1">
+                <div class="w-12 h-12 sm:w-16 sm:h-16 bg-pink-100 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition">
+                    <i class="fas fa-heartbeat text-xl sm:text-2xl text-pink-600"></i>
+                </div>
+                <h3 class="text-lg sm:text-xl font-bold mb-2 sm:mb-3 text-slate-900">Visite médicale</h3>
+                <p class="text-sm sm:text-base text-slate-600">Examen d'aptitude physique obligatoire</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== SECTION ÉTABLISSEMENTS ==================== -->
+<section id="etablissements" class="py-12 sm:py-20 bg-gradient-to-br from-indigo-700 via-purple-700 to-blue-700">
+    <div class="container mx-auto px-4 w-full max-w-full">
+        <div class="text-center mb-8 sm:mb-12">
+            <div class="inline-flex items-center rounded-full border border-white bg-white px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-purple-500 mb-4 shadow-lg">
+                <i class="fas fa-briefcase mr-2"></i>
+                ÉTABLISSEMENTS DE FORMATION
+            </div>
+            <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 px-2">
+                {{ stats.etablissements }} établissements à découvrir
+            </h2>
+            <p class="text-sm sm:text-base md:text-lg text-white/80 max-w-2xl mx-auto px-4">
+                Trouvez votre établissement par direction régionale
+            </p>
+        </div>
+
+        <!-- Filtres - FIXED: mobile layout -->
+        <div class="max-w-4xl mx-auto mb-8 sm:mb-10 px-2">
+            <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <div class="flex-1">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" 
+                               id="etablissement-search" 
+                               placeholder="Rechercher un établissement..." 
+                               class="w-full pl-10 pr-4 py-2 sm:py-3 rounded-lg border border-white/30 bg-white/10 backdrop-blur-sm text-white placeholder-white/70 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
+                               value="{{ rechercheEtablissement|default('') }}">
+                    </div>
+                </div>
+                <div class="sm:w-64">
+                    <select id="dr-filter" class="w-full px-4 py-2 sm:py-3 rounded-lg border border-white/30 bg-white/10 backdrop-blur-sm text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent">
+                        <option value="">Toutes les directions</option>
+                        {% for direction in directions|default([]) %}
+                            <option value="{{ direction.id }}" {{ directionSelectionnee|default('') == direction.id ? 'selected' : '' }}>
+                                {{ direction.nom }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grille des établissements - FIXED: responsive grid -->
+        <div id="etablissements-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {% include 'partials/_etablissements_cards.html.twig' with {
+                'etablissements': etablissements
+            } %}
+        </div>
+
+        <!-- Loading indicator -->
+        <div id="etablissements-loading" class="hidden text-center py-8">
+            <div class="inline-block w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+            <p class="text-white/70 mt-2">Chargement en cours...</p>
+        </div>
+        
+        <!-- Pagination -->
+        <div id="etablissements-pagination" class="flex justify-center mt-8 sm:mt-10"></div>
+        
+        <div class="text-center mt-6">
+            {# TODO: route app_etablissements_list à recréer #}
+            {# <a href="{{ path('app_etablissements_list') }}"
+            class="inline-flex items-center gap-2 px-6 py-3 bg-white text-indigo-600 rounded-xl font-semibold hover:bg-indigo-50 transition border border-white/30">
+                <i class="fas fa-building"></i>
+                Voir tous les établissements
+                <i class="fas fa-arrow-right text-sm"></i>
+            </a> #}
+        </div>
+    </div>
+</section>
+
+<!-- ==================== SECTION MÉTIERS ==================== -->
+<section id="metiers" class="py-12 sm:py-20 bg-gradient-to-br from-indigo-50 to-purple-50 border-y border-indigo-200">
+    <div class="container mx-auto px-4 w-full max-w-full">
+        <div class="text-center mb-8 sm:mb-12">
+            <div class="inline-flex items-center rounded-full border border-indigo-200 bg-white px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-indigo-600 mb-4 shadow-sm">
+                <i class="fas fa-school mr-2"></i>
+                NOS METIERS
+            </div>
+            <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-4 px-2">
+                {{ stats.metiers }} métiers à découvrir
+            </h2>
+            <p class="text-sm sm:text-base md:text-lg text-slate-600 max-w-2xl mx-auto px-4">
+                Filtrez par secteur ou recherchez un métier
+            </p>
+        </div>
+
+        <!-- Filtres - FIXED: mobile layout -->
+        <div class="max-w-3xl mx-auto mb-8 sm:mb-10 px-2">
+            <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <div class="flex-1">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" 
+                               id="search-input" 
+                               placeholder="Rechercher un métier..." 
+                               class="w-full pl-10 pr-4 py-2 sm:py-3 rounded-lg border border-indigo-200 bg-white text-slate-700 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                               value="{{ rechercheMetier|default('') }}">
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <select id="secteur-filter" class="w-full px-4 py-2 sm:py-3 rounded-lg border border-indigo-200 bg-white text-slate-700 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        <option value="">Tous les secteurs</option>
+                        {% for secteur in secteurs|default([]) %}
+                            <option value="{{ secteur.id }}" {{ secteurSelectionne|default('') == secteur.id ? 'selected' : '' }}>
+                                {{ secteur.nom }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grille des métiers - FIXED: responsive grid -->
+        <div id="metiers-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+            {% include 'partials/_metiers_cards.html.twig' with {'metiers': metiers} %}
+        </div>
+
+        <!-- Loading indicator -->
+        <div id="loading" class="hidden text-center py-8">
+            <div class="inline-block w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+        </div>
+
+        <!-- Pagination -->
+        <div id="pagination" class="flex justify-center mt-8 sm:mt-10"></div>
+        
+        <div class="text-center mt-6">
+            {# TODO: route app_metiers_list à recréer #}
+            {# <a href="{{ path('app_metiers_list') }}" 
+            class="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition">
+                <i class="fas fa-briefcase"></i>
+                Voir tous les métiers
+                <i class="fas fa-arrow-right text-sm"></i>
+            </a> #}
+        </div>
+    </div>
+</section>
+
+<!-- ==================== DOSSIER DE CANDIDATURE SECTION ==================== -->
+<section class="py-12 sm:py-20 bg-white">
+    <div class="container mx-auto px-4 w-full max-w-full">
+        <div class="text-center mb-8 sm:mb-12">
+            <div class="inline-flex items-center rounded-full border border-indigo-200 bg-white px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-indigo-600 mb-4 shadow-sm">
+                <i class="fas fa-file-alt mr-2"></i>
+                DOSSIER DE CANDIDATURE
+            </div>
+            <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-4 px-2">
+                Pièces à fournir
+            </h2>
+            <p class="text-sm sm:text-base md:text-lg text-slate-600 max-w-2xl mx-auto px-4">
+                Préparez les documents nécessaires pour votre inscription
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-w-4xl mx-auto px-2">
+            <!-- Pièce 1 -->
+            <div class="bg-slate-50 rounded-xl p-4 sm:p-5 border border-slate-200 hover:shadow-lg transition-all hover:-translate-y-1 group">
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition group-hover:bg-indigo-200">
+                        <i class="fas fa-baby text-indigo-600 text-sm sm:text-base"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-sm sm:text-base text-slate-900">Extrait de naissance</h4>
+                        <p class="text-xs text-indigo-600 font-medium mt-1">Pièce n°1</p>
+                        <p class="text-xs text-slate-500 mt-2">Original ou photocopie de l'acte de naissance ou jugement supplétif</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pièce 2 -->
+            <div class="bg-slate-50 rounded-xl p-4 sm:p-5 border border-slate-200 hover:shadow-lg transition-all hover:-translate-y-1 group">
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition group-hover:bg-purple-200">
+                        <i class="fas fa-id-card text-purple-600 text-sm sm:text-base"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-sm sm:text-base text-slate-900">CNI ou attestation</h4>
+                        <p class="text-xs text-purple-600 font-medium mt-1">Pièce n°2</p>
+                        <p class="text-xs text-slate-500 mt-2">Carte Nationale d'Identité ou attestation d'identité en cours de validité</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pièce 3 -->
+            <div class="bg-slate-50 rounded-xl p-4 sm:p-5 border border-slate-200 hover:shadow-lg transition-all hover:-translate-y-1 group">
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition group-hover:bg-pink-200">
+                        <i class="fas fa-graduation-cap text-pink-600 text-sm sm:text-base"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-sm sm:text-base text-slate-900">Niveau scolaire</h4>
+                        <p class="text-xs text-pink-600 font-medium mt-1">Pièce n°3</p>
+                        <p class="text-xs text-slate-500 mt-2">Document attestant du niveau scolaire requis par secteur</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pièce 4 -->
+            <div class="bg-slate-50 rounded-xl p-4 sm:p-5 border border-slate-200 hover:shadow-lg transition-all hover:-translate-y-1 group">
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition group-hover:bg-green-200">
+                        <i class="fas fa-heartbeat text-green-600 text-sm sm:text-base"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-sm sm:text-base text-slate-900">Carte CMU</h4>
+                        <p class="text-xs text-green-600 font-medium mt-1">Pièce n°4</p>
+                        <p class="text-xs text-slate-500 mt-2">Couverture Maladie Universelle (si disponible)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== CHRONOGRAMME SECTION ==================== -->
+<section class="py-12 sm:py-20 bg-gradient-to-br from-green-50 to-emerald-50 border-y border-green-200">
+    <div class="container mx-auto px-4 w-full max-w-full">
+        <div class="text-center mb-8 sm:mb-12">
+            <div class="inline-flex items-center rounded-full border border-green-200 bg-white px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-green-700 mb-4 shadow-sm">
+                <i class="fas fa-calendar-alt mr-2"></i>
+                CHRONOGRAMME
+            </div>
+            <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-4 px-2">
+                Calendrier des opérations
+            </h2>
+            <p class="text-sm sm:text-base md:text-lg text-slate-600 max-w-2xl mx-auto px-4">
+                Les dates clés à retenir pour votre candidature
+            </p>
+        </div>
+
+        <div class="grid lg:grid-cols-5 gap-6 lg:gap-8 items-start">
+            <!-- Colonne gauche : Illustration SVG - FIXED: hide on mobile -->
+            <div class="relative col-span-2 hidden lg:block">
+                <div class="relative rounded-2xl overflow-hidden shadow-xl bg-gradient-to-br from-white to-slate-100 p-8">
+                    <img src="{{ asset('svg/work-in-progress.svg') }}" alt="Calendrier des inscriptions" class="w-full h-auto object-contain" onerror="this.onerror=null; this.src='{{ asset('public/svg/done-checking.svg') }}'">
+                </div>
+                
+                <!-- Badge flottant -->
+                <div class="absolute -bottom-4 -right-4 bg-white rounded-xl shadow-lg p-3 animate-float hidden md:block">
+                    <div class="flex items-center gap-2">
+                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-clock text-green-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-green-600">Ne tardez pas !</p>
+                            <p class="text-xs text-slate-500">Inscriptions limitées</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colonne droite : Timeline -->
+            <div class="space-y-4 sm:space-y-6 col-span-3 px-2">
+                <!-- Étape 1 -->
+                <div class="relative flex items-start gap-3 sm:gap-4 group">
+                    <div class="w-8 h-8 sm:w-12 sm:h-12 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition group-hover:bg-indigo-200">
+                        <span class="text-sm sm:text-lg font-bold text-indigo-600">1</span>
+                    </div>
+                    <div class="flex-1 bg-white rounded-xl p-4 sm:p-5 shadow-md border border-indigo-100">
+                        <h4 class="text-base sm:text-lg font-bold text-slate-900">Dépôt des candidatures</h4>
+                        <p class="text-sm sm:text-base text-indigo-600 font-semibold mt-1">16 - 28 février 2026</p>
+                        <p class="text-xs sm:text-sm text-slate-600 mt-2">Dépôt en ligne ou dans les structures de formation</p>
+                    </div>
+                </div>
+
+                <!-- Étape 2 -->
+                <div class="relative flex items-start gap-3 sm:gap-4 group">
+                    <div class="w-8 h-8 sm:w-12 sm:h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition group-hover:bg-purple-200">
+                        <span class="text-sm sm:text-lg font-bold text-purple-600">2</span>
+                    </div>
+                    <div class="flex-1 bg-white rounded-xl p-4 sm:p-5 shadow-md border border-purple-100">
+                        <h4 class="text-base sm:text-lg font-bold text-slate-900">Étude des dossiers</h4>
+                        <p class="text-sm sm:text-base text-purple-600 font-semibold mt-1">1er - 15 mars 2026</p>
+                        <p class="text-xs sm:text-sm text-slate-600 mt-2">Analyse de la conformité des pièces fournies</p>
+                    </div>
+                </div>
+
+                <!-- Étape 3 -->
+                <div class="relative flex items-start gap-3 sm:gap-4 group">
+                    <div class="w-8 h-8 sm:w-12 sm:h-12 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition group-hover:bg-pink-200">
+                        <span class="text-sm sm:text-lg font-bold text-pink-600">3</span>
+                    </div>
+                    <div class="flex-1 bg-white rounded-xl p-4 sm:p-5 shadow-md border border-pink-100">
+                        <h4 class="text-base sm:text-lg font-bold text-slate-900">Entretiens de sélection</h4>
+                        <p class="text-sm sm:text-base text-pink-600 font-semibold mt-1">16 mars - 15 avril 2026</p>
+                        <p class="text-xs sm:text-sm text-slate-600 mt-2">Évaluation des candidats par les jurys</p>
+                    </div>
+                </div>
+
+                <!-- Étape 4 -->
+                <div class="relative flex items-start gap-3 sm:gap-4 group">
+                    <div class="w-8 h-8 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition group-hover:bg-green-200">
+                        <span class="text-sm sm:text-lg font-bold text-green-600">4</span>
+                    </div>
+                    <div class="flex-1 bg-white rounded-xl p-4 sm:p-5 shadow-md border border-green-100">
+                        <h4 class="text-base sm:text-lg font-bold text-slate-900">Début des formations</h4>
+                        <p class="text-sm sm:text-base text-green-600 font-semibold mt-1">Mai 2026</p>
+                        <p class="text-xs sm:text-sm text-slate-600 mt-2">Rentrée des promos dans les établissements de formation</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== SECTION PARTENAIRES ==================== -->
+<section class="py-12 sm:py-16 bg-gradient-to-br from-slate-50 to-white border-t border-slate-200">
+    <div class="container mx-auto px-4 w-full max-w-full">
+        <div class="text-center mb-8 sm:mb-10">
+            <div class="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-indigo-600 mb-4 shadow-sm">
+                <i class="fas fa-handshake mr-2"></i>
+                ILS NOUS FONT CONFIANCE
+            </div>
+            <h2 class="text-xl sm:text-2xl md:text-3xl font-bold text-slate-800 mb-2 px-2">
+                Nos partenaires institutionnels et techniques
+            </h2>
+            <p class="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto px-4">
+                Ils accompagnent la DAIP dans sa mission de formation et d'insertion professionnelle
+            </p>
+        </div>
+
+        <!-- CARROUSEL AVEC FLÈCHES SUR TOUS LES ÉCRANS -->
+        <div class="relative w-full flex justify-center"
+             x-data="partenairesCarousel"
+             @mouseenter="stopAutoplay"
+             @mouseleave="startAutoplay">
+            
+            <!-- Conteneur principal -->
+            <div class="w-full max-w-6xl px-4 md:px-8 relative">
+                
+                <!-- Bouton précédent - VISIBLE SUR MOBILE ET DESKTOP -->
+                <button @click="prevSlide; $el.blur()" 
+                        class="absolute -left-2 sm:-left-3 md:-left-4 top-1/2 transform -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-white shadow-lg hover:bg-indigo-600 hover:text-white transition-all duration-300 flex items-center justify-center border border-indigo-200 z-20 opacity-80 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        title="Précédent"
+                        aria-label="Voir le partenaire précédent">
+                    <i class="fas fa-chevron-left text-xs sm:text-sm md:text-base"></i>
+                </button>
+                
+                <!-- Conteneur du carrousel -->
+                <div class="overflow-hidden">
+                    <div class="flex transition-transform duration-500 ease-out" 
+                         :style="'transform: translateX(-' + (currentSlide * 100 / slidesPerView) + '%)'">
+                        
+                        <template x-for="partenaire in partenaires" :key="partenaire.nom">
+                            <!-- Slide avec largeur dynamique -->
+                            <div class="flex-shrink-0 px-2 sm:px-3" :style="'width: ' + (100 / slidesPerView) + '%'">
+                                <!-- Centrage de la carte -->
+                                <div class="flex justify-center w-full">
+                                    <!-- Carte -->
+                                    <div class="w-full max-w-[260px] xs:max-w-[280px] sm:max-w-[300px] md:max-w-[320px]">
+                                        <a :href="partenaire.lien" 
+                                           target="_blank"
+                                           class="block group relative overflow-hidden rounded-xl shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                                            
+                                            <!-- Image avec ratio 3:2 -->
+                                            <div class="relative w-full pt-[66.67%] bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl overflow-hidden">
+                                                
+                                                <!-- Image de fond -->
+                                                <div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
+                                                     :style="'background-image: url(' + partenaire.image + ')'"
+                                                     x-on:error="$el.style.backgroundImage = 'url(/public/images/placeholder.jpg)'">
+                                                    
+                                                    <!-- Overlay -->
+                                                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
+                                                    
+                                                    <!-- Nom du partenaire -->
+                                                    <div class="absolute bottom-0 left-0 right-0 p-3 sm:p-4 text-center">
+                                                        <h3 class="text-white font-bold text-xs sm:text-sm md:text-base drop-shadow-lg line-clamp-2 px-1" 
+                                                            x-text="partenaire.nom"></h3>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Bouton suivant - VISIBLE SUR MOBILE ET DESKTOP -->
+                <button @click="nextSlide; $el.blur()" 
+                        class="absolute -right-2 sm:-right-3 md:-right-4 top-1/2 transform -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-white shadow-lg hover:bg-indigo-600 hover:text-white transition-all duration-300 flex items-center justify-center border border-indigo-200 z-20 opacity-80 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        title="Suivant"
+                        aria-label="Voir le partenaire suivant">
+                    <i class="fas fa-chevron-right text-xs sm:text-sm md:text-base"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Indicateurs de slide -->
+        <div class="flex justify-center mt-6 sm:mt-8 space-x-2">
+            <template x-for="index in Math.ceil(partenaires.length / slidesPerView)" :key="index">
+                <button @click="goToSlide(index - 1)" 
+                        class="h-2 sm:h-2.5 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        :class="currentSlide === index - 1 ? 'w-6 sm:w-8 bg-indigo-600' : 'w-2 sm:w-2.5 bg-slate-300 hover:bg-indigo-400'"
+                        :aria-label="'Aller à la slide ' + index">
+                </button>
+            </template>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== INFOLINE SECTION ==================== -->
+<section class="py-12 sm:py-16 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+    <div class="container mx-auto px-4 w-full max-w-full text-center">
+        <i class="fas fa-phone-alt text-3xl sm:text-4xl md:text-5xl mb-4 animate-pulse"></i>
+        <h3 class="text-xl sm:text-2xl md:text-3xl font-bold mb-2 px-2">Une question ? Besoin d'aide ?</h3>
+        <p class="text-sm sm:text-base text-white/80 mb-4 sm:mb-6">Notre équipe est à votre écoute du lundi au vendredi</p>
+        
+        <div class="flex flex-col sm:flex-row flex-wrap justify-center gap-3 sm:gap-6 px-2">
+            <a href="tel:+2252722229600" class="inline-flex items-center justify-center bg-white/10 backdrop-blur-sm rounded-lg px-4 sm:px-6 py-2 sm:py-3 border border-white/20 hover:bg-white/20 transition transform hover:scale-105 text-sm sm:text-base">
+                <i class="fas fa-phone-alt mr-2"></i>
+                27 22 22 96 00
+            </a>
+            <a href="tel:+2250565390459" class="inline-flex items-center justify-center bg-white/10 backdrop-blur-sm rounded-lg px-4 sm:px-6 py-2 sm:py-3 border border-white/20 hover:bg-white/20 transition transform hover:scale-105 text-sm sm:text-base">
+                <i class="fas fa-phone-alt mr-2"></i>
+                05 65 39 04 59
+            </a>
+            <a href="mailto:contact@daip.ci" class="inline-flex items-center justify-center bg-white/10 backdrop-blur-sm rounded-lg px-4 sm:px-6 py-2 sm:py-3 border border-white/20 hover:bg-white/20 transition transform hover:scale-105 text-sm sm:text-base break-all">
+                <i class="fas fa-envelope mr-2"></i>
+                contact@daip.ci
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== MODALE DES ÉTABLISSEMENTS ==================== -->
+<div id="etablissement-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <!-- Background overlay -->
+        <div class="fixed inset-0 bg-slate-900 bg-opacity-75 transition-opacity modal-backdrop"></div>
+
+        <!-- Modal panel - FIXED: better mobile sizing -->
+        <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full w-full max-w-full mx-4">
+            <!-- En-tête -->
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 sm:px-6 py-3 sm:py-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-base sm:text-lg font-semibold text-white" id="modal-title">
+                        Établissements de formation
+                    </h3>
+                    <button type="button" class="modal-close text-white/80 hover:text-white transition-colors">
+                        <i class="fas fa-times text-lg sm:text-xl"></i>
+                    </button>
+                </div>
+                <p class="text-xs sm:text-sm text-white/70 mt-1" id="modal-metier-name"></p>
+            </div>
+            
+            <!-- Corps de la modale -->
+            <div class="px-4 sm:px-6 py-3 sm:py-4 max-h-80 sm:max-h-96 overflow-y-auto">
+                <div id="modal-etablissements-list" class="space-y-2">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+{% block javascripts %}
+<!-- jQuery d'abord (si nécessaire) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+// ==================== DONNÉES PARTENAIRES ====================
+let partenairesData = {{ partenaires|default([])|json_encode|raw }};
+console.log('✅ Données partenaires du contrôleur:', partenairesData);
+
+// Corriger les chemins d'images (la racine web Symfony est deja /public)
+if (partenairesData && partenairesData.length > 0) {
+    partenairesData = partenairesData.map(partenaire => {
+        if (partenaire.image && partenaire.image.startsWith('/public/')) {
+            partenaire.image = partenaire.image.replace('/public', '');
+        } else if (partenaire.image && partenaire.image.startsWith('public/')) {
+            partenaire.image = '/' + partenaire.image.replace('public/', '');
+        } else if (partenaire.image && partenaire.image.startsWith('image/')) {
+            partenaire.image = '/' + partenaire.image;
+        }
+        return partenaire;
+    });
+    console.log('✅ Chemins d\'images corrigés:', partenairesData);
+}
+
+// CRÉER UNE SEULE INSTANCE GLOBALE
+let carouselInstance = null;
+
+window.partenairesCarousel = function() {
+    // Si l'instance existe déjà, la retourner
+    if (carouselInstance) {
+        console.log('⚠️ Utilisation de l\'instance existante');
+        return carouselInstance;
+    }
+    
+    // Créer la nouvelle instance
+    carouselInstance = {
+        partenaires: partenairesData || [],
+        currentSlide: 0,
+        slidesPerView: 1, // CHANGÉ : 1 au lieu de 4
+        autoplayInterval: null,
+        _eventListenersAdded: false,
+
+        init() {
+            console.log('🎠 Carousel initialisé');
+            
+            if (!this.partenaires || this.partenaires.length === 0) return;
+            
+            // Ajouter les event listeners UNE SEULE FOIS
+            if (!this._eventListenersAdded) {
+                this._eventListenersAdded = true;
+                this.updateSlidesPerView();
+                window.addEventListener('resize', () => this.updateSlidesPerView());
+                this.startAutoplay();
+            }
+        },
+
+        updateSlidesPerView() {
+            // CORRECTION : Ne pas dépasser le nombre de partenaires
+            const width = window.innerWidth;
+            let newValue;
+            
+            if (width < 640) {
+                newValue = 1; // Mobile
+            } else if (width < 768) {
+                newValue = 2; // Petite tablette
+            } else if (width < 1024) {
+                newValue = 3; // Tablette/Desktop
+            } else {
+                newValue = 4; // Grand écran
+            }
+            
+            // TRÈS IMPORTANT : Ne jamais afficher plus de cartes que de partenaires
+            this.slidesPerView = Math.min(newValue, this.partenaires.length);
+            
+            // Ajuster la slide courante si nécessaire
+            const totalSlides = Math.ceil(this.partenaires.length / this.slidesPerView);
+            if (this.currentSlide >= totalSlides) {
+                this.currentSlide = Math.max(0, totalSlides - 1);
+            }
+        },
+
+        startAutoplay() {
+            this.stopAutoplay();
+            if (this.partenaires.length > this.slidesPerView) {
+                this.autoplayInterval = setInterval(() => this.nextSlide(), 5000);
+            }
+        },
+
+        stopAutoplay() {
+            if (this.autoplayInterval) {
+                clearInterval(this.autoplayInterval);
+                this.autoplayInterval = null;
+            }
+        },
+
+        nextSlide() {
+            if (!this.partenaires?.length) return;
+            const totalSlides = Math.ceil(this.partenaires.length / this.slidesPerView);
+            if (totalSlides <= 1) return;
+            this.currentSlide = (this.currentSlide + 1) % totalSlides;
+        },
+
+        prevSlide() {
+            if (!this.partenaires?.length) return;
+            const totalSlides = Math.ceil(this.partenaires.length / this.slidesPerView);
+            if (totalSlides <= 1) return;
+            this.currentSlide = (this.currentSlide - 1 + totalSlides) % totalSlides;
+        },
+
+        goToSlide(index) {
+            const totalSlides = Math.ceil(this.partenaires.length / this.slidesPerView);
+            if (index >= 0 && index < totalSlides) this.currentSlide = index;
+        }
+    };
+    
+    return carouselInstance;
+};
+</script>
+
+<!-- Alpine.js ENSUITE -->
+{{ parent() }}
+<script src="{{ asset('public/js/animation.js') }}"></script>
+<script src="{{ asset('public/js/common.js') }}"></script>
+
+
+
+
+
+<script>
+
+
+// ==================== GESTION DE LA MODALE ====================
+document.addEventListener('DOMContentLoaded', function() {
+    // Vérifier que Alpine est chargé
+    console.log('DOM chargé, Alpine.js disponible:', typeof Alpine !== 'undefined');
+    
+    // Initialisation des établissements et métiers
+    initEtablissements();
+    initMetiers();
+    
+    // Gestion de la modale
+    initModal();
+});
+
+// Fonction pour initialiser la modale
+function initModal() {
+    const modal = document.getElementById('etablissement-modal');
+    if (!modal) return;
+    
+    const modalMetierName = document.getElementById('modal-metier-name');
+    const modalList = document.getElementById('modal-etablissements-list');
+    const closeButtons = document.querySelectorAll('.modal-close');
+    const backdrop = document.querySelector('.modal-backdrop');
+    
+    window.openEtablissementsModal = function(metierId, metierNom, etablissementsData) {
+        try {
+            const etablissements = JSON.parse(etablissementsData);
+            
+            modalMetierName.textContent = `Métier: ${metierNom}`;
+            
+            let html = '';
+            etablissements.forEach(em => {
+                html += `
+                    <a href="/candidature/new?etablissement=${em.id}&metier=${metierId}" 
+                       class="block p-2 sm:p-3 bg-slate-50 hover:bg-indigo-50 rounded-lg transition-colors group">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm sm:text-base font-medium text-slate-900 group-hover:text-indigo-700">${em.nom}</span>
+                            <i class="fas fa-chevron-right text-slate-400 group-hover:text-indigo-600 text-xs sm:text-sm"></i>
+                        </div>
+                        ${em.places ? `<p class="text-xs text-slate-500 mt-1">${em.places} place(s) disponible(s)</p>` : ''}
+                    </a>
+                `;
+            });
+            modalList.innerHTML = html;
+            
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            
+        } catch (e) {
+            console.error('Erreur:', e);
+        }
+    };
+    
+    function closeModal() {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+    
+    closeButtons.forEach(btn => {
+        btn.addEventListener('click', closeModal);
+    });
+    
+    if (backdrop) {
+        backdrop.addEventListener('click', closeModal);
+    }
+    
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+            closeModal();
+        }
+    });
+    
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.etablissement-modal-btn');
+        if (btn) {
+            e.preventDefault();
+            const metierId = btn.dataset.metierId;
+            const metierNom = btn.dataset.metierNom;
+            const etablissements = btn.dataset.etablissements;
+            openEtablissementsModal(metierId, metierNom, etablissements);
+        }
+    });
+}
+
+// ==================== GESTION DES ÉTABLISSEMENTS ====================
+function initEtablissements() {
+    const elements = {
+        champRecherche: document.getElementById('etablissement-search'),
+        listeDirection: document.getElementById('dr-filter'),
+        grille: document.getElementById('etablissements-grid'),
+        indicateurChargement: document.getElementById('etablissements-loading'),
+        zonePagination: document.getElementById('etablissements-pagination')
+    };
+    
+    if (!elements.grille) return;
+    
+    let etatEtablissements = {
+        pageCourante: {{ pageEtablissementActuelle|default(1) }},
+        nombreTotalPages: Math.ceil({{ totalEtablissements|default(0) }} / 9) || 1,
+        enCoursDeChargement: false,
+        temporisateur: null
+    };
+    
+    async function chargerEtablissements(numeroPage = 1) {
+        if (etatEtablissements.enCoursDeChargement) return;
+        
+        const direction = elements.listeDirection?.value || '';
+        const recherche = elements.champRecherche?.value.trim() || '';
+        
+        etatEtablissements.enCoursDeChargement = true;
+        if (elements.indicateurChargement) elements.indicateurChargement.classList.remove('hidden');
+        
+        try {
+            const url = new URL('/load-etablissements', window.location.origin);
+            url.searchParams.append('page', numeroPage);
+            url.searchParams.append('limit', 9);
+            if (direction) url.searchParams.append('direction', direction);
+            if (recherche) url.searchParams.append('recherche', recherche);
+            
+            const reponse = await fetch(url);
+            const donnees = await reponse.json();
+            
+            if (elements.grille) {
+                elements.grille.innerHTML = donnees.html;
+            }
+            
+            etatEtablissements.pageCourante = donnees.page;
+            etatEtablissements.nombreTotalPages = Math.ceil(donnees.total / 9);
+            
+            mettreAJourPaginationEtablissements();
+            
+        } catch (erreur) {
+            console.error('Erreur chargement établissements:', erreur);
+        } finally {
+            etatEtablissements.enCoursDeChargement = false;
+            if (elements.indicateurChargement) {
+                elements.indicateurChargement.classList.add('hidden');
+            }
+        }
+    }
+    
+    function mettreAJourPaginationEtablissements() {
+        if (!elements.zonePagination) return;
+        
+        if (etatEtablissements.nombreTotalPages <= 1) {
+            elements.zonePagination.innerHTML = '';
+            return;
+        }
+        
+        let html = '<nav class="flex items-center gap-1 sm:gap-2 flex-wrap justify-center">';
+        
+        html += `<button class="etablissements-prev px-2 sm:px-3 py-1 sm:py-2 rounded-lg border border-white/30 bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 transition-all text-sm sm:text-base ${etatEtablissements.pageCourante === 1 ? 'opacity-50 cursor-not-allowed' : ''}" ${etatEtablissements.pageCourante === 1 ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-left text-xs sm:text-sm"></i>
+                </button>`;
+        
+        let pageDepart = Math.max(1, etatEtablissements.pageCourante - 2);
+        let pageFin = Math.min(etatEtablissements.nombreTotalPages, pageDepart + 4);
+        
+        if (pageDepart > 1) {
+            html += `<button class="etablissements-page px-2 sm:px-4 py-1 sm:py-2 rounded-lg border border-white/30 bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 text-sm sm:text-base" data-page="1">1</button>`;
+            if (pageDepart > 2) {
+                html += `<span class="px-1 sm:px-2 text-white/50 text-sm sm:text-base">...</span>`;
+            }
+        }
+        
+        for (let i = pageDepart; i <= pageFin; i++) {
+            html += `<button class="etablissements-page px-2 sm:px-4 py-1 sm:py-2 rounded-lg border transition-all text-sm sm:text-base 
+                ${etatEtablissements.pageCourante === i 
+                    ? 'bg-white text-indigo-700 border-white font-bold' 
+                    : 'border-white/30 bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'}" 
+                data-page="${i}">${i}</button>`;
+        }
+        
+        if (pageFin < etatEtablissements.nombreTotalPages) {
+            if (pageFin < etatEtablissements.nombreTotalPages - 1) {
+                html += `<span class="px-1 sm:px-2 text-white/50 text-sm sm:text-base">...</span>`;
+            }
+            html += `<button class="etablissements-page px-2 sm:px-4 py-1 sm:py-2 rounded-lg border border-white/30 bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 text-sm sm:text-base" data-page="${etatEtablissements.nombreTotalPages}">${etatEtablissements.nombreTotalPages}</button>`;
+        }
+        
+        html += `<button class="etablissements-next px-2 sm:px-3 py-1 sm:py-2 rounded-lg border border-white/30 bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 transition-all text-sm sm:text-base ${etatEtablissements.pageCourante === etatEtablissements.nombreTotalPages ? 'opacity-50 cursor-not-allowed' : ''}" ${etatEtablissements.pageCourante === etatEtablissements.nombreTotalPages ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-right text-xs sm:text-sm"></i>
+                </button>`;
+        
+        html += '</nav>';
+        elements.zonePagination.innerHTML = html;
+        
+        elements.zonePagination.querySelectorAll('.etablissements-page').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = parseInt(e.currentTarget.dataset.page);
+                if (page !== etatEtablissements.pageCourante) {
+                    chargerEtablissements(page);
+                }
+            });
+        });
+        
+        elements.zonePagination.querySelector('.etablissements-prev')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (etatEtablissements.pageCourante > 1 && !e.currentTarget.disabled) {
+                chargerEtablissements(etatEtablissements.pageCourante - 1);
+            }
+        });
+        
+        elements.zonePagination.querySelector('.etablissements-next')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (etatEtablissements.pageCourante < etatEtablissements.nombreTotalPages && !e.currentTarget.disabled) {
+                chargerEtablissements(etatEtablissements.pageCourante + 1);
+            }
+        });
+    }
+    
+    if (elements.listeDirection) {
+        elements.listeDirection.addEventListener('change', () => chargerEtablissements(1));
+    }
+    
+    if (elements.champRecherche) {
+        elements.champRecherche.addEventListener('input', () => {
+            clearTimeout(etatEtablissements.temporisateur);
+            etatEtablissements.temporisateur = setTimeout(() => chargerEtablissements(1), 500);
+        });
+    }
+    
+    mettreAJourPaginationEtablissements();
+}
+
+// ==================== GESTION DES MÉTIERS ====================
+function initMetiers() {
+    const elements = {
+        champRecherche: document.getElementById('search-input'),
+        listeSecteur: document.getElementById('secteur-filter'),
+        grille: document.getElementById('metiers-grid'),
+        indicateurChargement: document.getElementById('loading'),
+        zonePagination: document.getElementById('pagination')
+    };
+    
+    if (!elements.grille) return;
+    
+    let etatMetiers = {
+        pageCourante: {{ pageMetierActuelle|default(1) }},
+        nombreTotalPages: Math.ceil({{ totalMetiers|default(0) }} / 9) || 1,
+        enCoursDeChargement: false,
+        temporisateur: null
+    };
+    
+    async function chargerMetiers(numeroPage = 1) {
+        if (etatMetiers.enCoursDeChargement) return;
+        
+        const secteur = elements.listeSecteur?.value || '';
+        const recherche = elements.champRecherche?.value.trim() || '';
+        
+        etatMetiers.enCoursDeChargement = true;
+        if (elements.indicateurChargement) elements.indicateurChargement.classList.remove('hidden');
+        
+        try {
+            const url = new URL('/load-metiers', window.location.origin);
+            url.searchParams.append('page', numeroPage);
+            url.searchParams.append('limit', 9);
+            if (secteur) url.searchParams.append('secteur', secteur);
+            if (recherche) url.searchParams.append('recherche', recherche);
+            
+            const reponse = await fetch(url);
+            const donnees = await reponse.json();
+            
+            if (elements.grille) {
+                elements.grille.innerHTML = donnees.html;
+            }
+            
+            etatMetiers.pageCourante = donnees.page;
+            etatMetiers.nombreTotalPages = Math.ceil(donnees.total / 9);
+            
+            mettreAJourPaginationMetiers();
+            
+        } catch (erreur) {
+            console.error('Erreur chargement métiers:', erreur);
+        } finally {
+            etatMetiers.enCoursDeChargement = false;
+            if (elements.indicateurChargement) {
+                elements.indicateurChargement.classList.add('hidden');
+            }
+        }
+    }
+    
+    function mettreAJourPaginationMetiers() {
+        if (!elements.zonePagination) return;
+        
+        if (etatMetiers.nombreTotalPages <= 1) {
+            elements.zonePagination.innerHTML = '';
+            return;
+        }
+        
+        let html = '<nav class="flex items-center gap-1 sm:gap-2 flex-wrap justify-center">';
+        
+        html += `<button class="metiers-prev px-2 sm:px-3 py-1 sm:py-2 rounded-lg border border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50 transition-all text-sm sm:text-base ${etatMetiers.pageCourante === 1 ? 'opacity-50 cursor-not-allowed' : ''}" ${etatMetiers.pageCourante === 1 ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-left text-xs sm:text-sm"></i>
+                </button>`;
+        
+        let pageDepart = Math.max(1, etatMetiers.pageCourante - 2);
+        let pageFin = Math.min(etatMetiers.nombreTotalPages, pageDepart + 4);
+        
+        if (pageDepart > 1) {
+            html += `<button class="metiers-page px-2 sm:px-4 py-1 sm:py-2 rounded-lg border border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50 text-sm sm:text-base" data-page="1">1</button>`;
+            if (pageDepart > 2) {
+                html += `<span class="px-1 sm:px-2 text-indigo-400 text-sm sm:text-base">...</span>`;
+            }
+        }
+        
+        for (let i = pageDepart; i <= pageFin; i++) {
+            html += `<button class="metiers-page px-2 sm:px-4 py-1 sm:py-2 rounded-lg border transition-all text-sm sm:text-base 
+                ${etatMetiers.pageCourante === i 
+                    ? 'bg-indigo-600 text-white border-indigo-600 font-bold' 
+                    : 'border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50'}" 
+                data-page="${i}">${i}</button>`;
+        }
+        
+        if (pageFin < etatMetiers.nombreTotalPages) {
+            if (pageFin < etatMetiers.nombreTotalPages - 1) {
+                html += `<span class="px-1 sm:px-2 text-indigo-400 text-sm sm:text-base">...</span>`;
+            }
+            html += `<button class="metiers-page px-2 sm:px-4 py-1 sm:py-2 rounded-lg border border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50 text-sm sm:text-base" data-page="${etatMetiers.nombreTotalPages}">${etatMetiers.nombreTotalPages}</button>`;
+        }
+        
+        html += `<button class="metiers-next px-2 sm:px-3 py-1 sm:py-2 rounded-lg border border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50 transition-all text-sm sm:text-base ${etatMetiers.pageCourante === etatMetiers.nombreTotalPages ? 'opacity-50 cursor-not-allowed' : ''}" ${etatMetiers.pageCourante === etatMetiers.nombreTotalPages ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-right text-xs sm:text-sm"></i>
+                </button>`;
+        
+        html += '</nav>';
+        elements.zonePagination.innerHTML = html;
+        
+        elements.zonePagination.querySelectorAll('.metiers-page').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = parseInt(e.currentTarget.dataset.page);
+                if (page !== etatMetiers.pageCourante) {
+                    chargerMetiers(page);
+                }
+            });
+        });
+        
+        elements.zonePagination.querySelector('.metiers-prev')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (etatMetiers.pageCourante > 1 && !e.currentTarget.disabled) {
+                chargerMetiers(etatMetiers.pageCourante - 1);
+            }
+        });
+        
+        elements.zonePagination.querySelector('.metiers-next')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (etatMetiers.pageCourante < etatMetiers.nombreTotalPages && !e.currentTarget.disabled) {
+                chargerMetiers(etatMetiers.pageCourante + 1);
+            }
+        });
+    }
+    
+    if (elements.listeSecteur) {
+        elements.listeSecteur.addEventListener('change', () => chargerMetiers(1));
+    }
+    
+    if (elements.champRecherche) {
+        elements.champRecherche.addEventListener('input', () => {
+            clearTimeout(etatMetiers.temporisateur);
+            etatMetiers.temporisateur = setTimeout(() => chargerMetiers(1), 500);
+        });
+    }
+    
+    mettreAJourPaginationMetiers();
+}
+</script>
+{% endblock %}

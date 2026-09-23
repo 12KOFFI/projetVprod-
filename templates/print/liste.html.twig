@@ -1,0 +1,134 @@
+{#
+    Export PDF d'une liste de candidatures (F4.6 et F4.7).
+
+    Rendu par Dompdf, hors du navigateur : ni Tailwind ni Font Awesome ne sont
+    disponibles ici, le style est donc écrit en CSS autonome. Dompdf ne gère ni
+    flexbox ni grid — la mise en page repose sur des tableaux.
+#}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ titre }}</title>
+    <style>
+        @page { margin: 18mm 12mm; }
+
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            font-size: 8.5pt;
+            color: #1e293b;
+            margin: 0;
+        }
+
+        .entete {
+            border-bottom: 2px solid #0B669D;
+            padding-bottom: 8px;
+            margin-bottom: 14px;
+        }
+
+        .entete h1 {
+            font-size: 14pt;
+            color: #0B669D;
+            margin: 0 0 3px;
+        }
+
+        .entete p {
+            margin: 0;
+            font-size: 8pt;
+            color: #64748b;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            background-color: #f1f5f9;
+            border-bottom: 1px solid #cbd5e1;
+            text-align: left;
+            padding: 6px 5px;
+            font-size: 7.5pt;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: #475569;
+        }
+
+        tbody td {
+            border-bottom: 1px solid #e2e8f0;
+            padding: 6px 5px;
+            vertical-align: top;
+        }
+
+        .numero {
+            font-family: DejaVu Sans Mono, monospace;
+            font-size: 7.5pt;
+            color: #0B669D;
+        }
+
+        .pied {
+            margin-top: 14px;
+            font-size: 7.5pt;
+            color: #94a3b8;
+            text-align: right;
+        }
+
+        .vide {
+            padding: 30px;
+            text-align: center;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="entete">
+        <h1>{{ titre }}</h1>
+        <p>{{ sous_titre }} — édité le {{ edite_le|date('d/m/Y à H\\hi') }}</p>
+    </div>
+
+    {% if candidatures is not empty %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Numéro VAE</th>
+                    <th>Candidat</th>
+                    <th>Métier</th>
+                    <th>Exp.</th>
+                    <th>Diplôme</th>
+                    <th>Étude</th>
+                    <th>Recevabilité</th>
+                    <th>Statut</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for candidature in candidatures %}
+                    <tr>
+                        <td class="numero">{{ candidature.numero }}</td>
+                        <td>{{ candidature.user ? candidature.user.nomComplet : '—' }}</td>
+                        <td>{{ candidature.metier ? candidature.metier.libelle : '—' }}</td>
+                        <td>{{ candidature.nbAnneesExperience }} an(s)</td>
+                        <td>{{ candidature.diplomedemande ?: '—' }}</td>
+                        <td>
+                            {{ candidature.resultatEtude ? candidature.resultatEtude.libelle : '—' }}
+                            {% if candidature.etuDate %}
+                                <br><span style="color:#94a3b8">{{ candidature.etuDate|date('d/m/Y') }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ candidature.resultatRecevabilite ? candidature.resultatRecevabilite.libelle : '—' }}
+                            {% if candidature.recDate %}
+                                <br><span style="color:#94a3b8">{{ candidature.recDate|date('d/m/Y') }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ statut_candidature(candidature).libelle }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <p class="pied">{{ candidatures|length }} dossier(s) — plateforme VAE Côte d'Ivoire (DAIP)</p>
+    {% else %}
+        <p class="vide">Aucun dossier à présenter dans cette liste.</p>
+    {% endif %}
+</body>
+</html>

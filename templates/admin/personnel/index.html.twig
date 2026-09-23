@@ -1,0 +1,167 @@
+{# Écran E2.7 : comptes du personnel, filtrables par rôle et par centre. #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Comptes du personnel — Administration VAE{% endblock %}
+
+{% block body %}
+{{ ui.bandeau(
+    'Comptes du personnel',
+    'Agents d\'accueil, conseillers, accompagnateurs et administrateurs.',
+    'users-gear',
+    pagination.getTotalItemCount,
+    'compte(s)'
+) }}
+
+<div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+    <div class="px-6 py-5 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <form method="get" class="flex flex-col sm:flex-row gap-3 flex-1">
+            <div class="relative flex-1 max-w-xs">
+                <i class="fas fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                <input type="search" name="q" value="{{ recherche }}" placeholder="Nom, e-mail ou téléphone"
+                       class="w-full pl-10 pr-3.5 py-2.5 rounded-lg border border-slate-500 text-sm text-slate-700
+                              focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition duration-200">
+            </div>
+
+            <select name="role" onchange="this.form.submit()"
+                    class="px-3.5 py-2.5 rounded-lg border border-slate-500 text-sm text-slate-700 bg-white
+                           focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition duration-200">
+                <option value="">Tous les rôles</option>
+                {% for cle, libelle in roles %}
+                    <option value="{{ cle }}" {{ filtre_role == cle ? 'selected' : '' }}>{{ libelle }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="centre" onchange="this.form.submit()"
+                    class="px-3.5 py-2.5 rounded-lg border border-slate-500 text-sm text-slate-700 bg-white
+                           focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition duration-200">
+                <option value="">Tous les centres</option>
+                {% for centre in centres %}
+                    <option value="{{ centre.id }}" {{ filtre_centre and filtre_centre.id == centre.id ? 'selected' : '' }}>
+                        {{ centre.nom }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <button type="submit"
+                    class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition duration-200">
+                Filtrer
+            </button>
+        </form>
+
+        <a href="{{ path('app_admin_personnel_nouveau') }}"
+           class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white
+                  bg-indigo-600 hover:bg-indigo-700 transition duration-200 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+            <i class="fas fa-user-plus text-xs"></i>
+            Nouveau compte
+        </a>
+    </div>
+
+    {% if pagination.getTotalItemCount > 0 %}
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[900px]">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        {{ ui.th('Identité') }}
+                        {{ ui.th('Rôle') }}
+                        {{ ui.th('Rattachement') }}
+                        {{ ui.th('Accès') }}
+                        {{ ui.th('Actions', 'text-right') }}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for utilisateur in pagination %}
+                        {% set role_principal = utilisateur.roles|first %}
+                        <tr class="hover:bg-slate-50/70 transition duration-200 {{ utilisateur.actif ? '' : 'opacity-60' }}">
+                            <td class="px-6 py-4">
+                                <p class="text-sm font-medium text-slate-700">{{ utilisateur.nomComplet ?: '—' }}</p>
+                                <p class="text-xs text-slate-600 mt-0.5">
+                                    {{ utilisateur.email ?: 'Aucune adresse' }}
+                                    {% if utilisateur.contact %} · {{ utilisateur.contact }}{% endif %}
+                                </p>
+                            </td>
+                            <td class="px-6 py-4">
+                                {% for cle, libelle in roles %}
+                                    {% if cle in utilisateur.roles %}
+                                        {{ ui.badge(libelle, cle == 'ROLE_ADMIN' ? 'indigo' : 'blue') }}
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                            <td class="px-6 py-4">
+                                <p class="text-sm text-slate-500">
+                                    {{ utilisateur.centre ? utilisateur.centre.nom : 'Aucun centre' }}
+                                </p>
+                                {% if utilisateur.metier %}
+                                    <p class="text-xs text-slate-600 mt-0.5">
+                                        <i class="fas fa-screwdriver-wrench mr-1"></i>{{ utilisateur.metier.libelle }}
+                                    </p>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if utilisateur.actif %}
+                                    {{ ui.badge('Actif', 'green') }}
+                                {% else %}
+                                    {{ ui.badge('Désactivé', 'red') }}
+                                {% endif %}
+                                {% if utilisateur.doitChangerMotDePasse %}
+                                    <p class="text-xs text-amber-600 mt-1.5">
+                                        <i class="fas fa-key mr-1"></i>Mot de passe à changer
+                                    </p>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex items-center justify-end gap-2">
+                                    {{ ui.bouton_post(
+                                        path('app_admin_personnel_reinitialiser', {id: utilisateur.id}),
+                                        'reinitialiser_' ~ utilisateur.id,
+                                        'key', 'Réinitialiser le mot de passe', 'slate',
+                                        'Générer un nouveau mot de passe pour ce compte ? L\'ancien cessera immédiatement de fonctionner.'
+                                    ) }}
+                                    {% if utilisateur.actif %}
+                                        {{ ui.bouton_post(
+                                            path('app_admin_personnel_basculer_activation', {id: utilisateur.id}),
+                                            'activation_' ~ utilisateur.id,
+                                            'user-slash', 'Désactiver le compte', 'red',
+                                            'Désactiver ce compte ? La personne ne pourra plus se connecter.'
+                                        ) }}
+                                    {% else %}
+                                        {{ ui.bouton_post(
+                                            path('app_admin_personnel_basculer_activation', {id: utilisateur.id}),
+                                            'activation_' ~ utilisateur.id,
+                                            'user-check', 'Réactiver le compte', 'green'
+                                        ) }}
+                                    {% endif %}
+                                    {{ ui.bouton_lien(
+                                        path('app_admin_personnel_modifier', {id: utilisateur.id}),
+                                        'pen', 'Modifier'
+                                    ) }}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {{ ui.pagination(pagination) }}
+    {% else %}
+        {{ ui.etat_vide(
+            'users-gear',
+            recherche or filtre_role or filtre_centre ? 'Aucun résultat' : 'Aucun compte du personnel',
+            recherche or filtre_role or filtre_centre
+                ? 'Aucun compte ne correspond aux critères sélectionnés.'
+                : 'Créez les comptes des agents d\'accueil, conseillers et accompagnateurs pour qu\'ils accèdent à leur espace.',
+            recherche or filtre_role or filtre_centre ? null : 'Utilisez le bouton « Nouveau compte »'
+        ) }}
+    {% endif %}
+</div>
+
+<div class="mt-5 rounded-lg bg-slate-50 border border-slate-200 px-5 py-4">
+    <p class="text-xs text-slate-500 leading-relaxed">
+        <i class="fas fa-circle-info text-slate-600 mr-1.5"></i>
+        Un compte du personnel se désactive, il ne se supprime pas : la traçabilité des
+        dossiers déjà traités est conservée. Le mot de passe initial n'est affiché qu'une
+        seule fois, à sa création ou après réinitialisation.
+    </p>
+</div>
+{% endblock %}

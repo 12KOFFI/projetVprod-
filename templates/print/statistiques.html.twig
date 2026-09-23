@@ -1,0 +1,127 @@
+{#
+    Export PDF des statistiques du centre (écran Impressions du conseiller).
+
+    Rendu par Dompdf, hors du navigateur : ni Tailwind ni Font Awesome ne sont
+    disponibles ici, le style est donc écrit en CSS autonome.
+#}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Statistiques — {{ centre.nom }}</title>
+    <style>
+        @page { margin: 18mm 12mm; }
+
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            font-size: 9pt;
+            color: #1e293b;
+            margin: 0;
+        }
+
+        .entete {
+            border-bottom: 2px solid #0B669D;
+            padding-bottom: 8px;
+            margin-bottom: 16px;
+        }
+
+        .entete h1 {
+            font-size: 14pt;
+            color: #0B669D;
+            margin: 0 0 3px;
+        }
+
+        .entete p {
+            margin: 0;
+            font-size: 8pt;
+            color: #64748b;
+        }
+
+        .total {
+            border: 2px solid #0B669D;
+            padding: 10px 14px;
+            margin-bottom: 18px;
+            text-align: center;
+        }
+
+        .total .valeur {
+            font-size: 20pt;
+            font-weight: bold;
+            color: #0B669D;
+        }
+
+        .total .libelle {
+            font-size: 7.5pt;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
+        }
+
+        h2 {
+            font-size: 9pt;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            color: #0B669D;
+            border-bottom: 1px solid #c7d2fe;
+            padding-bottom: 4px;
+            margin: 16px 0 8px;
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+        table td { padding: 5px 4px; border-bottom: 1px solid #e2e8f0; }
+        table td.effectif { text-align: right; font-weight: bold; }
+
+        .pied {
+            margin-top: 16px;
+            font-size: 7.5pt;
+            color: #94a3b8;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="entete">
+        <h1>Statistiques du centre</h1>
+        <p>{{ centre.nom }} — édité le {{ edite_le|date('d/m/Y à H\\hi') }}</p>
+    </div>
+
+    <div class="total">
+        <div class="valeur">{{ stats.total }}</div>
+        <div class="libelle">Candidat(s) au total</div>
+    </div>
+
+    <h2>Répartition par statut</h2>
+    <table>
+        {% for ligne in stats.par_statut %}
+            {% if ligne.effectif > 0 %}
+                <tr>
+                    <td>{{ ligne.libelle }}</td>
+                    <td class="effectif">{{ ligne.effectif }}</td>
+                </tr>
+            {% endif %}
+        {% endfor %}
+    </table>
+
+    <h2>Répartition par sexe</h2>
+    <table>
+        {% for sexe, effectif in stats.par_sexe %}
+            <tr>
+                <td>{{ sexe|capitalize }}</td>
+                <td class="effectif">{{ effectif }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <h2>Répartition par métier</h2>
+    <table>
+        {% for metier, effectif in stats.par_metier %}
+            <tr>
+                <td>{{ metier }}</td>
+                <td class="effectif">{{ effectif }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <p class="pied">Plateforme VAE Côte d'Ivoire (DAIP)</p>
+</body>
+</html>

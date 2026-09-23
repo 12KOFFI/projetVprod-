@@ -1,0 +1,220 @@
+{% extends 'public/base.html.twig' %}
+
+{% block title %}Connexion | {{ parent() }}{% endblock %}
+
+{% block body %}
+{# pt-28 : dégage l'en-tête public fixe de 72 px. #}
+<div class="min-h-screen bg-slate-50 pt-28">
+<!-- ==================== MESSAGES ==================== -->
+<div class="container mx-auto px-4 mb-6 max-w-md">
+    {% include 'partials/_flash_messages.html.twig' %}
+</div>
+
+<!-- ==================== FORMULAIRE DE CONNEXION ==================== -->
+<!-- ==================== FORMULAIRE DE CONNEXION ==================== -->
+<div class="container mx-auto px-4 pb-16">
+    <div class="max-w-md mx-auto">
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            
+            {# Sélecteur de profil : même page, textes adaptés (comme sur vae.gouv.fr). #}
+            {% set redirect_param = app.request.query.get('redirect') ? {'redirect': app.request.query.get('redirect')} : {} %}
+            <nav class="grid grid-cols-2 border-b border-slate-200 bg-slate-50" aria-label="Type de compte">
+                <a href="{{ path('app_login', redirect_param) }}"
+                   {% if profil == 'candidat' %}aria-current="page"{% endif %}
+                   class="flex min-h-[52px] items-center justify-center gap-2 px-3 text-sm font-semibold transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-600 {{ profil == 'candidat' ? 'bg-white text-indigo-800 border-b-2 border-indigo-600' : 'text-slate-600 hover:bg-white hover:text-indigo-800' }}">
+                    <i class="fas fa-user" aria-hidden="true"></i>Candidat
+                </a>
+                <a href="{{ path('app_login', redirect_param|merge({'profil': 'professionnel'})) }}"
+                   {% if profil == 'professionnel' %}aria-current="page"{% endif %}
+                   class="flex min-h-[52px] items-center justify-center gap-2 px-3 text-center text-sm font-semibold leading-tight transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-600 {{ profil == 'professionnel' ? 'bg-white text-indigo-800 border-b-2 border-indigo-600' : 'text-slate-600 hover:bg-white hover:text-indigo-800' }}">
+                    <i class="fas fa-user-tie" aria-hidden="true"></i>Professionnels de la VAE
+                </a>
+            </nav>
+
+            <div class="px-6 pt-8 pb-2 text-center">
+                <span class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg bg-indigo-50 text-2xl text-indigo-700" aria-hidden="true">
+                    <i class="fas {{ profil == 'professionnel' ? 'fa-user-tie' : 'fa-user' }}"></i>
+                </span>
+                <h1 class="text-2xl font-bold text-slate-900 mb-1 text-balance">
+                    {{ profil == 'professionnel' ? 'Connexion professionnels de la VAE' : 'Connexion candidat' }}
+                </h1>
+                <p class="text-sm text-slate-600 leading-relaxed">
+                    {% if profil == 'professionnel' %}
+                        Espace réservé aux conseillers VAE, accompagnateurs, agents d'accueil et administrateurs.
+                    {% else %}
+                        Suivez votre dossier VAE, réglez vos frais et consultez vos résultats.
+                    {% endif %}
+                </p>
+            </div>
+
+            <div class="p-6 md:p-8 pt-2">
+                <form method="post" class="space-y-6">
+                    <!-- Champ caché pour la redirection - VÉRIFIER QUE C'EST BIEN PRÉSENT -->
+                    {% if app.request.query.get('redirect') %}
+                        <input type="hidden" name="_target_path" value="{{ app.request.query.get('redirect') }}">
+                    {% endif %}
+
+                    <!-- Champ email/téléphone -->
+                    <div>
+                        <label for="inputEmail" class="block text-sm font-medium text-slate-700 mb-2">
+                            {{ profil == 'professionnel' ? 'Identifiant professionnel (e-mail ou téléphone)' : 'E-mail ou numéro de téléphone' }}
+                        </label>
+                        <input type="text" 
+                               value="{{ last_username }}" 
+                               name="email" 
+                               id="inputEmail" 
+                               class="w-full px-4 py-3 rounded-lg border border-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition"
+                               placeholder="exemple@email.com ou 0123456789"
+                               autocomplete="email" 
+                               required 
+                               autofocus>
+                    </div>
+
+                    <!-- Champ mot de passe -->
+                    <div>
+                        <label for="inputPassword" class="block text-sm font-medium text-slate-700 mb-2">
+                            Mot de passe
+                        </label>
+                        <div class="relative">
+                            <input type="password" 
+                                   name="password" 
+                                   id="inputPassword" 
+                                   class="w-full px-4 py-3 rounded-lg border border-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition"
+                                   placeholder="••••••••"
+                                   autocomplete="current-password" 
+                                   required>
+                            <button type="button" 
+                                    onclick="togglePassword()" 
+                                    class="absolute inset-y-0 right-0 pr-4 flex items-center">
+                                <i class="fas fa-eye text-slate-600 hover:text-indigo-600 transition" id="toggleIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Options supplémentaires -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="remember" name="_remember_me" class="h-4 w-4 text-indigo-600 focus:ring-indigo-600 border-slate-300 rounded">
+                            <label for="remember" class="ml-2 block text-sm text-slate-600">
+                                Se souvenir de moi
+                            </label>
+                        </div>
+                        <a href="{{ path('app_forgot_password') }}" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                            <a href="{{ path('app_forgot_password') }}" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                            Mot de passe oublié ?
+                        </a>
+                    </div>
+
+                    <!-- Token CSRF -->
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                    <!-- Bouton de connexion -->
+                    <button type="submit" 
+                            class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition flex items-center justify-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                        <span class="spinner-border spinner-border-sm hidden mr-2" id="spinner"></span>
+                        <i class="fas fa-sign-in-alt mr-2 group-hover:translate-x-1 transition"></i>
+                        Se connecter
+                    </button>
+                </form>
+
+                <div class="mt-8 pt-6 border-t border-slate-200">
+                    {% if profil == 'professionnel' %}
+                        <p class="text-center text-sm leading-relaxed text-slate-600">
+                            <i class="fas fa-circle-info mr-1 text-indigo-700" aria-hidden="true"></i>
+                            Il n'y a pas d'inscription en ligne pour les professionnels : votre compte est créé par l'administration. En cas de difficulté, rapprochez-vous de votre centre VAE.
+                        </p>
+                        <p class="mt-4 text-center text-slate-600">
+                            Vous êtes candidat ?
+                            <a href="{{ path('app_login', redirect_param) }}" class="text-indigo-600 hover:text-indigo-800 font-semibold inline-flex items-center">
+                                Connexion candidat
+                                <i class="fas fa-arrow-right ml-1 text-sm" aria-hidden="true"></i>
+                            </a>
+                        </p>
+                    {% else %}
+                        <p class="text-center text-slate-600">
+                            Pas encore de compte ?
+                            <a href="{{ path('app_register', {'redirect': app.request.query.get('redirect')}) }}" class="text-indigo-600 hover:text-indigo-800 font-semibold inline-flex items-center">
+                                Faire ma préinscription
+                                <i class="fas fa-arrow-right ml-1 text-sm" aria-hidden="true"></i>
+                            </a>
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lien retour accueil et retour page précédente -->
+    <div class="text-center mt-4 space-y-2">
+        {% if app.request.query.get('redirect') %}
+            <a href="{{ app.request.query.get('redirect') }}" class="text-sm text-slate-500 hover:text-indigo-600 transition inline-flex items-center mr-4">
+                <i class="fas fa-arrow-left mr-1"></i>
+                Retour à la page précédente
+            </a>
+        {% endif %}
+        <a href="{{ path('app_home') }}" class="text-sm text-slate-500 hover:text-indigo-600 transition inline-flex items-center">
+            <i class="fas fa-home mr-1"></i>
+            Retour à l'accueil
+        </a>
+    </div>
+</div>
+<!-- ==================== JAVASCRIPT ==================== -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animation du spinner au submit
+    const form = document.querySelector('form');
+    const spinner = document.getElementById('spinner');
+    const submitBtn = document.querySelector('button[type="submit"]');
+    
+    form.addEventListener('submit', function() {
+        spinner.classList.remove('hidden');
+        submitBtn.disabled = true;
+    });
+
+    // Animation des champs au focus
+    const inputs = document.querySelectorAll('input');
+    inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+            this.classList.add('ring-2', 'ring-indigo-300');
+        });
+        input.addEventListener('blur', function() {
+            this.classList.remove('ring-2', 'ring-indigo-300');
+        });
+    });
+});
+
+// Fonction pour afficher/masquer le mot de passe
+function togglePassword() {
+    const passwordInput = document.getElementById('inputPassword');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+}
+</script>
+
+<style>
+/* Animation de pulsation pour le bouton */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+button[type="submit"]:disabled {
+    animation: pulse 1.5s infinite;
+    cursor: not-allowed;
+}
+
+/* Style pour les icônes */
+.fa-eye, .fa-eye-slash {
+    transition: all 0.2s ease;
+}
+</style>
+</div>
+{% endblock %}

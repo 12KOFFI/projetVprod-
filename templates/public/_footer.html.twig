@@ -1,0 +1,91 @@
+<footer id="contact" class="bg-slate-900 text-slate-300 scroll-mt-[72px]">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8">
+
+            <div class="lg:col-span-5">
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex bg-white/10 p-2 rounded-xl">
+                        <img src="{{ asset('image/logo.png') }}" class="h-8 w-auto" alt="" aria-hidden="true">
+                    </span>
+                    <span class="leading-none">
+                        <span class="block text-base font-bold text-white">VAE Côte d'Ivoire</span>
+                        <span class="block text-xs text-slate-400 mt-1">Validation des Acquis de l'Expérience</span>
+                    </span>
+                </div>
+
+                <p class="mt-5 text-sm leading-relaxed text-slate-400 max-w-[52ch]">
+                    Un dispositif de la Direction de l'Apprentissage et de
+                    l'Insertion Professionnelle — former les talents de demain.
+                </p>
+
+                <div class="mt-6 flex items-center gap-2">
+                    <a href="https://x.com" target="_blank" rel="noopener noreferrer"
+                       class="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-colors duration-200">
+                        <span class="sr-only">X</span>
+                        <i class="fab fa-x-twitter text-sm" aria-hidden="true"></i>
+                    </a>
+                    <a href="https://facebook.com" target="_blank" rel="noopener noreferrer"
+                       class="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-colors duration-200">
+                        <span class="sr-only">Facebook</span>
+                        <i class="fab fa-facebook-f text-sm" aria-hidden="true"></i>
+                    </a>
+                    <a href="https://youtube.com" target="_blank" rel="noopener noreferrer"
+                       class="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-colors duration-200">
+                        <span class="sr-only">YouTube</span>
+                        <i class="fab fa-youtube text-sm" aria-hidden="true"></i>
+                    </a>
+                    <a href="https://tiktok.com" target="_blank" rel="noopener noreferrer"
+                       class="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-colors duration-200">
+                        <span class="sr-only">TikTok</span>
+                        <i class="fab fa-tiktok text-sm" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3">
+                <h2 class="text-sm font-semibold text-white">Le dispositif</h2>
+                <ul class="mt-4 space-y-2.5">
+                    <li><a href="{{ path('app_home') }}#session" class="text-sm text-slate-400 hover:text-white transition-colors duration-200">Session 2026</a></li>
+                    <li><a href="{{ path('app_home') }}#conditions" class="text-sm text-slate-400 hover:text-white transition-colors duration-200">Conditions</a></li>
+                    <li><a href="{{ path('app_home') }}#deroulement" class="text-sm text-slate-400 hover:text-white transition-colors duration-200">Déroulement</a></li>
+
+                    <li><a href="{{ path('app_login') }}" class="text-sm text-slate-400 hover:text-white transition-colors duration-200">Se connecter</a></li>
+                </ul>
+            </div>
+
+            <div class="lg:col-span-4">
+                <h2 class="text-sm font-semibold text-white">Nous contacter</h2>
+                <ul class="mt-4 space-y-3.5">
+                    <li class="flex items-start gap-3">
+                        <i class="fas fa-location-dot text-slate-500 mt-0.5 w-4 text-center" aria-hidden="true"></i>
+                        <span class="text-sm text-slate-400">SEBROKO, ancien ONUCI<br>Abidjan, Côte d'Ivoire</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <i class="fas fa-phone text-slate-500 mt-0.5 w-4 text-center" aria-hidden="true"></i>
+                        <span class="text-sm text-slate-400 tabular">
+                            <a href="tel:+2252722229600" class="hover:text-white transition-colors duration-200">+225 27 22 22 96 00</a><br>
+                            <a href="tel:+2250103888793" class="hover:text-white transition-colors duration-200">+225 01 03 88 87 93</a>
+                        </span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <i class="fas fa-envelope text-slate-500 mt-0.5 w-4 text-center" aria-hidden="true"></i>
+                        <span class="text-sm text-slate-400">
+                            <a href="mailto:contact@daip.ci" class="hover:text-white transition-colors duration-200">contact@daip.ci</a><br>
+                            <a href="mailto:etfpa.daip@gmail.com" class="hover:text-white transition-colors duration-200">etfpa.daip@gmail.com</a>
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="mt-14 pt-7 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p class="text-xs text-slate-400 text-center sm:text-left">
+                &copy; {{ 'now'|date('Y') }} DAIP — Direction de l'Apprentissage et de l'Insertion Professionnelle.
+            </p>
+            <p class="text-xs text-slate-400">
+                République de Côte d'Ivoire
+            </p>
+        </div>
+    </div>
+</footer>

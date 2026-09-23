@@ -1,0 +1,294 @@
+{% extends 'base_dashboard.html.twig' %}
+
+{% block title %}Tableau de bord | DAIP{% endblock %}
+
+{% block body %}
+<div class="mx-auto">
+    <!-- En-tête -->
+    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 mb-8 text-white">
+        <div class="flex items-center gap-4">
+            <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                <i class="fas fa-chart-line text-3xl"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold">Tableau de bord</h1>
+                <p class="text-white/80">
+                    {% if is_admin %}
+                        Administration générale
+                    {% elseif is_candidat %}
+                        Mes candidatures
+                    {% elseif is_ent %}
+                        Gestion de l'établissement : {{ etablissement.nom ?? 'Non défini' }}
+                    {% elseif is_jury %}
+                        Évaluations
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        
+        <!-- Statistiques rapides pour l'admin ET l'ENT -->
+        {% if (is_admin or is_ent) and stats is defined %}
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mt-8">
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+                <div class="text-2xl font-bold">{{ stats.candidatures }}</div>
+                <div class="text-xs text-white/70">Candidatures</div>
+            </div>
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+                <div class="text-2xl font-bold">{{ stats.candidatures_aujourdhui }}</div>
+                <div class="text-xs text-white/70">Aujourd'hui</div>
+            </div>
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+                <div class="text-2xl font-bold">{{ stats.metiers }}</div>
+                <div class="text-xs text-white/70">Métiers</div>
+            </div>
+            <!-- <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+                <div class="text-2xl font-bold">{{ stats.utilisateurs }}</div>
+                <div class="text-xs text-white/70">Candidats</div>
+            </div> -->
+            {% if is_admin %}
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+                <div class="text-2xl font-bold">{{ stats.etablissements }}</div>
+                <div class="text-xs text-white/70">Établissements</div>
+            </div>
+            {% endif %}
+
+        </div>
+        {% endif %}
+    </div>
+
+    {% include 'partials/_flash_messages.html.twig' %}
+
+    <!-- Contenu principal -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Colonne principale (2/3) -->
+        <div class="lg:col-span-2 space-y-8">
+            <!-- Dernières candidatures (pour admin ET ent) -->
+            {% if (is_admin or is_ent) and dernieres_candidatures is defined %}
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+                    <h2 class="text-lg font-semibold text-indigo-800 flex items-center">
+                        <i class="fas fa-clock mr-2"></i>
+                        {% if is_ent %}
+                            Candidatures de {{ etablissement.nom }}
+                        {% else %}
+                            Dernières candidatures
+                        {% endif %}
+                    </h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">N°</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Candidat</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Métier</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Statut</th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-slate-600 uppercase">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200">
+                            {% for candidature in dernieres_candidatures|slice(0,5) %}
+                            <tr class="hover:bg-slate-50 transition">
+                                <td class="px-4 py-3 text-sm font-mono text-indigo-600">{{ candidature.numero }}</td>
+                                <td class="px-4 py-3 text-sm">
+                                    {% set user = candidature.user %}
+                                    {{ user ? user.nom : '' }} {{ user ? user.prenoms : '' }}
+                                </td>
+                                <td class="px-4 py-3 text-sm">{{ candidature.metier ? candidature.metier.nom : '-' }}</td>
+                                <td class="px-4 py-3">
+                                    {% if candidature.resultat == 2 %}
+                                        <span class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">Admis</span>
+                                    {% elseif candidature.entstatut == 2 %}
+                                        <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">Admissible</span>
+                                    {% elseif candidature.etustatut == 2 %}
+                                        <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold">Dossier OK</span>
+                                    {% elseif candidature.etustatut == 1 %}
+                                        <span class="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">Rejeté</span>
+                                    {% else %}
+                                        <span class="px-2 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">En attente</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3 text-sm text-right text-slate-500">{{ candidature.creation|date('d/m/Y') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="px-4 py-8 text-center text-slate-500">
+                                    <i class="fas fa-inbox text-3xl mb-2 opacity-50"></i>
+                                    <p>Aucune candidature récente</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if is_candidat and mes_candidatures is defined %}
+            <!-- Mes candidatures (Candidat) -->
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+                    <h2 class="text-lg font-semibold text-indigo-800 flex items-center">
+                        <i class="fas fa-file-alt mr-2"></i>
+                        Mes candidatures
+                    </h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">N°</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Métier</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Établissement</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Statut</th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-slate-600 uppercase">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200">
+                            {% for candidature in mes_candidatures %}
+                            <tr class="hover:bg-slate-50 transition">
+                                <td class="px-4 py-3 text-sm font-mono text-indigo-600">{{ candidature.numero }}</td>
+                                <td class="px-4 py-3 text-sm">{{ candidature.metier ? candidature.metier.nom : '-' }}</td>
+                                <td class="px-4 py-3 text-sm">{{ candidature.etablissement ? candidature.etablissement.nom : '-' }}</td>
+                                <td class="px-4 py-3">
+                                    {% if candidature.resultat == 2 %}
+                                        <span class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">Admis</span>
+                                    {% elseif candidature.entstatut == 2 %}
+                                        <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">Admissible</span>
+                                    {% elseif candidature.etustatut == 2 %}
+                                        <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold">Dossier accepté</span>
+                                    {% elseif candidature.etustatut == 1 %}
+                                        <span class="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">Rejeté</span>
+                                    {% else %}
+                                        <span class="px-2 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">En attente</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3 text-sm text-right text-slate-500">{{ candidature.creation|date('d/m/Y') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="px-4 py-8 text-center text-slate-500">
+                                    <i class="fas fa-file-alt text-3xl mb-2 opacity-50"></i>
+                                    <p class="mb-2">Vous n'avez pas encore de candidature</p>
+                                    {# TODO: route app_candidature_new à recréer #}
+                                    {# <a href="{{ path('app_candidature_new') }}" class="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition">
+                                        <i class="fas fa-plus-circle mr-1"></i>
+                                        Déposer une candidature
+                                    </a> #}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Colonne latérale (1/3) -->
+        <div class="space-y-8">
+            <!-- Derniers inscrits (pour admin ET ent) -->
+            {% if (is_admin or is_ent) and derniers_inscrits is defined %}
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+                    <h2 class="text-lg font-semibold text-indigo-800 flex items-center">
+                        <i class="fas fa-user-plus mr-2"></i>
+                        {% if is_ent %}
+                            Derniers candidats - {{ etablissement.nom }}
+                        {% else %}
+                            Nouveaux inscrits
+                        {% endif %}
+                    </h2>
+                </div>
+                <div class="divide-y divide-slate-200">
+                    {% for user in derniers_inscrits|slice(0,5) %}
+                    <div class="px-6 py-3 hover:bg-slate-50 transition">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-user text-xs text-indigo-600"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-slate-800 truncate">{{ user.nom }} {{ user.prenoms }}</p>
+                                <p class="text-xs text-slate-500 truncate">{{ user.email }}</p>
+                            </div>
+                            <span class="text-xs text-slate-400">Nouveau</span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="px-6 py-8 text-center text-slate-500">
+                        <i class="fas fa-users text-3xl mb-2 opacity-50"></i>
+                        <p>Aucun candidat récent</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Actions rapides -->
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+                    <h2 class="text-lg font-semibold text-indigo-800 flex items-center">
+                        <i class="fas fa-bolt mr-2"></i>
+                        Actions rapides
+                    </h2>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-2 gap-3">
+                        {% if is_admin %}
+                            {# TODO: routes app_candidature_* et app_metier_new à recréer #}
+                            {# <a href="{{ path('app_candidature_index') }}" class="flex flex-col items-center p-3 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition">
+                                <i class="fas fa-list text-indigo-600 text-xl mb-1"></i>
+                                <span class="text-xs text-indigo-700">Toutes les candidatures</span>
+                            </a>
+                            <a href="{{ path('app_candidature_impressions') }}" class="flex flex-col items-center p-3 bg-green-50 rounded-lg hover:bg-green-100 transition">
+                                <i class="fas fa-download text-green-600 text-xl mb-1"></i>
+                                <span class="text-xs text-green-700">Exports</span>
+                            </a>
+                            <a href="{{ path('app_candidature_stat') }}" class="flex flex-col items-center p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition">
+                                <i class="fas fa-chart-bar text-purple-600 text-xl mb-1"></i>
+                                <span class="text-xs text-purple-700">Statistiques</span>
+                            </a>
+                            <a href="{{ path('app_metier_new') }}" class="flex flex-col items-center p-3 bg-amber-50 rounded-lg hover:bg-amber-100 transition">
+                                <i class="fas fa-briefcase text-amber-600 text-xl mb-1"></i>
+                                <span class="text-xs text-amber-700">Nouveau métier</span>
+                            </a> #}
+                        {% elseif is_ent %}
+                            {# TODO: routes à recréer #}
+                            {# <a href="{{ path('app_candidature_index') }}" class="flex flex-col items-center p-3 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition">
+                                <i class="fas fa-clipboard-check text-indigo-600 text-xl mb-1"></i>
+                                <span class="text-xs text-indigo-700">Gérer les candidatures</span>
+                            </a>
+                            <a href="{{ path('app_prospection_index') }}" class="flex flex-col items-center p-3 bg-teal-50 rounded-lg hover:bg-teal-100 transition">
+                                <i class="fas fa-building text-teal-600 text-xl mb-1"></i>
+                                <span class="text-xs text-teal-700">Prospections</span>
+                            </a>
+                            <a href="{{ path('app_candidature_impressions') }}" class="flex flex-col items-center p-3 bg-green-50 rounded-lg hover:bg-green-100 transition">
+                                <i class="fas fa-print text-green-600 text-xl mb-1"></i>
+                                <span class="text-xs text-green-700">Impressions</span>
+                            </a>
+                            <a href="{{ path('app_candidature_stat', {'etablissement': etablissement.id}) }}" class="flex flex-col items-center p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition">
+                                <i class="fas fa-chart-bar text-purple-600 text-xl mb-1"></i>
+                                <span class="text-xs text-purple-700">Statistiques</span>
+                            </a> #}
+                        {% elseif is_candidat %}
+                            {# TODO: routes à recréer #}
+                            {# <a href="{{ path('app_candidature_new') }}" class="flex flex-col items-center p-3 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition">
+                                <i class="fas fa-plus-circle text-indigo-600 text-xl mb-1"></i>
+                                <span class="text-xs text-indigo-700">Nouvelle candidature</span>
+                            </a>
+                            <a href="{{ path('app_user_edit', {'id': app.user.id}) }}" class="flex flex-col items-center p-3 bg-green-50 rounded-lg hover:bg-green-100 transition">
+                                <i class="fas fa-user-edit text-green-600 text-xl mb-1"></i>
+                                <span class="text-xs text-green-700">Mon profil</span>
+                            </a>
+                            <a href="{{ path('app_candidature_impressions') }}" class="flex flex-col items-center p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition">
+                                <i class="fas fa-print text-purple-600 text-xl mb-1"></i>
+                                <span class="text-xs text-purple-700">Impressions</span>
+                            </a> #}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

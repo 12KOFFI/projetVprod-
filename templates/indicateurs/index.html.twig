@@ -1,0 +1,148 @@
+{# Indicateurs : écran de pilotage partagé, contenu réduit au périmètre du rôle. #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Indicateurs — VAE Côte d'Ivoire{% endblock %}
+
+{% block body %}
+{{ ui.bandeau('Indicateurs', perimetre, 'chart-column', synthese.total, 'dossier(s)') }}
+
+{# ===== Filtre national ===== #}
+{% if est_admin %}
+    <div class="bg-white rounded-lg border border-slate-200 p-5 mb-6">
+        <form method="get" class="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3">
+            <label for="filtre-centre" class="text-sm font-medium text-slate-700 sm:mr-1">Périmètre</label>
+            <select name="centre" id="filtre-centre" onchange="this.form.submit()"
+                    class="flex-1 min-w-[14rem] px-3.5 py-2.5 rounded-lg border border-slate-500 text-sm text-slate-700 bg-white
+                           focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition duration-200">
+                <option value="">Tous les centres</option>
+                {% for centre in centres %}
+                    <option value="{{ centre.id }}" {{ filtre_centre and filtre_centre.id == centre.id ? 'selected' : '' }}>
+                        {{ centre.nom }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            {% if filtre_centre %}
+                <a href="{{ path('app_indicateurs') }}"
+                   class="inline-flex min-h-[44px] items-center justify-center gap-2 px-4 rounded-lg text-sm font-medium
+                          text-slate-700 border border-slate-300 hover:bg-slate-50 transition duration-200">
+                    <i class="fas fa-rotate-left text-xs" aria-hidden="true"></i>Tous les centres
+                </a>
+            {% endif %}
+
+            <a href="{{ path('app_impressions') }}"
+               class="inline-flex min-h-[44px] items-center justify-center gap-2 px-4 rounded-lg text-sm font-medium
+                      text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition duration-200">
+                <i class="fas fa-file-export text-xs" aria-hidden="true"></i>Exporter depuis Impressions
+            </a>
+        </form>
+    </div>
+{% endif %}
+
+{# ===== Compteurs ===== #}
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
+    {{ ui.stat('Total dossiers', synthese.total, 'folder-open', 'indigo') }}
+    {{ ui.stat('Inscrits', synthese.inscrits, 'user-check', 'indigo') }}
+    {{ ui.stat('Recevables', synthese.recevables, 'circle-check', 'blue') }}
+    {{ ui.stat('Éligibles', synthese.eligibles, 'clipboard-check', 'blue') }}
+    {{ ui.stat('Admis définitifs', synthese.admis, 'award', 'green') }}
+</div>
+
+{# ===== Répartitions ===== #}
+<div class="grid grid-cols-1 lg:grid-cols-2 {{ est_admin ? 'xl:grid-cols-4' : 'xl:grid-cols-3' }} gap-6 mb-8">
+    {{ ui.graphique('Par statut', 'chart-pie', par_statut, null, 'Étape où se trouve chaque dossier') }}
+    {{ ui.graphique('Par sexe', 'venus-mars', par_sexe) }}
+    {{ ui.graphique('Par métier', 'screwdriver-wrench', par_metier) }}
+    {% if est_admin %}
+        {{ ui.graphique('Par direction régionale', 'map-location-dot', par_region) }}
+    {% endif %}
+</div>
+
+{# ===== Ventilations détaillées, administration seule ===== #}
+{% if est_admin %}
+    {# Répartition par centre #}
+    <div class="bg-white rounded-lg border border-slate-200 overflow-hidden mb-6">
+        <div class="px-6 py-5 border-b border-slate-200">
+            <h2 class="text-sm font-bold text-slate-800">Effectifs par centre</h2>
+            <p class="text-xs text-slate-600 mt-0.5">Tous statuts confondus</p>
+        </div>
+
+        {% if par_centre is not empty %}
+            <div class="divide-y divide-slate-100">
+                {% for centre, effectif in par_centre %}
+                    <div class="px-6 py-3 flex items-center justify-between gap-4">
+                        <span class="text-sm text-slate-700 truncate">{{ centre }}</span>
+                        <span class="text-sm font-semibold text-slate-900 tabular-nums shrink-0">{{ effectif }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            {{ ui.etat_vide('building', 'Aucun effectif', 'Aucun dossier n\'est rattaché à un centre pour le moment.') }}
+        {% endif %}
+    </div>
+
+    {# Tableau croisé centre × statut #}
+    <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <div class="px-6 py-5 border-b border-slate-200">
+            <h2 class="text-sm font-bold text-slate-800">Répartition par centre et par étape</h2>
+            <p class="text-xs text-slate-600 mt-0.5">
+                {{ tableau_croise.total_general }} dossier(s) au total
+            </p>
+        </div>
+
+        {% if tableau_croise.centres is not empty %}
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[900px]">
+                    <thead class="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            {{ ui.th('Centre') }}
+                            {% for statut in tableau_croise.statuts %}
+                                {{ ui.th(statut.libelle, 'text-center') }}
+                            {% endfor %}
+                            {{ ui.th('Total', 'text-center') }}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for ligne in tableau_croise.centres %}
+                            <tr class="hover:bg-slate-50/70 transition duration-200">
+                                <td class="px-4 py-3 text-sm font-medium text-slate-800">
+                                    {{ ligne.centre }}
+                                    {% if ligne.localite %}
+                                        <span class="block text-xs font-normal text-slate-600">{{ ligne.localite }}</span>
+                                    {% endif %}
+                                </td>
+                                {% for statut in tableau_croise.statuts %}
+                                    {% set effectif = ligne.effectifs[statut.value]|default(0) %}
+                                    <td class="px-4 py-3 text-sm text-center tabular-nums
+                                               {{ effectif > 0 ? 'font-semibold text-slate-900' : 'text-slate-600' }}">
+                                        {{ effectif }}
+                                    </td>
+                                {% endfor %}
+                                <td class="px-4 py-3 text-sm text-center font-bold text-indigo-700 tabular-nums">
+                                    {{ ligne.total }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="bg-slate-50 border-t border-slate-200">
+                        <tr>
+                            <td class="px-4 py-3 text-sm font-bold text-slate-800">Total</td>
+                            {% for statut in tableau_croise.statuts %}
+                                <td class="px-4 py-3 text-sm text-center font-bold text-slate-800 tabular-nums">
+                                    {{ tableau_croise.totaux[statut.value]|default(0) }}
+                                </td>
+                            {% endfor %}
+                            <td class="px-4 py-3 text-sm text-center font-bold text-indigo-700 tabular-nums">
+                                {{ tableau_croise.total_general }}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        {% else %}
+            {{ ui.etat_vide('chart-column', 'Aucune donnée', 'Le tableau se remplira dès les premiers dépôts de dossiers.') }}
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %}

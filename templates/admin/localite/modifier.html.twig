@@ -1,0 +1,8 @@
+{# Écran E2.2 : modification d'une localité. #}
+{% extends 'admin/_modifier.html.twig' %}
+
+{% set titre = 'Modifier une localité' %}
+{% set sous_titre = localite.libelle %}
+{% set icone = 'location-dot' %}
+{% set route_retour = 'app_admin_localite_index' %}
+{% set champs = ['directionRegionale', 'libelle'] %}

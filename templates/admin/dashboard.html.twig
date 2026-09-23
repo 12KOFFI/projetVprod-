@@ -1,0 +1,83 @@
+{# Tableau de bord national de l'administration : synthèse, répartitions, entonnoir. #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Tableau de bord — Administration VAE{% endblock %}
+
+{% block body %}
+{{ ui.bandeau(
+    'Administration VAE',
+    'Vue nationale du dispositif, tous centres confondus.',
+    'gauge',
+    synthese.total,
+    'dossier(s)',
+    [
+        { url: path('app_admin_candidature_index'), libelle: 'Voir les dossiers', icone: 'folder-open', principal: true },
+        { url: path('app_indicateurs'), libelle: 'Indicateurs', icone: 'chart-column' }
+    ]
+) }}
+
+{# ===== Compteurs : étapes franchies, en cumulé ===== #}
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
+    {{ ui.stat('Total dossiers', synthese.total, 'folder-open', 'indigo') }}
+    {{ ui.stat('Inscrits', synthese.inscrits, 'user-check', 'indigo') }}
+    {{ ui.stat('Recevables', synthese.recevables, 'circle-check', 'blue') }}
+    {{ ui.stat('Éligibles', synthese.eligibles, 'clipboard-check', 'blue') }}
+    {{ ui.stat('Admis définitifs', synthese.admis, 'award', 'green') }}
+</div>
+
+{# ===== Répartitions ===== #}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    {{ ui.graphique('Répartition par statut', 'chart-pie', par_statut, null, 'Étape où se trouve chaque dossier') }}
+    {{ ui.graphique('Répartition par sexe', 'venus-mars', par_sexe) }}
+    {{ ui.graphique('Cinq premiers centres', 'building', par_centre, null, 'Centres aux plus forts effectifs') }}
+</div>
+
+{# ===== Entonnoir du parcours ===== #}
+<div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+    <div class="px-6 py-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h2 class="text-sm font-bold text-slate-800">Entonnoir du parcours</h2>
+            <p class="text-xs text-slate-600 mt-0.5">Effectifs nationaux, étape par étape</p>
+        </div>
+        <a href="{{ path('app_indicateurs') }}"
+           class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium
+                  text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition duration-200 shrink-0">
+            <i class="fas fa-chart-column text-xs" aria-hidden="true"></i>Ventilation détaillée
+        </a>
+    </div>
+
+    {% set maximum = 1 %}
+    {% for etape in entonnoir %}
+        {% set maximum = etape.effectif > maximum ? etape.effectif : maximum %}
+    {% endfor %}
+
+    {% if synthese.total > 0 %}
+        <div class="p-6 space-y-3">
+            {% for etape in entonnoir %}
+                {% set largeur = maximum > 0 ? (etape.effectif * 100 / maximum)|round : 0 %}
+                <div>
+                    <div class="flex items-center justify-between gap-3 mb-1.5">
+                        <span class="text-xs font-medium text-slate-600">{{ etape.statut.libelle }}</span>
+                        <span class="text-xs font-bold text-slate-700 tabular-nums">{{ etape.effectif }}</span>
+                    </div>
+                    <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div class="h-full rounded-full
+                                    {% if etape.statut.couleur == 'green' %}bg-green-500
+                                    {% elseif etape.statut.couleur == 'red' %}bg-red-400
+                                    {% elseif etape.statut.couleur == 'amber' %}bg-amber-500
+                                    {% else %}bg-indigo-500{% endif %}"
+                             style="width: {{ largeur }}%"></div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        {{ ui.etat_vide(
+            'chart-column',
+            'Aucun dossier enregistré',
+            'Les effectifs apparaîtront ici dès le premier dépôt de candidature.'
+        ) }}
+    {% endif %}
+</div>
+{% endblock %}

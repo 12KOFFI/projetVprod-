@@ -1,0 +1,8 @@
+{# Écran E2.4 : modification d'un métier. #}
+{% extends 'admin/_modifier.html.twig' %}
+
+{% set titre = 'Modifier un métier' %}
+{% set sous_titre = metier.libelle %}
+{% set icone = 'screwdriver-wrench' %}
+{% set route_retour = 'app_admin_metier_index' %}
+{% set champs = ['filiere', 'libelle', 'statut'] %}

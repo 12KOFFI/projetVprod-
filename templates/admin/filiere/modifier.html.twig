@@ -1,0 +1,8 @@
+{# Écran E2.3 : modification d'une filière. #}
+{% extends 'admin/_modifier.html.twig' %}
+
+{% set titre = 'Modifier une filière' %}
+{% set sous_titre = filiere.libelle %}
+{% set icone = 'layer-group' %}
+{% set route_retour = 'app_admin_filiere_index' %}
+{% set champs = ['libelle'] %}

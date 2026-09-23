@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}VAE Côte d'Ivoire — Faites reconnaître votre expérience{% endblock %}</title>
+
+    {% block meta %}
+    <meta name="author" content="DAIP — Direction de l'Apprentissage et de l'Insertion Professionnelle">
+    <meta name="description" content="La Validation des Acquis de l'Expérience permet au maître artisan d'obtenir un CQP ou un CAP à partir de son expérience professionnelle. Inscription en ligne ou accompagnée en centre.">
+    <meta name="keywords" content="VAE, Côte d'Ivoire, DAIP, validation des acquis, CQP, CAP, maître artisan, certification">
+    {% endblock %}
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --vae-indigo: #0B669D;
+            --vae-blue-dark: #012F5F;
+            --vae-ink: #1e293b;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+        }
+
+        /* Les surfaces que le navigateur dessine à notre place font aussi
+           partie de la charte : on les teinte plutôt que de les laisser
+           aux réglages par défaut. */
+        ::selection {
+            background-color: #DEEFF8;
+            color: #012F5F;
+        }
+
+        html {
+            scrollbar-color: #B9DDED #f8fafc;
+            scrollbar-width: thin;
+        }
+
+        ::-webkit-scrollbar { width: 12px; height: 12px; }
+        ::-webkit-scrollbar-track { background: #f8fafc; }
+        ::-webkit-scrollbar-thumb {
+            background: #B9DDED;
+            border-radius: 9999px;
+            border: 3px solid #f8fafc;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: #8DC4DE; }
+
+        :focus-visible {
+            outline: 2px solid var(--vae-indigo);
+            outline-offset: 3px;
+            border-radius: 4px;
+        }
+
+        input { caret-color: var(--vae-indigo); }
+
+        a { text-underline-offset: 3px; }
+
+        /* Les données chiffrées s'alignent en colonne. */
+        .tabular { font-variant-numeric: tabular-nums; }
+
+        [x-cloak] { display: none !important; }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+
+    {% block stylesheets %}{{ encore_entry_link_tags('app') }}{% endblock %}
+</head>
+<body class="bg-white text-slate-700 antialiased">
+
+    <a href="#contenu"
+       class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:rounded-lg focus:font-semibold">
+        Aller au contenu principal
+    </a>
+
+    {% include 'public/_header.html.twig' %}
+
+    <main id="contenu">
+        {% block body %}{% endblock %}
+    </main>
+
+    {% include 'public/_footer.html.twig' %}
+
+    {% block javascripts %}
+        {{ encore_entry_script_tags('app') }}
+    {% endblock %}
+</body>
+</html>

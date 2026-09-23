@@ -1,0 +1,45 @@
+{# Écran E4.6 : dossiers INSCRIT dont ce conseiller a la charge, à décider en recevabilité. #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% set filtres = { '': 'Tous', '0': 'En attente', '2': 'Recevable', '1': 'Non recevable' } %}
+{% set filtre_valeur = filtre_rec_statut is null ? '' : filtre_rec_statut %}
+
+{% block title %}Mes dossiers inscrits — Conseiller VAE{% endblock %}
+
+{% block body %}
+<form method="get" class="mb-4 rounded-lg border border-slate-200 bg-white p-4 sm:p-5 flex flex-wrap items-end gap-3">
+    <div>
+        <label for="filtre-rec-statut" class="mb-1.5 block text-sm font-medium text-slate-700">Recevabilité</label>
+        <select id="filtre-rec-statut" name="rec_statut" onchange="this.form.submit()"
+                class="min-h-[44px] rounded-lg border border-slate-500 bg-white px-3 py-2.5 text-sm text-slate-900
+                       transition duration-150 motion-reduce:transition-none
+                       focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600">
+            {% for valeur, libelle in filtres %}
+                <option value="{{ valeur }}" {{ filtre_valeur == valeur ? 'selected' : '' }}>{{ libelle }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% if filtre_rec_statut is not null %}
+        <a href="{{ path('app_conseiller_mes_analyses') }}"
+           class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700
+                  transition duration-150 motion-reduce:transition-none hover:bg-slate-50
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+            <i class="fas fa-rotate-left text-xs" aria-hidden="true"></i>Réinitialiser
+        </a>
+    {% endif %}
+</form>
+
+{{ include('conseiller/_liste_export.html.twig', {
+    candidatures: candidatures,
+    titre: 'Mes dossiers inscrits',
+    sous_titre: 'Dossiers dont vous avez la charge, inscrits et prêts pour la décision de recevabilité.',
+    icone: 'gavel',
+    route: 'app_conseiller_mes_analyses',
+    colonne_decision: 'recevabilite',
+    action_libelle: 'Analyser le dossier',
+    vide_titre: 'Aucun dossier inscrit',
+    vide_texte: 'Aucun de vos dossiers n\'est actuellement inscrit.',
+    export: false
+}) }}
+{% endblock %}

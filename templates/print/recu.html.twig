@@ -1,0 +1,151 @@
+{#
+    Reçu remis après chaque règlement abouti (F5.9).
+
+    Rendu par Dompdf : CSS autonome, mise en page par tableaux.
+#}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Reçu {{ paiement.referencePaiement }}</title>
+    <style>
+        @page { margin: 16mm 14mm; }
+
+        body { font-family: DejaVu Sans, sans-serif; font-size: 9.5pt; color: #1e293b; margin: 0; }
+
+        .bandeau {
+            background-color: #16a34a;
+            color: #ffffff;
+            padding: 14px 16px;
+        }
+
+        .bandeau .republique { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 1px; opacity: .85; }
+        .bandeau h1 { font-size: 15pt; margin: 6px 0 2px; }
+        .bandeau .organisme { font-size: 8pt; opacity: .85; }
+
+        .montant-bloc {
+            border: 2px solid #16a34a;
+            padding: 12px 14px;
+            margin: 16px 0 18px;
+            text-align: center;
+        }
+
+        .montant-bloc .intitule {
+            font-size: 7.5pt;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
+        }
+
+        .montant-bloc .valeur { font-size: 19pt; font-weight: bold; color: #16a34a; margin-top: 4px; }
+        .montant-bloc .objet { font-size: 8.5pt; color: #475569; margin-top: 4px; }
+
+        h2 {
+            font-size: 9pt;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            color: #16a34a;
+            border-bottom: 1px solid #bbf7d0;
+            padding-bottom: 4px;
+            margin: 16px 0 8px;
+        }
+
+        table.infos { width: 100%; border-collapse: collapse; }
+        table.infos td { padding: 5px 4px; vertical-align: top; border-bottom: 1px solid #e2e8f0; }
+        table.infos td.libelle { color: #64748b; width: 38%; font-size: 8.5pt; }
+        table.infos td.valeur { font-weight: bold; }
+        .mono { font-family: DejaVu Sans Mono, monospace; }
+
+        .mention {
+            margin-top: 18px;
+            padding: 10px 12px;
+            background-color: #f0fdf4;
+            border-left: 3px solid #16a34a;
+            font-size: 8pt;
+            line-height: 1.5;
+        }
+
+        .pied {
+            margin-top: 22px;
+            padding-top: 8px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 7pt;
+            color: #94a3b8;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="bandeau">
+        <div class="republique">République de Côte d'Ivoire — Union · Discipline · Travail</div>
+        <h1>Reçu de paiement</h1>
+        <div class="organisme">
+            Direction de l'Apprentissage et de l'Insertion Professionnelle —
+            Validation des Acquis de l'Expérience
+        </div>
+    </div>
+
+    <div class="montant-bloc">
+        <div class="intitule">Montant réglé</div>
+        <div class="valeur">{{ paiement.montant|number_format(0, ',', ' ') }} FCFA</div>
+        <div class="objet">{{ paiement.type.libelle }}</div>
+    </div>
+
+    <h2>Candidat</h2>
+    <table class="infos">
+        <tr>
+            <td class="libelle">Nom et prénoms</td>
+            <td class="valeur">{{ candidat ? candidat.nomComplet : '—' }}</td>
+        </tr>
+        <tr>
+            <td class="libelle">Numéro d'inscription</td>
+            <td class="valeur mono">{{ candidature.numero }}</td>
+        </tr>
+        <tr>
+            <td class="libelle">Métier</td>
+            <td class="valeur">{{ candidature.metier ? candidature.metier.libelle : '—' }}</td>
+        </tr>
+        <tr>
+            <td class="libelle">Centre</td>
+            <td class="valeur">{{ candidature.centre ? candidature.centre.nom : '—' }}</td>
+        </tr>
+    </table>
+
+    <h2>Détail du règlement</h2>
+    <table class="infos">
+        <tr>
+            <td class="libelle">Référence</td>
+            <td class="valeur mono">{{ paiement.referencePaiement ?: '—' }}</td>
+        </tr>
+        <tr>
+            <td class="libelle">Identifiant de transaction</td>
+            <td class="valeur mono">{{ paiement.identifiantExterne ?: '—' }}</td>
+        </tr>
+        <tr>
+            <td class="libelle">Moyen de paiement</td>
+            <td class="valeur">{{ paiement.moyenPaiement ? paiement.moyenPaiement.libelle : '—' }}</td>
+        </tr>
+        <tr>
+            <td class="libelle">Date du règlement</td>
+            <td class="valeur">
+                {{ paiement.datePaiement ? paiement.datePaiement|date('d/m/Y à H\\hi') : '—' }}
+            </td>
+        </tr>
+        <tr>
+            <td class="libelle">Statut</td>
+            <td class="valeur">{{ paiement.statut.libelle }}</td>
+        </tr>
+    </table>
+
+    <div class="mention">
+        Ce reçu atteste du règlement des {{ paiement.type.libelle|lower }} pour le dossier
+        {{ candidature.numero }}. Conservez-le : il pourra vous être demandé aux étapes
+        suivantes de votre parcours.
+    </div>
+
+    <div class="pied">
+        Document édité le {{ edite_le|date('d/m/Y à H\\hi') }} —
+        plateforme VAE Côte d'Ivoire (DAIP).
+    </div>
+</body>
+</html>

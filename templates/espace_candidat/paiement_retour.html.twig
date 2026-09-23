@@ -1,0 +1,119 @@
+{# Écran E5.3 : retour de la passerelle (F5.6). #}
+{% extends 'base_dashboard.html.twig' %}
+
+{% set statut = paiement.statut %}
+{% set reussi = statut.value == 'reussi' %}
+{% set attente = statut.value == 'en_attente' %}
+
+{% block title %}{{ reussi ? 'Règlement confirmé' : 'Suite de votre règlement' }} — VAE Côte d'Ivoire{% endblock %}
+
+{% block body %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        {# ===== Issue du règlement ===== #}
+        {#
+            Fond teinté clair et texte foncé : l'ancien texte blanc sur dégradé ambre
+            ne donnait qu'environ 2:1. Ici, -900 sur -50 dépasse 10:1 dans les trois cas.
+        #}
+        <div class="border-b px-6 py-10 text-center
+                    {% if reussi %}border-green-200 bg-green-50 text-green-900
+                    {% elseif attente %}border-amber-200 bg-amber-50 text-amber-900
+                    {% else %}border-red-200 bg-red-50 text-red-900{% endif %}">
+
+            <div class="relative z-10">
+                <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-lg text-white
+                            {% if reussi %}bg-green-600{% elseif attente %}bg-amber-600{% else %}bg-red-600{% endif %}">
+                    <i class="fas fa-{% if reussi %}check{% elseif attente %}hourglass-half{% else %}xmark{% endif %} text-2xl" aria-hidden="true"></i>
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight md:text-3xl">
+                    {% if reussi %}
+                        Règlement confirmé
+                    {% elseif attente %}
+                        Règlement en cours de traitement
+                    {% else %}
+                        Le règlement n'a pas abouti
+                    {% endif %}
+                </h1>
+                <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed
+                          {% if reussi %}text-green-800{% elseif attente %}text-amber-800{% else %}text-red-800{% endif %}">
+                    {% if reussi %}
+                        {{ paiement.type.libelle }} — {{ paiement.montant|number_format(0, ',', ' ') }} FCFA
+                    {% elseif attente %}
+                        Votre règlement est en attente de confirmation par l'établissement payeur.
+                    {% else %}
+                        Aucun montant n'a été débité. Vous pouvez réessayer.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <dl class="divide-y divide-slate-100">
+            <div class="px-6 py-4 flex items-center justify-between gap-3">
+                <dt class="text-xs text-slate-600">Référence</dt>
+                <dd class="text-sm font-mono text-slate-700">{{ paiement.referencePaiement ?: '—' }}</dd>
+            </div>
+            <div class="px-6 py-4 flex items-center justify-between gap-3">
+                <dt class="text-xs text-slate-600">Moyen de paiement</dt>
+                <dd class="text-sm text-slate-700">
+                    {{ paiement.moyenPaiement ? paiement.moyenPaiement.libelle : '—' }}
+                </dd>
+            </div>
+            {% if paiement.datePaiement %}
+                <div class="px-6 py-4 flex items-center justify-between gap-3">
+                    <dt class="text-xs text-slate-600">Date</dt>
+                    <dd class="text-sm text-slate-700">{{ paiement.datePaiement|date('d/m/Y à H\\hi') }}</dd>
+                </div>
+            {% endif %}
+            <div class="px-6 py-4 flex items-center justify-between gap-3">
+                <dt class="text-xs text-slate-600">Statut du dossier</dt>
+                <dd>{{ include('partials/_statut_badge.html.twig', { statut: statut_candidature(candidature) }) }}</dd>
+            </div>
+        </dl>
+
+        {# La fiche d'inscription est la contrepartie du 1er règlement (F5.8). #}
+        {% if reussi and fiche_disponible %}
+            <div class="px-6 py-5 bg-green-50 border-t border-green-200">
+                <div class="flex items-start gap-3">
+                    <i class="fas fa-file-circle-check text-green-500 mt-0.5"></i>
+                    <div>
+                        <p class="text-sm font-semibold text-green-900">Votre inscription est définitive</p>
+                        <p class="text-xs text-green-800 mt-1 leading-relaxed">
+                            Votre fiche d'inscription est désormais disponible dans votre espace.
+                            Téléchargez-la et conservez-la précieusement.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="px-6 py-5 flex flex-col sm:flex-row gap-3">
+            {% if reussi %}
+                {% if fiche_disponible %}
+                    <a href="{{ path('app_candidat_fiche_inscription') }}" target="_blank" rel="noopener"
+                       class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white
+                              bg-indigo-600 hover:bg-indigo-700 transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                        <i class="fas fa-file-pdf text-xs"></i>Ma fiche d'inscription
+                    </a>
+                {% endif %}
+                <a href="{{ path('app_candidat_paiement_recu', {id: paiement.id}) }}" target="_blank" rel="noopener"
+                   class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium
+                          text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 transition duration-200">
+                    <i class="fas fa-receipt text-xs"></i>Mon reçu
+                </a>
+            {% elseif not attente %}
+                <a href="{{ path('app_candidat_paiement_payer', {type: paiement.type.value}) }}"
+                   class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white
+                          bg-indigo-600 hover:bg-indigo-700 transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                    <i class="fas fa-rotate-right text-xs"></i>Réessayer
+                </a>
+            {% endif %}
+
+            <a href="{{ path('app_candidat_paiements') }}"
+               class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium
+                      text-slate-600 bg-slate-100 hover:bg-slate-200 transition duration-200">
+                Mes paiements
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

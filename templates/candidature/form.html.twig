@@ -1,0 +1,1207 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nouvelle candidature | DAIP{% endblock %}
+
+{# Définition de la classe CSS réutilisable #}
+{% set input_class = 'w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition' %}
+{% set is_edit_page = app.request.attributes.get('_route') == 'app_candidature_edit' %}
+
+{% block body %}
+
+{# Flash messages #}
+{% for label, messages in app.flashes %}
+
+    {% for message in messages %}
+        <div class="mb-4 p-4 rounded-lg border
+            {% if label == 'error' %}
+                bg-red-50 border-red-200 text-red-800
+            {% elseif label == 'success' %}
+                bg-green-50 border-green-200 text-green-800
+            {% else %}
+                bg-blue-50 border-blue-200 text-blue-800
+            {% endif %}
+        ">
+            {{ message|raw }}
+        </div>
+    {% endfor %}
+{% endfor %}
+
+
+<div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-8 mb-8 text-white">
+    <div class="flex items-center gap-4 mb-4">
+        <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+            <i class="fas fa-file-alt text-3xl"></i>
+        </div>
+        <div>
+            <h1 class="text-2xl font-bold">
+                {% if is_edit_page %}Modification de candidature{% else %}Nouvelle candidature{% endif %}
+            </h1>
+            <p class="text-white/80">
+                {% if is_edit_page %}Mettez a jour les informations de la candidature de facon claire et complete.{% else %}Vous etes sur le point de postuler a une formation{% endif %}
+            </p>
+        </div>
+    </div>
+    
+    <!-- Informations du candidat -->
+    {% if app.user %}
+        {% if is_granted('ROLE_ENT') and is_edit_page and candidature is defined %}
+            <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                    <p class="text-sm font-semibold text-white/80 mb-3 flex items-center">
+                        <i class="fas fa-user-graduate mr-2"></i>
+                        Informations du candidat
+                    </p>
+                    <div class="space-y-3">
+                        <div class="bg-white/10 rounded-lg px-3 py-2">
+                            <p class="text-xs uppercase tracking-wide text-white/70">Nom du candidat</p>
+                            <p class="text-sm font-semibold text-white mt-1">{{ candidature.user ? (candidature.user.nom ~ ' ' ~ candidature.user.prenoms)|trim : 'Non renseigne' }}</p>
+                        </div>
+                        <div class="bg-white/10 rounded-lg px-3 py-2">
+                            <p class="text-xs uppercase tracking-wide text-white/70">Numero de candidature</p>
+                            <p class="text-sm font-semibold text-white mt-1">{{ candidature.numero|default('Non attribue') }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                    <p class="text-sm font-semibold text-white/80 mb-3 flex items-center">
+                        <i class="fas fa-file-signature mr-2"></i>
+                        Informations de la candidature
+                    </p>
+                    <div class="space-y-3">
+                        <div class="bg-white/10 rounded-lg px-3 py-2">
+                            <p class="text-xs uppercase tracking-wide text-white/70">Etablissement choisi</p>
+                            <p class="text-sm font-semibold text-white mt-1">{{ candidature.etablissement ? candidature.etablissement.nom : 'Non renseigne' }}</p>
+                        </div>
+                        <div class="bg-white/10 rounded-lg px-3 py-2">
+                            <p class="text-xs uppercase tracking-wide text-white/70">Metier choisi</p>
+                            <p class="text-sm font-semibold text-white mt-1">{{ candidature.metier ? candidature.metier.nom : 'Non renseigne' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 mt-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-white/80">Candidat</p>
+                        <p class="font-semibold">{{ app.user.nom }} {{ app.user.prenoms }}</p>
+                    </div>
+
+                    {# Calcul et affichage de l'âge #}
+                    {% if app.user.datenaissance %}
+                        {% set age = date().diff(date(app.user.datenaissance)).y %}
+                        <div class="ml-4 px-3 py-1 bg-white/20 rounded-full">
+                            <span class="text-sm">
+                                <i class="fas fa-birthday-cake mr-1"></i>
+                                {{ age }} ans
+                            </span>
+                        </div>
+                    {% endif %}
+
+                    <div class="ml-auto">
+                        <span class="px-3 py-1 bg-white/20 rounded-full text-sm">{{ app.user.email }}</span>
+                        <span class="ml-2 px-3 py-1 bg-indigo-500 rounded-full text-xs">
+                            {% if is_granted('ROLE_ADMIN') %}ADMIN
+                            {% elseif is_granted('ROLE_ENT') %}ENT
+                            {% elseif is_granted('ROLE_JURY') %}JURY
+                            {% elseif is_granted('ROLE_CANDIDAT') %}CANDIDAT
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% endif %}
+    
+    {# Vérification d'âge #}
+    {% if app.user and app.user.datenaissance %}
+        {% set age = date().diff(date(app.user.datenaissance)).y %}
+        {% if age < 16 or age > 40 %}
+            <div class="mt-4 bg-red-500/20 backdrop-blur-sm border border-red-500/30 rounded-xl p-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-red-500/30 rounded-full flex items-center justify-center">
+                        <i class="fas fa-exclamation-triangle text-red-300"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-white">Âge non conforme</p>
+                        <p class="text-sm text-white/80">
+                            {% if age < 16 %}
+                                Vous avez {{ age }} ans. L'âge minimum requis pour candidater est de 16 ans.
+                            {% elseif age > 40 %}
+                                Vous avez {{ age }} ans. L'âge maximum autorisé pour candidater est de 40 ans.
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+
+<div class="max-w-7xl mx-auto px-4 pb-16 {{ is_edit_page ? 'pt-2' : '' }}">
+    {% include 'partials/_flash_messages.html.twig' %}
+
+    {% if is_edit_page and candidature is defined and candidature.id %}
+
+        {# ===== PARTIE 1 : MISE À JOUR DES INFORMATIONS ===== #}
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden mb-8">
+            <div class="p-6 md:p-8">
+                <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-4 md:p-5 mb-8">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                        <div>
+                            <p class="text-sm font-semibold text-indigo-800 flex items-center">
+                                <i class="fas fa-edit mr-2"></i> Partie 1 — Mise à jour des informations
+                            </p>
+                            <p class="text-sm text-indigo-700 mt-1">Modifiez les informations du candidat, le métier et les documents.</p>
+                        </div>
+                        <span class="inline-flex items-center px-3 py-1 rounded-full bg-white text-indigo-700 text-sm font-semibold border border-indigo-200">
+                            N° {{ candidature.numero|default('Non attribué') }}
+                        </span>
+                    </div>
+                </div>
+
+                <form id="form-update-info" action="{{ path('app_candidature_update_info', {id: candidature.id}) }}" method="POST" enctype="multipart/form-data" class="space-y-10">
+                    <input type="hidden" name="_token" value="{{ csrf_token('candidature_update_info_' ~ candidature.id) }}">
+
+                    {# Identité du candidat (ENT/ADMIN) #}
+                    {% if is_granted('ROLE_ENT') or is_granted('ROLE_ADMIN') %}
+                        <div class="rounded-xl border border-orange-200 bg-orange-50 p-5">
+                            <h3 class="text-base font-semibold text-orange-800 mb-4 flex items-center">
+                                <div class="w-7 h-7 bg-orange-200 rounded-lg flex items-center justify-center mr-2">
+                                    <i class="fas fa-user-edit text-orange-700 text-sm"></i>
+                                </div>
+                                Identité du candidat
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Nom <span class="text-red-500">*</span></label>
+                                    <input type="text" name="nom" value="{{ candidature.user ? candidature.user.nom : '' }}" class="{{ input_class }}" placeholder="Nom de famille">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Prénom(s) <span class="text-red-500">*</span></label>
+                                    <input type="text" name="prenoms" value="{{ candidature.user ? candidature.user.prenoms : '' }}" class="{{ input_class }}" placeholder="Prénom(s)">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Contact (téléphone)</label>
+                                    <input type="text" name="contact" value="{{ candidature.user ? candidature.user.contact : '' }}" class="{{ input_class }}" placeholder="Ex: 0102030405">
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {# Formation souhaitée #}
+                    <h3 class="text-lg font-semibold text-indigo-800 flex items-center border-b pb-3 mb-5">
+                        <div class="w-8 h-8 bg-indigo-200 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-graduation-cap text-indigo-700"></i>
+                        </div>
+                        Formation souhaitée
+                    </h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Établissement <span class="text-red-500">*</span></label>
+                            <div class="{{ input_class }} bg-slate-100 text-slate-600 cursor-default flex items-center gap-2">
+                                <i class="fas fa-lock text-slate-400 text-xs"></i>
+                                {{ candidature.etablissement ? candidature.etablissement.nom : 'Non renseigné' }}
+                            </div>
+                            <input type="hidden" id="candidature_etablissement" value="{{ candidature.etablissement ? candidature.etablissement.id : '' }}">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Métier <span class="text-red-500">*</span></label>
+                            <select name="metier_id" id="candidature_metier" required class="{{ input_class }}">
+                                {% if candidature.metier %}
+                                    <option value="{{ candidature.metier.id }}" selected>{{ candidature.metier.nom }}</option>
+                                {% else %}
+                                    <option value="">-- Sélectionnez un métier --</option>
+                                {% endif %}
+                            </select>
+                            <div id="metier-loading" class="hidden text-sm text-indigo-600 mt-1">
+                                <i class="fas fa-spinner fa-spin mr-1"></i> Chargement...
+                            </div>
+                        </div>
+                    </div>
+
+                    {# Informations détaillées du métier #}
+                    <div id="metier-info" class="hidden mt-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div class="flex items-center gap-3 p-2 bg-indigo-100 rounded-lg">
+                                <i class="fas fa-building text-indigo-600"></i>
+                                <div>
+                                    <p class="text-xs text-indigo-600">Secteur</p>
+                                    <p id="metier-secteur" class="text-sm font-medium">-</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 p-2 bg-purple-100 rounded-lg">
+                                <i class="fas fa-users text-purple-600"></i>
+                                <div>
+                                    <p class="text-xs text-purple-600">Places</p>
+                                    <p id="metier-nbrplace" class="text-sm font-medium">-</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 p-2 bg-green-100 rounded-lg">
+                                <i class="fas fa-graduation-cap text-green-600"></i>
+                                <div>
+                                    <p class="text-xs text-green-600">Niveau</p>
+                                    <p id="metier-niveau" class="text-sm font-medium">-</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 p-2 bg-amber-100 rounded-lg">
+                                <i class="fas fa-clock text-amber-600"></i>
+                                <div>
+                                    <p class="text-xs text-amber-600">Durée</p>
+                                    <p id="metier-duree" class="text-sm font-medium">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {# Documents #}
+                    <h3 class="text-lg font-semibold text-purple-800 mb-5 flex items-center border-b pb-3">
+                        <div class="w-8 h-8 bg-purple-200 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-cloud-upload-alt text-purple-700"></i>
+                        </div>
+                        Documents à télécharger <span class="text-red-500"> *</span>
+                    </h3>
+
+                    {% include 'partials/_document_upload_plain.html.twig' with {
+                        'candidature': candidature,
+                        'document_labels': document_labels,
+                        'input_class': input_class
+                    } %}
+
+                    {# Bouton Mise à jour #}
+                    <div class="flex flex-col md:flex-row justify-between items-center gap-4 pt-6 border-t border-slate-200">
+                        <div class="text-sm text-slate-500">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Les champs marqués d'une <span class="text-red-500">*</span> sont obligatoires
+                        </div>
+                        <button type="submit" class="px-8 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 transition transform hover:scale-105 shadow-lg flex items-center">
+                            <i class="fas fa-save mr-2"></i>
+                            Mise à jour
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {# ===== PARTIE 2 : ANALYSE DU DOSSIER ===== #}
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+            <div class="p-6 md:p-8">
+                {{ form_start(form, {'attr': {'class': 'space-y-10', 'id': 'candidature-form'}}) }}
+
+                    <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 md:p-5 mb-4">
+                        <p class="text-sm font-semibold text-amber-800 flex items-center">
+                            <i class="fas fa-clipboard-list mr-2"></i>
+                            Partie 2 — Analyse du dossier
+                        </p>
+                        <p class="text-sm text-amber-700 mt-1">Étudiez le dossier, évaluez le candidat et enregistrez le résultat.</p>
+                    </div>
+
+                    {% include 'partials/_candidature_evaluation_sections.html.twig' %}
+
+                    <div class="flex flex-col md:flex-row justify-between items-center gap-4 pt-6 border-t border-slate-200">
+                        <div class="text-sm text-slate-500">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Les champs marqués d'une <span class="text-red-500">*</span> sont obligatoires
+                        </div>
+                        <button type="submit" class="px-8 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 transition transform hover:scale-105 shadow-lg flex items-center">
+                            <i class="fas fa-paper-plane mr-2"></i>
+                            Enregistrer l'évaluation
+                        </button>
+                    </div>
+
+                {{ form_end(form) }}
+            </div>
+        </div>
+
+    {% else %}
+
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+        <div class="p-6 md:p-8">
+            {{ form_start(form, {'attr': {'class': 'space-y-10', 'enctype': 'multipart/form-data', 'id': 'candidature-form'}}) }}
+
+            {% if is_edit_page and candidature is defined %}
+                <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-4 md:p-5">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                        <div>
+                            <p class="text-sm font-semibold text-indigo-800">Edition de candidature</p>
+                            <p class="text-sm text-indigo-700 mt-1">Verifiez les informations puis mettez a jour les documents si necessaire.</p>
+                        </div>
+                        <span class="inline-flex items-center px-3 py-1 rounded-full bg-white text-indigo-700 text-sm font-semibold border border-indigo-200">
+                            N° {{ candidature.numero|default('Non attribue') }}
+                        </span>
+                    </div>
+                </div>
+            {% endif %}
+
+            {# Section : Identité du candidat (visible ENT / ADMIN en mode édition) #}
+            {% if is_edit_page and (is_granted('ROLE_ENT') or is_granted('ROLE_ADMIN')) and form.nom is defined %}
+                <div class="rounded-xl border border-orange-200 bg-orange-50 p-5">
+                    <h3 class="text-base font-semibold text-orange-800 mb-4 flex items-center">
+                        <div class="w-7 h-7 bg-orange-200 rounded-lg flex items-center justify-center mr-2">
+                            <i class="fas fa-user-edit text-orange-700 text-sm"></i>
+                        </div>
+                        Identité du candidat
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                                Nom <span class="text-red-500">*</span>
+                            </label>
+                            {{ form_widget(form.nom, {'attr': {'class': input_class, 'placeholder': 'Nom de famille'}}) }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                                Prénom(s) <span class="text-red-500">*</span>
+                            </label>
+                            {{ form_widget(form.prenoms, {'attr': {'class': input_class, 'placeholder': 'Prénom(s)'}}) }}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- SECTION 1: TOUS LES UTILISATEURS - Formation souhaitée -->
+            <h3 class="text-lg font-semibold text-indigo-800 flex items-center border-b pb-3 mb-5">
+                <div class="w-8 h-8 bg-indigo-200 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-graduation-cap text-indigo-700"></i>
+                </div>
+                Formation souhaitée
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                        Établissement <span class="text-red-500">*</span>
+                    </label>
+                    {% if is_edit_page and candidature is defined and candidature.etablissement %}
+                        {# En mode édition : établissement fixe (lecture seule) #}
+                        <div class="{{ input_class }} bg-slate-100 text-slate-600 cursor-default flex items-center gap-2">
+                            <i class="fas fa-lock text-slate-400 text-xs"></i>
+                            {{ candidature.etablissement.nom }}
+                        </div>
+                        {# Champ caché pour maintenir la valeur lors de la soumission #}
+                        {{ form_widget(form.etablissement, {'attr': {'class': 'hidden', 'id': 'candidature_etablissement'}}) }}
+                    {% else %}
+                        {{ form_widget(form.etablissement, {'attr': {'class': input_class, 'id': 'candidature_etablissement'}}) }}
+                    {% endif %}
+                    <div id="etablissement-loading" class="hidden text-sm text-indigo-600 mt-1">
+                        <i class="fas fa-spinner fa-spin mr-1"></i> Chargement...
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                        Métier <span class="text-red-500">*</span>
+                    </label>
+                    {{ form_widget(form.metier, {'attr': {'class': input_class, 'id': 'candidature_metier'}}) }}
+                    <div id="metier-loading" class="hidden text-sm text-indigo-600 mt-1">
+                        <i class="fas fa-spinner fa-spin mr-1"></i> Chargement...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informations détaillées du métier -->
+            <div id="metier-info" class="hidden mt-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="flex items-center gap-3 p-2 bg-indigo-100 rounded-lg">
+                        <i class="fas fa-building text-indigo-600"></i>
+                        <div>
+                            <p class="text-xs text-indigo-600">Secteur</p>
+                            <p id="metier-secteur" class="text-sm font-medium">-</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-2 bg-purple-100 rounded-lg">
+                        <i class="fas fa-users text-purple-600"></i>
+                        <div>
+                            <p class="text-xs text-purple-600">Places</p>
+                            <p id="metier-nbrplace" class="text-sm font-medium">-</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-2 bg-green-100 rounded-lg">
+                        <i class="fas fa-graduation-cap text-green-600"></i>
+                        <div>
+                            <p class="text-xs text-green-600">Niveau</p>
+                            <p id="metier-niveau" class="text-sm font-medium">-</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-2 bg-amber-100 rounded-lg">
+                        <i class="fas fa-clock text-amber-600"></i>
+                        <div>
+                            <p class="text-xs text-amber-600">Durée</p>
+                            <p id="metier-duree" class="text-sm font-medium">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2: DOCUMENTS -->
+            <h3 class="text-lg font-semibold text-purple-800 mb-5 flex items-center border-b pb-3">
+                <div class="w-8 h-8 bg-purple-200 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-cloud-upload-alt text-purple-700"></i>
+                </div>
+                Documents à télécharger <span class="text-red-500"> *</span>
+            </h3>
+            
+            {% include 'partials/_document_upload.html.twig' with {
+                'form': form,
+                'document_labels': document_labels,
+                'input_class': input_class
+            } %}
+
+            <!-- SECTION 3: POUR ENT ET ADMIN - Étude de dossier -->
+            {% if is_granted('ROLE_ENT') or is_granted('ROLE_ADMIN') %}
+                <h3 class="text-lg font-semibold text-amber-800 mb-5 flex items-center border-b pb-3">
+                    <div class="w-8 h-8 bg-amber-200 rounded-lg flex items-center justify-center mr-3">
+                        <i class="fas fa-clipboard-check text-amber-700"></i>
+                    </div>
+                    Étude de dossier (ENT)
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Statut dossier</label>
+                        {{ form_widget(form.etustatut, {'attr': {'class': input_class}}) }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Commentaire</label>
+                        {{ form_widget(form.etucom, {'attr': {'class': input_class, 'placeholder': 'Commentaire sur le dossier...'}}) }}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- SECTION 4: POUR JURY ET ADMIN - Évaluation entretien -->
+            {% if is_granted('ROLE_JURY') or is_granted('ROLE_ADMIN') %}
+                <h3 class="text-lg font-semibold text-blue-800 mb-5 flex items-center border-b pb-3">
+                    <div class="w-8 h-8 bg-blue-200 rounded-lg flex items-center justify-center mr-3">
+                        <i class="fas fa-microphone-alt text-blue-700"></i>
+                    </div>
+                    Évaluation entretien (Jury)
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Date entretien</label>
+                        {{ form_widget(form.entdate, {'attr': {'class': input_class}}) }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Lieu entretien</label>
+                        {{ form_widget(form.entlieu, {'attr': {'class': input_class, 'placeholder': 'Ex: Salle 101'}}) }}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Jury n°</label>
+                        {{ form_widget(form.jury, {'attr': {'class': input_class, 'min': 1, 'max': 20}}) }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Vague</label>
+                        {{ form_widget(form.vague, {'attr': {'class': input_class, 'min': 1}}) }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Décision jury</label>
+                        {{ form_widget(form.entstatut, {'attr': {'class': input_class}}) }}
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Commentaire entretien</label>
+                    {{ form_widget(form.entcom, {'attr': {'class': input_class, 'rows': 3, 'placeholder': "Observations sur l'entretien..."}}) }}
+                </div>
+            {% endif %}
+
+            <!-- SECTION 4bis: GRILLE D'ÉVALUATION DYNAMIQUE -->
+            {% if (is_granted('ROLE_ENT') or is_granted('ROLE_ADMIN') or is_granted('ROLE_JURY')) and candidature is defined and candidature.id %}
+                <div id="evaluation-section">
+                    <h3 class="text-lg font-semibold text-indigo-800 mb-5 flex items-center border-b pb-3">
+                        <div class="w-8 h-8 bg-indigo-200 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-clipboard-check text-indigo-700"></i>
+                        </div>
+                        Évaluation de l'entretien
+                    </h3>
+
+                    {% if is_granted('ROLE_ENT') %}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Date entretien</label>
+                                {{ form_widget(form.entdate, {'attr': {'class': input_class}}) }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Lieu entretien</label>
+                                {{ form_widget(form.entlieu, {'attr': {'class': input_class, 'placeholder': 'Ex: Salle 101'}}) }}
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Numéro du jury</label>
+                                {{ form_widget(form.jury, {'attr': {'class': input_class, 'min': 1, 'max': 20}}) }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Vague</label>
+                                {{ form_widget(form.vague, {'attr': {'class': input_class, 'min': 1}}) }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Décision du jury</label>
+                                {{ form_widget(form.entstatut, {'attr': {'class': input_class}}) }}
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Note 1</label>
+                                {{ form_widget(form.note1, {'attr': {'class': input_class, 'min': 0, 'max': 20, 'step': 0.5}}) }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Note 2</label>
+                                {{ form_widget(form.note2, {'attr': {'class': input_class, 'min': 0, 'max': 20, 'step': 0.5}}) }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Note 3</label>
+                                {{ form_widget(form.note3, {'attr': {'class': input_class, 'min': 0, 'max': 20, 'step': 0.5}}) }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Note 4</label>
+                                {{ form_widget(form.note4, {'attr': {'class': input_class, 'min': 0, 'max': 20, 'step': 0.5}}) }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Note 5</label>
+                                {{ form_widget(form.note5, {'attr': {'class': input_class, 'min': 0, 'max': 20, 'step': 0.5}}) }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Note 6</label>
+                                {{ form_widget(form.note6, {'attr': {'class': input_class, 'min': 0, 'max': 20, 'step': 0.5}}) }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Note 7</label>
+                                {{ form_widget(form.note7, {'attr': {'class': input_class, 'min': 0, 'max': 20, 'step': 0.5}}) }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Note 8</label>
+                                {{ form_widget(form.note8, {'attr': {'class': input_class, 'min': 0, 'max': 20, 'step': 0.5}}) }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Note 9</label>
+                                {{ form_widget(form.note9, {'attr': {'class': input_class, 'min': 0, 'max': 20, 'step': 0.5}}) }}
+                            </div>
+                        </div>
+
+                        <div class="mt-4 mb-6">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Commentaire entretien</label>
+                            {{ form_widget(form.entcom, {'attr': {'class': input_class, 'rows': 3, 'placeholder': "Observations sur l'entretien..."}}) }}
+                        </div>
+                    {% endif %}
+
+                    <!-- Évaluations existantes -->
+                    {% if evaluations is defined and evaluations|length > 0 %}
+                    <div class="mb-6 space-y-3" id="existing-evaluations">
+                        <p class="text-sm font-medium text-slate-600 flex items-center mb-2">
+                            <i class="fas fa-history text-indigo-500 mr-2"></i>
+                            Évaluations précédentes
+                        </p>
+                        {% for eval in evaluations %}
+                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-3">
+                                    <span class="font-medium text-slate-800">{{ eval.grille.nom }}</span>
+                                    <span class="text-xs text-slate-500">{{ eval.createdAt|date('d/m/Y H:i') }}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    {% set percentage = eval.noteMaxTotale > 0 ? (eval.scoreTotal / eval.noteMaxTotale * 100) : 0 %}
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold
+                                        {% if percentage >= 70 %}bg-green-100 text-green-700
+                                        {% elseif percentage >= 40 %}bg-yellow-100 text-yellow-700
+                                        {% else %}bg-red-100 text-red-700{% endif %}">
+                                        {{ eval.scoreTotal }} / {{ eval.noteMaxTotale }}
+                                    </span>
+                                </div>
+                            </div>
+                            <!-- Progress bar -->
+                            <div class="w-full bg-slate-200 rounded-full h-2.5 mb-2">
+                                <div class="h-2.5 rounded-full transition-all duration-500
+                                    {% if percentage >= 70 %}bg-green-500
+                                    {% elseif percentage >= 40 %}bg-yellow-500
+                                    {% else %}bg-red-500{% endif %}" 
+                                    style="width: {{ percentage }}%"></div>
+                            </div>
+                            {% if eval.commentaire %}
+                            <p class="text-xs text-slate-500 mt-1"><i class="fas fa-comment mr-1"></i> {{ eval.commentaire }}</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {#
+                    <!-- Sélection de la grille -->
+                    <div class="bg-white rounded-xl border border-slate-200 p-5 mb-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            <i class="fas fa-th-list text-indigo-500 mr-1"></i>
+                            Sélectionner une grille d'évaluation
+                        </label>
+                        <select id="grille-select" class="{{ input_class }}">
+                            <option value="">-- Choisir une grille --</option>
+                            {% if grilles is defined %}
+                                {% for grille in grilles %}
+                                    <option value="{{ grille.id }}" data-note-max="{{ grille.noteMaxTotale }}" data-nb-criteres="{{ grille.criteres|length }}">
+                                        {{ grille.nom }} ({{ grille.criteres|length }} critères — max {{ grille.noteMaxTotale }})
+                                    </option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                    #}
+
+                    <!-- Zone dynamique des critères -->
+                    <div id="criteres-container" class="hidden">
+                        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden mb-4">
+                            <div class="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                                <span class="text-sm font-semibold text-slate-700">
+                                    <i class="fas fa-star text-yellow-500 mr-1"></i>
+                                    Critères d'évaluation
+                                </span>
+                                <span id="grille-name" class="text-xs text-indigo-600 font-medium"></span>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead class="bg-slate-50/50">
+                                        <tr>
+                                            <th class="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Critère</th>
+                                            <th class="px-5 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider w-28">Note max</th>
+                                            <th class="px-5 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider w-36">Note attribuée</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="criteres-body" class="divide-y divide-slate-100">
+                                        <!-- Rempli dynamiquement par JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Score total + progress bar -->
+                        <div class="bg-white rounded-xl border border-slate-200 p-5 mb-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-sm font-semibold text-slate-700">
+                                    <i class="fas fa-calculator text-indigo-500 mr-1"></i>
+                                    Score total
+                                </span>
+                                <span id="score-display" class="text-lg font-bold text-slate-800">0 / 0</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-3">
+                                <div id="score-bar" class="h-3 rounded-full transition-all duration-300 bg-slate-400" style="width: 0%"></div>
+                            </div>
+                            <p id="score-label" class="text-xs text-slate-500 mt-2 text-center"></p>
+                        </div>
+
+                        <!-- Commentaire -->
+                        <div class="bg-white rounded-xl border border-slate-200 p-5 mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">
+                                <i class="fas fa-comment-alt text-indigo-500 mr-1"></i>
+                                Observation du jury
+                            </label>
+                            <textarea id="evaluation-commentaire" rows="3" 
+                                class="{{ input_class }}" 
+                                placeholder="Saisissez les observations du jury..."></textarea>
+                        </div>
+
+                        <!-- Bouton enregistrer -->
+                        <div class="flex justify-end">
+                            <button type="button" id="save-evaluation-btn" 
+                                class="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 transition transform hover:scale-105 shadow-lg inline-flex items-center">
+                                <i class="fas fa-save mr-2"></i>
+                                Enregistrer l'évaluation
+                            </button>
+                        </div>
+
+                        <!-- Message de succès -->
+                        <div id="evaluation-success" class="hidden mt-4 p-4 rounded-xl bg-green-50 text-green-800 border border-green-200">
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
+                                <span id="evaluation-success-msg">Évaluation enregistrée avec succès.</span>
+                            </div>
+                        </div>
+
+                        <!-- Message d'erreur -->
+                        <div id="evaluation-error" class="hidden mt-4 p-4 rounded-xl bg-red-50 text-red-800 border border-red-200">
+                            <div class="flex items-center">
+                                <i class="fas fa-exclamation-circle text-red-500 mr-3 text-lg"></i>
+                                <span id="evaluation-error-msg">Erreur lors de l'enregistrement.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- SECTION 5: Visite médicale et résultat final -->
+            {% if is_granted('ROLE_ENT') or is_granted('ROLE_JURY') or is_granted('ROLE_ADMIN') %}
+                <div class="bg-emerald-50 rounded-2xl border border-emerald-200 p-6">
+                    <h3 class="text-lg font-semibold text-emerald-800 mb-5 flex items-center border-b border-emerald-200 pb-3">
+                        <div class="w-8 h-8 bg-emerald-200 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-hospital text-emerald-700"></i>
+                        </div>
+                        VISITE MÉDICALE & Résultat final
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Date visite</label>
+                            {{ form_widget(form.visdate, {'attr': {'class': input_class}}) }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Lieu visite</label>
+                            {{ form_widget(form.vislieu, {'attr': {'class': input_class, 'placeholder': 'Ex: Centre médical'}}) }}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Statut visite</label>
+                            {{ form_widget(form.visstatut, {'attr': {'class': input_class}}) }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Résultat final</label>
+                            {{ form_widget(form.resultat, {'attr': {'class': input_class}}) }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Commentaire</label>
+                            {{ form_widget(form.viscom, {'attr': {'class': input_class, 'placeholder': 'Commentaire visite...'}}) }}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Boutons d'action -->
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4 pt-6 border-t border-slate-200">
+                <div class="text-sm text-slate-500">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Les champs marqués d'une <span class="text-red-500">*</span> sont obligatoires
+                </div>
+                
+                <div class="flex gap-3">
+                    {% if app.user %}
+                        {# Vérification de l'âge pour afficher/masquer le bouton de soumission #}
+                        {% set age = app.user.datenaissance ? date().diff(date(app.user.datenaissance)).y : null %}
+                        
+                        {% if is_granted('ROLE_ADMIN') or is_granted('ROLE_ENT') or is_granted('ROLE_JURY') %}
+                            {# Les rôles admin/ent/jury peuvent toujours soumettre #}
+                            <button type="submit" class="px-8 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 transition transform hover:scale-105 shadow-lg flex items-center">
+                                <i class="fas fa-paper-plane mr-2"></i>
+                                Enregistrer l'évaluation
+                            </button>
+                        {% elseif age >= 16 and age <= 40 %}
+                            {# Candidat avec âge valide #}
+                            <button type="submit" class="px-8 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 transition transform hover:scale-105 shadow-lg flex items-center">
+                                <i class="fas fa-paper-plane mr-2"></i>
+                                Soumettre ma candidature
+                            </button>
+                        {% else %}
+                            {# Candidat avec âge invalide - bouton désactivé #}
+                            <button type="button" disabled class="px-8 py-2 bg-gray-400 text-white font-semibold rounded-lg cursor-not-allowed opacity-50 flex items-center" title="Vous ne remplissez pas les conditions d'âge">
+                                <i class="fas fa-ban mr-2"></i>
+                                Soumission impossible
+                            </button>
+                        {% endif %}
+                    {% else %}
+                        {% set redirectUrl = path('app_candidature_new', {
+                            'etablissement': app.request.get('etablissement'),
+                            'metier': app.request.get('metier')
+                        }) %}
+                        
+                        <a href="{{ path('app_login', {'redirect': redirectUrl}) }}" 
+                           class="px-8 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 transition transform hover:scale-105 shadow-lg flex items-center">
+                            <i class="fas fa-sign-in-alt mr-2"></i>
+                            Se connecter pour postuler
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {{ form_end(form) }}
+        </div>
+    </div>
+
+    {% endif %}
+</div>
+
+<!-- JavaScript pour la gestion dynamique établissement/métier -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const etablissementSelect = document.getElementById('candidature_etablissement');
+    const metierSelect = document.getElementById('candidature_metier');
+    const metierInfo = document.getElementById('metier-info');
+    const metierSecteur = document.getElementById('metier-secteur');
+    const metierNiveau = document.getElementById('metier-niveau');
+    const metierNbrPlace = document.getElementById('metier-nbrplace');
+    const metierDuree = document.getElementById('metier-duree');
+    const etablissementLoading = document.getElementById('etablissement-loading');
+    const metierLoading = document.getElementById('metier-loading');
+    
+    const currentMetierValue = metierSelect.value;
+
+    function loadMetiers(etablissementId, callback) {
+        if (!etablissementId) {
+            metierSelect.innerHTML = '<option value="">-- Choisissez d\'abord un établissement --</option>';
+            metierSelect.disabled = true;
+            metierInfo.classList.add('hidden');
+            if (callback) callback();
+            return;
+        }
+
+        metierLoading.classList.remove('hidden');
+        metierSelect.disabled = true;
+
+        fetch('/candidature/etablissement/' + etablissementId + '/metiers')
+            .then(response => response.json())
+            .then(data => {
+                metierSelect.innerHTML = '<option value="">-- Sélectionnez un métier --</option>';
+                
+                const grouped = {};
+                data.forEach(metier => {
+                    const secteur = metier.secteur_nom || 'Autres';
+                    if (!grouped[secteur]) {
+                        grouped[secteur] = [];
+                    }
+                    grouped[secteur].push(metier);
+                });
+                
+                for (const [secteur, metiers] of Object.entries(grouped)) {
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = secteur;
+                    
+                    metiers.sort((a, b) => a.nom.localeCompare(b.nom));
+                    metiers.forEach(metier => {
+                        const option = document.createElement('option');
+                        option.value = metier.id;
+                        option.dataset.secteur = metier.secteur_nom || '';
+                        option.dataset.niveau = metier.niveau || '';
+                        option.dataset.duree = metier.duree || '';
+                        option.dataset.nbrplace = metier.nbrplace || '';
+                        let label = metier.nom;
+                        if (metier.nbrplace) {
+                            label += ' (' + metier.nbrplace + ' places)';
+                        }
+                        option.textContent = label;
+                        optgroup.appendChild(option);
+                    });
+                    
+                    metierSelect.appendChild(optgroup);
+                }
+                
+                const metierToSelect = currentMetierValue || '{{ app.request.get('metier')|default('') }}';
+                
+                if (metierToSelect) {
+                    const options = metierSelect.options;
+                    for (let i = 0; i < options.length; i++) {
+                        if (options[i].value == metierToSelect) {
+                            options[i].selected = true;
+                            updateMetierInfo(options[i]);
+                            break;
+                        }
+                    }
+                }
+                
+                metierSelect.disabled = false;
+                metierLoading.classList.add('hidden');
+                
+                if (callback) callback();
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                metierSelect.disabled = false;
+                metierLoading.classList.add('hidden');
+                if (callback) callback();
+            });
+    }
+
+    function updateMetierInfo(selectedOption) {
+        if (!selectedOption || !selectedOption.value) {
+            metierInfo.classList.add('hidden');
+            return;
+        }
+        
+        metierSecteur.textContent = selectedOption.dataset.secteur || 'Non spécifié';
+        metierNiveau.textContent = selectedOption.dataset.niveau || 'Non spécifié';
+        metierDuree.textContent = selectedOption.dataset.duree || 'Non spécifié';
+        metierNbrPlace.textContent = selectedOption.dataset.nbrplace || 'Non spécifié';
+        metierInfo.classList.remove('hidden');
+    }
+
+    {% if app.request.get('etablissement') %}
+        const etablissementId = '{{ app.request.get('etablissement') }}';
+        if (etablissementId) {
+            setTimeout(function() {
+                const options = etablissementSelect.options;
+                for (let i = 0; i < options.length; i++) {
+                    if (options[i].value == etablissementId) {
+                        options[i].selected = true;
+                        break;
+                    }
+                }
+                loadMetiers(etablissementId);
+            }, 100);
+        }
+    {% else %}
+        if (etablissementSelect.value) {
+            loadMetiers(etablissementSelect.value);
+        } else {
+            metierSelect.innerHTML = '<option value="">-- Choisissez d\'abord un établissement --</option>';
+            metierSelect.disabled = true;
+        }
+    {% endif %}
+
+    etablissementSelect.addEventListener('change', function() {
+        loadMetiers(this.value);
+        metierInfo.classList.add('hidden');
+    });
+
+    metierSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        updateMetierInfo(selectedOption);
+    });
+
+    const form = document.getElementById('candidature-form');
+    form.addEventListener('submit', function(e) {
+        {% if not app.user %}
+        e.preventDefault();
+        alert('Vous devez être connecté pour soumettre une candidature.');
+        const redirectUrl = '/candidature/new?etablissement=' + etablissementSelect.value + '&metier=' + metierSelect.value;
+        window.location.href = '/login?redirect=' + encodeURIComponent(redirectUrl);
+        return false;
+        {% endif %}
+
+        {# Vérification supplémentaire en JavaScript #}
+        {% if app.user and app.user.datenaissance %}
+            {% set age = date().diff(date(app.user.datenaissance)).y %}
+            {% if age < 16 or age > 40 %}
+                e.preventDefault();
+                alert('Vous ne remplissez pas les conditions d\'âge pour candidater (16 à 40 ans).');
+                return false;
+            {% endif %}
+        {% endif %}
+
+        if (!etablissementSelect.value) {
+            e.preventDefault();
+            alert('Veuillez sélectionner un établissement.');
+            return false;
+        }
+        
+        if (!metierSelect.value) {
+            e.preventDefault();
+            alert('Veuillez sélectionner un métier.');
+            return false;
+        }
+    });
+});
+</script>
+
+<!-- JavaScript pour la grille d'évaluation dynamique -->
+{% if (is_granted('ROLE_ENT') or is_granted('ROLE_ADMIN') or is_granted('ROLE_JURY')) and candidature is defined and candidature.id %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const grilleSelect = document.getElementById('grille-select');
+    const criteresContainer = document.getElementById('criteres-container');
+    const criteresBody = document.getElementById('criteres-body');
+    const grilleName = document.getElementById('grille-name');
+    const scoreDisplay = document.getElementById('score-display');
+    const scoreBar = document.getElementById('score-bar');
+    const scoreLabel = document.getElementById('score-label');
+    const saveBtn = document.getElementById('save-evaluation-btn');
+    const commentaireField = document.getElementById('evaluation-commentaire');
+    const successDiv = document.getElementById('evaluation-success');
+    const errorDiv = document.getElementById('evaluation-error');
+    const successMsg = document.getElementById('evaluation-success-msg');
+    const errorMsg = document.getElementById('evaluation-error-msg');
+
+    if (!grilleSelect) return;
+
+    const candidatureId = {{ candidature.id }};
+    let currentGrilleId = null;
+    let noteMaxTotale = 0;
+
+    // Charger les critères quand on sélectionne une grille
+    grilleSelect.addEventListener('change', function() {
+        const grilleId = this.value;
+        if (!grilleId) {
+            criteresContainer.classList.add('hidden');
+            currentGrilleId = null;
+            return;
+        }
+
+        currentGrilleId = grilleId;
+        loadCriteres(grilleId);
+    });
+
+    function loadCriteres(grilleId) {
+        fetch('/evaluation/grille/' + grilleId + '/criteres')
+            .then(r => r.json())
+            .then(data => {
+                criteresBody.innerHTML = '';
+                noteMaxTotale = data.grille.noteMaxTotale;
+                grilleName.textContent = data.grille.nom;
+
+                data.criteres.forEach(critere => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50/50 transition';
+                    tr.innerHTML = `
+                        <td class="px-5 py-3">
+                            <div>
+                                <span class="font-medium text-slate-800 text-sm">${critere.nom}</span>
+                                ${critere.description ? '<p class="text-xs text-slate-500 mt-0.5">' + critere.description + '</p>' : ''}
+                            </div>
+                        </td>
+                        <td class="px-5 py-3 text-center">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">${critere.noteMax}</span>
+                        </td>
+                        <td class="px-5 py-3 text-center">
+                            <input type="number" 
+                                class="w-24 mx-auto px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-center text-sm font-medium note-input"
+                                data-critere-id="${critere.id}" 
+                                data-note-max="${critere.noteMax}"
+                                min="0" 
+                                max="${critere.noteMax}" 
+                                step="0.5" 
+                                placeholder="..."
+                            >
+                        </td>
+                    `;
+                    criteresBody.appendChild(tr);
+                });
+
+                criteresContainer.classList.remove('hidden');
+                updateScore();
+
+                // Charger les notes existantes
+                loadExistingEvaluation(grilleId);
+
+                // Ajouter les écouteurs sur les champs de notes
+                document.querySelectorAll('.note-input').forEach(input => {
+                    input.addEventListener('input', function() {
+                        const max = parseFloat(this.dataset.noteMax);
+                        let val = parseFloat(this.value);
+                        if (val > max) { this.value = max; }
+                        if (val < 0) { this.value = 0; }
+                        updateScore();
+                    });
+                });
+            })
+            .catch(err => {
+                console.error('Erreur chargement critères:', err);
+            });
+    }
+
+    function loadExistingEvaluation(grilleId) {
+        fetch('/evaluation/candidature/' + candidatureId + '/evaluation')
+            .then(r => r.json())
+            .then(evaluations => {
+                const existing = evaluations.find(e => e.grilleId == grilleId);
+                if (existing) {
+                    existing.notations.forEach(n => {
+                        const input = document.querySelector(`.note-input[data-critere-id="${n.critereId}"]`);
+                        if (input && n.note !== null) {
+                            input.value = n.note;
+                        }
+                    });
+                    if (existing.commentaire) {
+                        commentaireField.value = existing.commentaire;
+                    }
+                    updateScore();
+                }
+            })
+            .catch(err => console.error('Erreur chargement évaluation:', err));
+    }
+
+    function updateScore() {
+        let total = 0;
+        document.querySelectorAll('.note-input').forEach(input => {
+            const val = parseFloat(input.value);
+            if (!isNaN(val)) total += val;
+        });
+
+        scoreDisplay.textContent = total + ' / ' + noteMaxTotale;
+
+        const percentage = noteMaxTotale > 0 ? (total / noteMaxTotale * 100) : 0;
+        scoreBar.style.width = percentage + '%';
+
+        // Couleur de la barre de progression
+        scoreBar.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500', 'bg-slate-400');
+        if (percentage >= 70) {
+            scoreBar.classList.add('bg-green-500');
+            scoreLabel.textContent = 'Excellent';
+            scoreLabel.className = 'text-xs mt-2 text-center text-green-600 font-medium';
+        } else if (percentage >= 40) {
+            scoreBar.classList.add('bg-yellow-500');
+            scoreLabel.textContent = 'Moyen';
+            scoreLabel.className = 'text-xs mt-2 text-center text-yellow-600 font-medium';
+        } else if (total > 0) {
+            scoreBar.classList.add('bg-red-500');
+            scoreLabel.textContent = 'Faible';
+            scoreLabel.className = 'text-xs mt-2 text-center text-red-600 font-medium';
+        } else {
+            scoreBar.classList.add('bg-slate-400');
+            scoreLabel.textContent = '';
+        }
+    }
+
+    // Enregistrer l'évaluation
+    saveBtn.addEventListener('click', function() {
+        if (!currentGrilleId) return;
+
+        successDiv.classList.add('hidden');
+        errorDiv.classList.add('hidden');
+
+        const notations = [];
+        document.querySelectorAll('.note-input').forEach(input => {
+            notations.push({
+                critereId: parseInt(input.dataset.critereId),
+                note: input.value !== '' ? parseFloat(input.value) : null,
+            });
+        });
+
+        const payload = {
+            grilleId: parseInt(currentGrilleId),
+            notations: notations,
+            commentaire: commentaireField.value || null,
+        };
+
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Enregistrement...';
+
+        fetch('/evaluation/candidature/' + candidatureId + '/evaluer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                successMsg.textContent = data.message;
+                successDiv.classList.remove('hidden');
+                errorDiv.classList.add('hidden');
+
+                // Mettre à jour l'affichage du score
+                scoreDisplay.textContent = data.scoreTotal + ' / ' + data.noteMaxTotale;
+            } else {
+                errorMsg.textContent = data.error || 'Erreur inconnue.';
+                errorDiv.classList.remove('hidden');
+                successDiv.classList.add('hidden');
+            }
+        })
+        .catch(err => {
+            console.error('Erreur:', err);
+            errorMsg.textContent = 'Erreur réseau lors de l\'enregistrement.';
+            errorDiv.classList.remove('hidden');
+            successDiv.classList.add('hidden');
+        })
+        .finally(() => {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Enregistrer l\'évaluation';
+        });
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

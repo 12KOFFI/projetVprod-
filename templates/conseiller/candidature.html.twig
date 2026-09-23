@@ -1,0 +1,466 @@
+{# Écran E4.3/E4.4 : consultation d'un dossier — édition tant qu'il est préinscrit. #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{# Barre Précédent / Continuer (ou Enregistrer sur la dernière étape) du wizard
+   à 4 étapes ci-dessous. Un seul <form>, un seul submit final : ces boutons ne
+   font que montrer/cacher des sections déjà présentes dans le DOM. #}
+{% macro barre_navigation(etape_actuelle, total) %}
+<div class="bg-white rounded-lg border border-slate-200 p-5 flex items-center justify-between gap-4">
+    {% if etape_actuelle > 1 %}
+        <button type="button" @click="etape = {{ etape_actuelle - 1 }}; window.scrollTo({top: 0, behavior: 'smooth'})"
+                class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700
+                       transition duration-150 motion-reduce:transition-none hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+            <i class="fas fa-arrow-left text-xs" aria-hidden="true"></i>Précédent
+        </button>
+    {% else %}
+        <span></span>
+    {% endif %}
+    {% if etape_actuelle < total %}
+        <button type="button" @click="if (etapeEstValide({{ etape_actuelle }})) { etape = {{ etape_actuelle + 1 }}; window.scrollTo({top: 0, behavior: 'smooth'}); }"
+                class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-medium text-white
+                       transition duration-150 motion-reduce:transition-none hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+            Continuer<i class="fas fa-arrow-right text-xs" aria-hidden="true"></i>
+        </button>
+    {% else %}
+        <button type="submit"
+                class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-medium text-white
+                       transition duration-150 motion-reduce:transition-none hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+            <i class="fas fa-floppy-disk text-xs" aria-hidden="true"></i>Enregistrer
+        </button>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% set candidat = candidature.user %}
+{% set etude = candidature.resultatEtude %}
+{% set recevabilite = candidature.resultatRecevabilite %}
+{% set edition = form_candidature is not null %}
+
+{% block title %}Dossier {{ candidature.numero }} — Conseiller VAE{% endblock %}
+
+{% block body %}
+{% import _self as page %}
+
+<a href="{{ path('app_conseiller_candidatures') }}"
+   class="mb-4 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition duration-150 motion-reduce:transition-none hover:text-indigo-700">
+    <i class="fas fa-arrow-left text-xs" aria-hidden="true"></i>Retour à la liste des dossiers
+</a>
+
+<div class="relative mb-6 overflow-hidden rounded-2xl border border-primary-200 bg-primary-100 p-6 text-primary-900 md:p-8">
+
+    <div class="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+        <div class="flex items-center gap-4">
+            <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-primary-200 bg-white text-2xl text-primary-700">
+                <i class="fas fa-file-lines" aria-hidden="true"></i>
+            </div>
+            <div>
+                <p class="font-mono text-sm text-primary-800">{{ candidature.numero }}</p>
+                <h1 class="text-2xl font-bold tracking-tight text-primary-900 md:text-3xl mt-0.5">
+                    {{ candidat ? candidat.nomComplet : 'Candidat inconnu' }}
+                </h1>
+                <p class="text-primary-800 text-sm mt-1">
+                    {{ candidature.metier ? candidature.metier.libelle : '—' }} ·
+                    diplôme visé {{ candidature.diplomedemande ?: '—' }}
+                </p>
+            </div>
+        </div>
+
+        <div class="flex flex-col items-start lg:items-end gap-3">
+            {{ include('partials/_statut_badge.html.twig', { statut: statut_candidature(candidature) }) }}
+        </div>
+    </div>
+    <div class="absolute inset-x-0 bottom-0 h-1 bg-[#ED8F33]" aria-hidden="true"></div>
+</div>
+
+{# ===== Prise en charge : bandeau d'état, visible avant tout scroll. N'apparaît
+   que s'il y a une décision à prendre — rien à dire une fois le dossier déjà à
+   moi, l'info reste dans le sous-titre de la carte « Décisions » ci-dessous. ===== #}
+{% if not etude_rendue and is_granted('CANDIDATURE_EVALUATE_RECEVABILITE', candidature)
+    and (candidature.conseiller is null or candidature.conseiller.id != app.user.id) %}
+    {% set non_affecte = candidature.conseiller is null %}
+    <div class="mb-6 flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between
+                {{ non_affecte ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-slate-50' }}">
+        <div class="flex items-center gap-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg
+                         {{ non_affecte ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700' }}">
+                <i class="fas fa-user-check text-sm" aria-hidden="true"></i>
+            </span>
+            <p class="text-sm {{ non_affecte ? 'text-amber-900' : 'text-slate-700' }}">
+                {% if non_affecte %}
+                    <strong class="font-semibold">Aucun conseiller affecté.</strong> Prenez ce dossier en charge avant de l'étudier.
+                {% else %}
+                    Dossier pris en charge par <strong class="font-semibold text-slate-900">{{ candidature.conseiller.nomComplet }}</strong>.
+                {% endif %}
+            </p>
+        </div>
+        {{ ui.bouton_post(
+            path('app_conseiller_affecter', {id: candidature.id}),
+            'affecter_' ~ candidature.id,
+            'hand',
+            non_affecte ? 'Prendre en charge' : 'Reprendre en charge',
+            'indigo'
+        ) }}
+    </div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+        {# ===== Décisions rendues ===== #}
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-200">
+                <h2 class="text-sm font-bold text-slate-800">Décisions du conseiller VAE</h2>
+                <p class="text-xs text-slate-600 mt-0.5">
+                    Étude du dossier, puis recevabilité une fois les frais de dossier réglés
+                    {% if candidature.conseiller %} · {{ candidature.conseiller.nomComplet }}{% endif %}
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                <div class="px-6 py-5">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">Étude du dossier</p>
+                    {% if etude and etude.name != 'EN_ATTENTE' %}
+                        <div class="mt-2">{{ ui.badge(etude.libelle, etude.couleur) }}</div>
+                        <p class="text-xs text-slate-600 mt-2 tabular-nums">
+                            {{ candidature.etuDate ? candidature.etuDate|date('d/m/Y') : '—' }}
+                        </p>
+                        {% if candidature.etuCom %}
+                            <p class="text-xs text-slate-600 mt-3 leading-relaxed bg-slate-50 rounded-lg p-3 border border-slate-100">
+                                {{ candidature.etuCom }}
+                            </p>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-sm text-slate-600 mt-2">Pas encore rendue</p>
+                    {% endif %}
+                </div>
+
+                <div class="px-6 py-5">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">Recevabilité</p>
+                    {% if recevabilite and recevabilite.name != 'EN_ATTENTE' %}
+                        <div class="mt-2">{{ ui.badge(recevabilite.libelle, recevabilite.couleur) }}</div>
+                        <p class="text-xs text-slate-600 mt-2 tabular-nums">
+                            {{ candidature.recDate ? candidature.recDate|date('d/m/Y') : '—' }}
+                        </p>
+                    {% else %}
+                        <p class="text-sm text-slate-600 mt-2">
+                            {% if statut_candidature(candidature).name == 'INSCRIT' %}À prononcer
+                            {% elseif candidature_en_attente_paiement(candidature) %}Après règlement des frais de dossier par le candidat
+                            {% else %}Pas encore rendue{% endif %}
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# ===== Décision de recevabilité, une fois le dossier INSCRIT : la seule
+           tâche de cet écran dans ce mode, donc juste sous le résumé, avant les
+           informations de lecture seule qui suivent. ===== #}
+        {% if form_recevabilite is not null %}
+            <div id="decision" class="bg-white rounded-lg border border-slate-200 p-6 scroll-mt-6">
+                {{ ui.section('Décision de recevabilité', 'Elle fixe le statut officiel du dossier', 'gavel', 'indigo') }}
+
+                {{ form_start(form_recevabilite, {attr: {novalidate: 'novalidate', action: path('app_conseiller_jury_local', {id: candidature.id})}}) }}
+                {{ ui.champ(form_recevabilite.statut) }}
+
+                <div class="mt-6 flex justify-end">
+                    <button type="submit"
+                            class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-white
+                                   bg-indigo-600 hover:bg-indigo-700 transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                        <i class="fas fa-check text-xs" aria-hidden="true"></i>Enregistrer
+                    </button>
+                </div>
+                {{ form_end(form_recevabilite) }}
+            </div>
+        {% endif %}
+
+        {% if edition %}
+            {# ===== Mode édition (PREINSCRIT) : dossier modifiable + étude, un seul formulaire ===== #}
+            {# Cible de l'action « Modifier » de la liste des candidatures. #}
+            <div id="modifier-dossier" class="scroll-mt-6" aria-hidden="true"></div>
+            {{ form_start(form_candidature, {attr: {
+                novalidate: 'novalidate',
+                enctype: 'multipart/form-data',
+                'x-data': 'depotCandidature()',
+                '@submit': 'verifierAvantEnvoi($event)',
+                action: path('app_conseiller_recevabilite', {id: candidature.id})
+            }}) }}
+            <div class="space-y-6">
+                {% if form_candidature.vars.errors|length > 0 %}
+                    <div role="alert" class="rounded-lg p-4 text-sm bg-red-50 text-red-800 border border-red-200">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-exclamation-circle text-red-600 mt-0.5" aria-hidden="true"></i>
+                            <div>{{ form_errors(form_candidature) }}</div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                {# Quatre étapes côté client seulement : même <form>, même unique POST vers
+                   app_conseiller_recevabilite qu'avant. Par défaut sur l'étape 1, sauf si un
+                   message d'erreur vient du résultat d'étude (seul cas où RecevabiliteService
+                   rejette la soumission par une exception convertie en flash plutôt qu'en
+                   erreur de champ) : l'étape 4 s'ouvre alors directement sur le problème. #}
+                <div x-data="{ etape: {{ app.flashes('error')|length > 0 ? 4 : 1 }} }">
+                    {% set etapes = ['Formation et expérience', 'Entreprise', 'Pièces justificatives', 'Étude et décision'] %}
+                    <div class="mb-6 flex items-center gap-2 sm:gap-3" role="group" aria-label="Étapes">
+                        {% for libelle in etapes %}
+                            {% set n = loop.index %}
+                            <div class="flex items-center gap-2 sm:gap-2.5">
+                                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums transition-colors duration-200"
+                                      :class="etape >= {{ n }} ? 'bg-indigo-600 text-white' : 'border border-slate-300 text-slate-500'">{{ n }}</span>
+                                <span class="hidden text-sm font-medium sm:inline" :class="etape === {{ n }} ? 'text-slate-900' : 'text-slate-500'">{{ libelle }}</span>
+                            </div>
+                            {% if not loop.last %}
+                                <div class="h-px flex-1 transition-colors duration-200" :class="etape >= {{ n + 1 }} ? 'bg-indigo-600' : 'bg-slate-200'"></div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <p class="mb-6 text-sm font-medium text-slate-900 sm:hidden" x-text="{{ etapes|json_encode }}[etape - 1]"></p>
+
+                <div id="etape-1" class="space-y-6" x-show="etape === 1" x-cloak>
+                {# ===== Formation visée ===== #}
+                <div class="bg-white rounded-lg border border-slate-200 p-6">
+                    {{ ui.section('Formation visée', 'Centre de dépôt et métier de certification', 'graduation-cap', 'indigo') }}
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <p class="block text-xs font-semibold text-slate-600 mb-1.5">Centre de dépôt</p>
+                            <div class="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-600">
+                                <i class="fas fa-lock text-xs mr-1.5 opacity-60" aria-hidden="true"></i>{{ candidature.centre ? candidature.centre.nom : '—' }}
+                            </div>
+                        </div>
+                        {{ ui.champ(form_candidature.metier, '', {'x-ref': 'metier', '@change': 'chargerCertifications()'},
+                            ui.choix_initial(form_candidature.metier, candidature.metier ? candidature.metier.libelle : null, 'un métier')) }}
+                    </div>
+                </div>
+
+                {# ===== Expérience professionnelle ===== #}
+                <div class="bg-white rounded-lg border border-slate-200 p-6">
+                    {{ ui.section('Expérience professionnelle', 'Elle aide à choisir le diplôme visé', 'briefcase', 'amber') }}
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        {{ ui.champ(form_candidature.nbAnneesExperience) }}
+            {{ ui.champ(
+                form_candidature.certification,
+                '',
+                {'x-ref': 'certification', 'data-centre': form_candidature.vars.data.centre ? form_candidature.vars.data.centre.id : ''},
+                '<span x-show="chargementCertifications"><i class="fas fa-circle-notch fa-spin mr-1"></i>Chargement des diplômes du centre…</span>'
+                    ~ ui.choix_initial(form_candidature.certification, candidature.diplomedemande, 'un diplôme')
+            ) }}
+                        {{ ui.champ(form_candidature.situationPro) }}
+                        {{ ui.champ(form_candidature.diplome) }}
+                        {{ ui.champ(form_candidature.titrepro) }}
+                    </div>
+                </div>
+
+                {{ page.barre_navigation(1, 4) }}
+                </div>
+
+                <div id="etape-2" class="space-y-6" x-show="etape === 2" x-cloak>
+                {# ===== Entreprise ===== #}
+                <div class="bg-white rounded-lg border border-slate-200 p-6">
+                    {{ ui.section('Entreprise ou atelier', 'Facultatif', 'building', 'orange') }}
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        {{ ui.champ(form_candidature.nomEntreprise) }}
+                        {{ ui.champ(form_candidature.refentreprise) }}
+                        {{ ui.champ(form_candidature.lieuExercice) }}
+                        {{ ui.champ(form_candidature.directionService) }}
+                        {{ ui.champ(form_candidature.fonction) }}
+                        {{ ui.champ(form_candidature.refContrat) }}
+                        {{ ui.champ(form_candidature.contactemployeur) }}
+                        {{ ui.champ(form_candidature.langue) }}
+                        {{ ui.champ(form_candidature.preciserlangue) }}
+                    </div>
+                </div>
+
+                {{ page.barre_navigation(2, 4) }}
+                </div>
+
+                <div id="etape-3" class="space-y-6" x-show="etape === 3" x-cloak>
+                {# ===== Pièces justificatives ===== #}
+                <div class="bg-white rounded-lg border border-slate-200 p-6">
+                    {{ ui.section('Pièces justificatives', 'JPG, PNG ou PDF — 2 Mo maximum par pièce', 'paperclip', 'purple') }}
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {% for champ, libelle in documents_obligatoires %}
+                            {% if form_candidature[champ] is defined %}
+                                {{ ui.document(form_candidature[champ], libelle, true, attribute(candidature, champ)) }}
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {{ page.barre_navigation(3, 4) }}
+                </div>
+
+                <div id="etape-4" class="space-y-6" x-show="etape === 4" x-cloak>
+                <p class="text-xs text-slate-600">
+                    <i class="fas fa-circle-info mr-1.5 opacity-60" aria-hidden="true"></i>
+                    Rien n'est encore enregistré : le dossier et l'étude ne s'enregistrent qu'ensemble, en une seule fois.
+                </p>
+
+                {# ===== Étude de dossier de recevabilité ===== #}
+                <div id="decision" class="bg-white rounded-lg border border-slate-200 p-6 scroll-mt-6"
+                     x-data="{ statut: {{ (form_etude.statut.vars.value ?: 'null')|json_encode }} }">
+                    {{ ui.section('Étude de dossier', 'Votre étude conditionne la suite du parcours du candidat', 'file-signature', 'indigo') }}
+
+                    <div class="space-y-5">
+                        {{ ui.champ(form_etude.statut, '', {'x-model': 'statut'}) }}
+                        {{ ui.champ(form_etude.commentaire) }}
+                        <p class="-mt-3 text-xs text-red-600" x-show="statut === '1'" x-cloak>
+                            <i class="fas fa-circle-exclamation mr-1" aria-hidden="true"></i>Un refus doit être motivé.
+                        </p>
+                    </div>
+                </div>
+
+                {{ page.barre_navigation(4, 4) }}
+                </div>
+                </div>
+
+                {# Le formulaire d'étude partage la même balise <form> : ses jetons CSRF et
+                   champs résiduels sont rendus ici explicitement (V3.4). #}
+                {{ form_rest(form_etude) }}
+            </div>
+            {{ form_end(form_candidature) }}
+        {% else %}
+            {# ===== Dossier du candidat (lecture seule) ===== #}
+            <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                <div class="px-6 py-5 border-b border-slate-200">
+                    <h2 class="text-sm font-bold text-slate-800">Éléments du dossier</h2>
+                </div>
+
+                <dl class="grid grid-cols-1 sm:grid-cols-2 gap-px bg-slate-100">
+                    {% set lignes = {
+                        'Situation professionnelle': candidature.situationPro,
+                        "Années d'expérience": candidature.nbAnneesExperience ~ ' an(s)',
+                        'Diplôme visé': candidature.diplomedemande,
+                        'Diplôme académique obtenu(e)': candidature.diplome,
+                        'Titre professionnel': candidature.titrepro,
+                        "Entreprise ou organisme d'attache": candidature.nomEntreprise,
+                        "Références de l'entreprise": candidature.refentreprise,
+                        "Lieu d'exercice (Région, Département, Sous-préfecture)": candidature.lieuExercice,
+                        'Poste de travail': candidature.fonction,
+                        'Référence du contrat de travail': candidature.refContrat,
+                        "Contact de l'employeur": candidature.contactemployeur,
+                        "Langue d'évaluation": candidature.langue
+                    } %}
+
+                    {% for libelle, valeur in lignes %}
+                        <div class="bg-white px-6 py-4">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-600">{{ libelle }}</dt>
+                            <dd class="text-sm text-slate-700 mt-1">{{ valeur ?: '—' }}</dd>
+                        </div>
+                    {% endfor %}
+                </dl>
+            </div>
+
+            {# ===== Pièces justificatives (lecture seule) ===== #}
+            <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                <div class="px-6 py-5 border-b border-slate-200">
+                    <h2 class="text-sm font-bold text-slate-800">Pièces justificatives</h2>
+                </div>
+
+                {% if documents is not empty %}
+                    <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {% for champ, document in documents %}
+                            <a href="{{ asset('media/' ~ candidature.numero ~ '/' ~ document.fichier) }}" target="_blank" rel="noopener"
+                               class="flex items-center gap-3 p-4 rounded-lg border border-slate-200
+                                      hover:border-indigo-400 hover:bg-indigo-50/30 transition-all duration-200">
+                                <div class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0">
+                                    <i class="fas fa-file-{{ document.fichier ends with '.pdf' ? 'pdf' : 'image' }} text-sm"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-xs font-semibold text-slate-700 truncate">{{ document.libelle }}</p>
+                                    <p class="text-xs text-slate-600">Ouvrir la pièce</p>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    {{ ui.etat_vide('paperclip', 'Aucune pièce', 'Ce dossier ne comporte aucune pièce justificative.') }}
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    {# ===== Colonne latérale ===== #}
+    <div class="space-y-6">
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-200">
+                <h2 class="text-sm font-bold text-slate-800">Candidat</h2>
+            </div>
+            <dl class="divide-y divide-slate-100">
+                {% set identite = {
+                    'Nom complet': candidat ? candidat.nomComplet : null,
+                    'Contact': candidat ? candidat.contact : null,
+                    'Adresse e-mail': candidat ? candidat.email : null,
+                    'Date de naissance': candidat and candidat.datenaissance ? candidat.datenaissance|date('d/m/Y') : null,
+                    'Lieu de naissance': candidat ? candidat.lieunaissance : null,
+                    'Résidence': candidat ? candidat.residence : null
+                } %}
+                {% for libelle, valeur in identite %}
+                    <div class="px-6 py-3.5">
+                        <dt class="text-xs text-slate-600">{{ libelle }}</dt>
+                        <dd class="text-sm text-slate-700 mt-0.5">{{ valeur ?: '—' }}</dd>
+                    </div>
+                {% endfor %}
+            </dl>
+        </div>
+
+        {# ===== Historique ===== #}
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-200">
+                <h2 class="text-sm font-bold text-slate-800">Historique du dossier</h2>
+            </div>
+
+            {% if historique is not empty %}
+                <div class="divide-y divide-slate-100">
+                    {% for ligne in historique|reverse %}
+                        <div class="px-6 py-4">
+                            <p class="text-xs font-semibold text-slate-700">{{ ligne.motif ?: ligne.statutApres.libelle }}</p>
+                            <p class="text-xs text-slate-600 mt-1">
+                                {{ ligne.creation|date('d/m/Y à H\\hi') }}
+                                · {{ ligne.auteur ? ligne.auteur.nomComplet : 'Système' }}
+                            </p>
+                            {% if ligne.commentaire %}
+                                <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">{{ ligne.commentaire }}</p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                {{ ui.etat_vide('clock-rotate-left', 'Aucun évènement', 'Ce dossier n\'a encore aucun historique.') }}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+{% if edition %}
+<script>
+    // Les métiers proposés dépendent du centre : identique au formulaire de
+    // dépôt (F3.11). Ici le centre est déjà fixé, donc rien à recharger au
+    // changement — la fonction existe pour satisfaire validationFormulaire().
+    function validationFormulaireConseiller() {
+        return validationFormulaire();
+    }
+
+    // Garde chaque étape du wizard : un champ requis y reste, même caché, tant
+    // qu'on ne l'a pas franchie. On le valide donc pendant qu'elle est encore
+    // affichée, seul moment où la validation native du navigateur la voit.
+    function etapeEstValide(numero) {
+        var conteneur = document.getElementById('etape-' + numero);
+        var invalide = conteneur ? conteneur.querySelector(':invalid') : null;
+        if (invalide) {
+            invalide.reportValidity();
+            invalide.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
+        return true;
+    }
+</script>
+{% endif %}
+{% endblock %}

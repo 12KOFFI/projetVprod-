@@ -1,0 +1,89 @@
+parameters:
+    dir_image: '%kernel.project_dir%/public/image/'
+    dir_media: '%kernel.project_dir%/public/media/'
+
+    # Tarifs des trois règlements du parcours, en francs CFA. Ils vivent ici et
+    # non dans le code : un changement de barème ne doit pas demander de
+    # redéploiement applicatif (règle métier R5.6).
+    app.tarifs:
+        dossier: '10000.00'
+        accompagnement: '25000.00'
+        examen: '15000.00'
+
+    # Latence simulée de la passerelle, en millisecondes. Laissée à zéro pour
+    # ne pas ralentir les parcours ; à monter pour éprouver les écrans d'attente.
+    app.payment.simulation_delay_ms: 0
+
+    # Ouverture des imports Excel du jury central (éligibilité, admission).
+    #
+    # À false, le menu disparaît ET les routes /admin/jury/* répondent 404 : un
+    # masquage limité au menu se contournerait par l'URL. Le module reste
+    # entièrement en place, il suffit de repasser à true pour le rouvrir.
+    #
+    # ATTENTION : ces imports sont l'unique chemin qui fait passer un dossier de
+    # « recevable » à « éligible », puis d'« admissible » à « admis définitif ».
+    # Tant qu'ils sont fermés, aucun dossier ne progresse au-delà de la
+    # recevabilité et l'écran « Candidats éligibles » reste vide.
+    app.jury.imports_actifs: true
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+
+    # Les pièces d'un dossier sont rangées sous public/media/{numéro VAE}/ :
+    # le service reçoit la racine plutôt que de reconstruire un chemin.
+    App\Service\Candidature\CandidatureService:
+        arguments:
+            $dossierMedia: '%dir_media%'
+
+    # La fiche d'inscription imprimée embarque le logo et, quand elle
+    # existe, la photo d'identité du candidat : toutes deux doivent être
+    # lues sur le disque pour être encodées en base64 (Dompdf ne sait pas
+    # les récupérer via une URL publique).
+    App\Service\Impression\FicheInscriptionAssets:
+        arguments:
+            $dossierMedia: '%dir_media%'
+            $dossierImage: '%dir_image%'
+
+    App\Command\ChargerComptesDemoCommand:
+        arguments:
+            $environnement: '%kernel.environment%'
+
+    App\Command\ChargerJeuDemoCommand:
+        arguments:
+            $environnement: '%kernel.environment%'
+
+    App\Command\ImporterCertificationsCommand:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+    App\Service\Paiement\PaiementService:
+        arguments:
+            $tarifs: '%app.tarifs%'
+
+    # Les fichiers importés sont conservés hors de public/ : ils contiennent
+    # des décisions nominatives et ne doivent pas être servis par le serveur web.
+    App\Service\Jury\ImportJuryService:
+        arguments:
+            $dossierImports: '%kernel.project_dir%/var/imports'
+
+    # Le contrôleur refuse lui-même l'accès quand les imports sont fermés : la
+    # garde vit au plus près des actions, pas seulement dans la barre latérale.
+    App\Controller\Admin\JuryController:
+        arguments:
+            $importsActifs: '%app.jury.imports_actifs%'
+        tags: ['controller.service_arguments']
+
+    App\Payment\Gateway\TreasuryPaySimulationGateway:
+        arguments:
+            $delaiSimulationMs: '%app.payment.simulation_delay_ms%'
+
+    # Le jour du branchement de Trésor Pay, seul cet alias change : la logique
+    # métier ne dépend que de l'interface (règle métier R5.11).
+    App\Payment\PaymentGatewayInterface: '@App\Payment\Gateway\TreasuryPaySimulationGateway'

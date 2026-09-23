@@ -1,0 +1,306 @@
+{#
+    Écran E4.2 : toutes les candidatures du centre du conseiller (F4.2).
+
+    Page de référence du design institutionnel validé par le commanditaire.
+    Bandeau, badge de statut et pagination viennent des composants partagés
+    (partials/_ui.html.twig, partials/_statut_badge.html.twig) : toute
+    évolution visuelle se fait là, pas ici.
+#}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{#
+  Un seul bouton : la fiche affiche elle-même directement le formulaire
+  d'édition quand le dossier est encore préinscrit, inutile de dupliquer
+  l'action en une entrée « Consulter » et une entrée « Modifier ».
+#}
+{% macro actions_conseiller(candidature, pleine_largeur = false) %}
+{% import 'partials/_ui.html.twig' as ui %}
+<div class="{{ pleine_largeur ? 'mt-4' : 'inline-flex items-center justify-end' }}">
+    {{ ui.bouton_lien(path('app_conseiller_candidature', {id: candidature.id}), 'magnifying-glass', 'Analyser', 'indigo', 'le dossier ' ~ candidature.numero) }}
+</div>
+{% endmacro %}
+
+{% block title %}Étude de dossier — {{ centre.nom }}{% endblock %}
+
+
+{% block body %}
+{% import _self as liste %}
+
+{#
+    `pagination.items` renvoie le tableau PHP sous-jacent : on le fige une fois
+    pour le parcourir deux fois (tableau large écran, liste empilée petit écran)
+    sans dépendre du curseur de l'Iterator KnpPaginator.
+#}
+{% set dossiers = pagination.items %}
+{% set total = pagination.getTotalItemCount %}
+{% set portees = { 'tous': 'Tout le centre', 'moi': 'Mes dossiers', 'non_affectes': 'Sans conseiller' } %}
+{% set filtre_actif = recherche is not empty or filtre_statut or portee != 'tous' %}
+
+<div class="mx-auto max-w-7xl selection:bg-indigo-100 selection:text-indigo-900">
+
+    {{ ui.bandeau(
+        'Étude de dossier de recevabilité',
+        centre.nom,
+        'folder-open',
+        total,
+        'dossier' ~ (total > 1 ? 's' : '') ~ (filtre_actif ? ' après filtrage' : ' dans le centre'),
+        [
+            { url: path('app_impressions'), libelle: 'Exports', icone: 'file-export', principal: true },
+            { url: path('app_indicateurs'), libelle: 'Statistiques', icone: 'chart-column' }
+        ],
+        'building'
+    ) }}
+
+    {# ===== Filtres ===== #}
+    {#
+        Les deux listes déroulantes se soumettaient au `change` : sous Windows,
+        parcourir les options au clavier soumettait le formulaire à chaque
+        option traversée. Le bouton explicite est désormais le seul déclencheur.
+    #}
+    <form method="get" class="mb-4 rounded-lg border border-slate-200 bg-white p-4 sm:p-5">
+        <h2 class="sr-only">Filtrer les candidatures</h2>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="sm:col-span-2">
+                <label for="filtre-recherche" class="mb-1.5 block text-sm font-medium text-slate-700">
+                    Rechercher un dossier
+                </label>
+                <div class="relative">
+                    <i class="fas fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500" aria-hidden="true"></i>
+                    <input id="filtre-recherche" type="search" name="q" value="{{ recherche }}"
+                           placeholder="Numéro VAE, nom ou téléphone"
+                           class="min-h-[44px] w-full rounded-lg border border-slate-500 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900
+                                  caret-indigo-600 placeholder:text-slate-500
+                                  transition duration-150 motion-reduce:transition-none
+                                  focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                </div>
+            </div>
+
+            <div>
+                <label for="filtre-portee" class="mb-1.5 block text-sm font-medium text-slate-700">
+                    Périmètre
+                </label>
+                <select id="filtre-portee" name="portee"
+                        class="min-h-[44px] w-full rounded-lg border border-slate-500 bg-white px-3 py-2.5 text-sm text-slate-900
+                               transition duration-150 motion-reduce:transition-none
+                               focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                    {% for valeur, libelle in portees %}
+                        <option value="{{ valeur }}" {{ portee == valeur ? 'selected' : '' }}>{{ libelle }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="filtre-statut" class="mb-1.5 block text-sm font-medium text-slate-700">
+                    Statut du dossier
+                </label>
+                <select id="filtre-statut" name="statut"
+                        class="min-h-[44px] w-full rounded-lg border border-slate-500 bg-white px-3 py-2.5 text-sm text-slate-900
+                               transition duration-150 motion-reduce:transition-none
+                               focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                    <option value="">Tous les statuts</option>
+                    {% for valeur, libelle in statuts %}
+                        <option value="{{ valeur }}" {{ filtre_statut == valeur ? 'selected' : '' }}>{{ libelle }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4">
+            <button type="submit"
+                    class="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white
+                           transition duration-150 motion-reduce:transition-none hover:bg-indigo-700
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                <i class="fas fa-filter text-xs" aria-hidden="true"></i>Appliquer les filtres
+            </button>
+
+            {% if filtre_actif %}
+                <a href="{{ path('app_conseiller_candidatures') }}"
+                   class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700
+                          transition duration-150 motion-reduce:transition-none hover:bg-slate-50
+                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                    <i class="fas fa-rotate-left text-xs" aria-hidden="true"></i>Réinitialiser
+                </a>
+            {% endif %}
+        </div>
+    </form>
+
+    {# ===== Rappel des critères appliqués ===== #}
+    {% if filtre_actif %}
+        <div class="mb-4 flex flex-wrap items-center gap-2 text-sm text-slate-700">
+            <span class="font-medium">Critères appliqués :</span>
+
+            {% if recherche is not empty %}
+                <span class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1">
+                    <span class="text-slate-600">Recherche</span>
+                    <span class="font-semibold text-slate-900">{{ recherche }}</span>
+                </span>
+            {% endif %}
+
+            {% if portee != 'tous' %}
+                <span class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1">
+                    <span class="text-slate-600">Périmètre</span>
+                    <span class="font-semibold text-slate-900">{{ portees[portee]|default(portee) }}</span>
+                </span>
+            {% endif %}
+
+            {% if filtre_statut %}
+                <span class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1">
+                    <span class="text-slate-600">Statut</span>
+                    <span class="font-semibold text-slate-900">{{ statuts[filtre_statut]|default(filtre_statut) }}</span>
+                </span>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {# ===== Liste des dossiers ===== #}
+    <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+        {% if total > 0 %}
+
+            {# --- Tableau : à partir de 1024 px, et jamais au-delà de son propre conteneur ---
+     La barre latérale w-64 ampute la colonne de contenu de 256 px : sous lg,
+     sept colonnes ne tiennent pas. Le conteneur `overflow-x-auto` garantit
+     qu'un éventuel débordement reste dans le panneau et ne fasse jamais
+     défiler la page entière de côté. #}
+            <div class="hidden overflow-x-auto xl:block">
+                <table class="w-full">
+                <caption class="sr-only">Candidatures déposées au centre {{ centre.nom }}</caption>
+                <thead>
+                    <tr class="border-b border-slate-200 bg-slate-50">
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Numéro</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Candidat</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Métier</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Statut</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Conseiller</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Déposé le</th>
+                        <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    {% for candidature in dossiers %}
+                        <tr class="transition-colors duration-150 motion-reduce:transition-none hover:bg-slate-50">
+                            <td class="px-4 py-4 align-top">
+                                <span class="font-mono text-sm font-semibold text-slate-900 tabular-nums">{{ candidature.numero }}</span>
+                            </td>
+                            <td class="px-4 py-4 align-top">
+                                <p class="break-words text-sm font-medium text-slate-900">
+                                    {{ candidature.user ? candidature.user.nomComplet : 'Candidat non renseigné' }}
+                                </p>
+                                <p class="mt-0.5 break-words text-sm text-slate-600 tabular-nums">
+                                    {{ candidature.user and candidature.user.contact ? candidature.user.contact : 'Téléphone non renseigné' }}
+                                </p>
+                            </td>
+                            <td class="break-words px-4 py-4 align-top text-sm text-slate-700">
+                                {{ candidature.metier ? candidature.metier.libelle : 'Non renseigné' }}
+                            </td>
+                            <td class="px-4 py-4 align-top">
+                                {{ include('partials/_statut_badge.html.twig', { statut: statut_candidature(candidature) }) }}
+                            </td>
+                            <td class="px-4 py-4 align-top text-sm">
+                                {% if candidature.conseiller %}
+                                    <span class="text-slate-700">{{ candidature.conseiller.nomComplet }}</span>
+                                {% else %}
+                                    <span class="inline-flex items-center gap-1.5 font-medium text-amber-700">
+                                        <i class="fas fa-triangle-exclamation text-xs" aria-hidden="true"></i>Non affecté
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-4 align-top text-sm text-slate-700 tabular-nums">
+                                {{ candidature.creation ? candidature.creation|date('d/m/Y') : 'Non déposé' }}
+                            </td>
+                            <td class="px-4 py-4 align-top text-right">
+                                {{ liste.actions_conseiller(candidature) }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                </table>
+            </div>
+
+            {# --- Liste empilée, en dessous de 1024 px : aucune largeur minimale,
+     donc aucun défilement horizontal. #}
+            <ul class="divide-y divide-slate-200 xl:hidden">
+                {% for candidature in dossiers %}
+                    <li class="p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="font-mono text-sm font-semibold text-slate-900 tabular-nums">{{ candidature.numero }}</span>
+                            {{ include('partials/_statut_badge.html.twig', { statut: statut_candidature(candidature) }) }}
+                        </div>
+
+                        <p class="mt-2.5 break-words text-base font-semibold text-slate-900">
+                            {{ candidature.user ? candidature.user.nomComplet : 'Candidat non renseigné' }}
+                        </p>
+
+                        <dl class="mt-3 space-y-2 text-sm">
+                            <div class="flex flex-wrap gap-x-2">
+                                <dt class="w-28 shrink-0 text-slate-600">Téléphone</dt>
+                                <dd class="min-w-0 break-words font-medium text-slate-900 tabular-nums">
+                                    {{ candidature.user and candidature.user.contact ? candidature.user.contact : 'Non renseigné' }}
+                                </dd>
+                            </div>
+                            <div class="flex flex-wrap gap-x-2">
+                                <dt class="w-28 shrink-0 text-slate-600">Métier</dt>
+                                <dd class="min-w-0 break-words font-medium text-slate-900">
+                                    {{ candidature.metier ? candidature.metier.libelle : 'Non renseigné' }}
+                                </dd>
+                            </div>
+                            <div class="flex flex-wrap gap-x-2">
+                                <dt class="w-28 shrink-0 text-slate-600">Conseiller</dt>
+                                <dd class="min-w-0 break-words">
+                                    {% if candidature.conseiller %}
+                                        <span class="font-medium text-slate-900">{{ candidature.conseiller.nomComplet }}</span>
+                                    {% else %}
+                                        <span class="inline-flex items-center gap-1.5 font-medium text-amber-700">
+                                            <i class="fas fa-triangle-exclamation text-xs" aria-hidden="true"></i>Non affecté
+                                        </span>
+                                    {% endif %}
+                                </dd>
+                            </div>
+                            <div class="flex flex-wrap gap-x-2">
+                                <dt class="w-28 shrink-0 text-slate-600">Déposé le</dt>
+                                <dd class="min-w-0 break-words font-medium text-slate-900 tabular-nums">
+                                    {{ candidature.creation ? candidature.creation|date('d/m/Y') : 'Non déposé' }}
+                                </dd>
+                            </div>
+                        </dl>
+
+                        {{ liste.actions_conseiller(candidature, true) }}
+                    </li>
+                {% endfor %}
+            </ul>
+
+            {{ ui.pagination(pagination) }}
+
+        {% else %}
+
+            {# --- Aucun résultat --- #}
+            <div class="px-6 py-14 text-center">
+                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
+                    <i class="fas fa-folder-open text-xl text-slate-500" aria-hidden="true"></i>
+                </div>
+
+                {% if filtre_actif %}
+                    <h2 class="text-base font-semibold text-slate-900">Aucun dossier ne correspond à ces critères</h2>
+                    <p class="mx-auto mt-2 max-w-md text-sm text-slate-600">
+                        Élargissez la recherche ou revenez à la liste complète des dossiers du centre.
+                    </p>
+                    <a href="{{ path('app_conseiller_candidatures') }}"
+                       class="mt-5 inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white
+                              transition duration-150 motion-reduce:transition-none hover:bg-indigo-700
+                              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                        <i class="fas fa-rotate-left text-xs" aria-hidden="true"></i>Réinitialiser les filtres
+                    </a>
+                {% else %}
+                    <h2 class="text-base font-semibold text-slate-900">Aucune candidature déposée</h2>
+                    <p class="mx-auto mt-2 max-w-md text-sm text-slate-600">
+                        Aucun dossier n'a encore été déposé au centre {{ centre.nom }}.
+                        Les dossiers apparaîtront ici dès leur enregistrement.
+                    </p>
+                {% endif %}
+            </div>
+
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

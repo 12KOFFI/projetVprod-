@@ -1,0 +1,463 @@
+{#
+  Fragments d'interface partagés par tous les espaces de la plateforme.
+
+  Référence visuelle : conseiller/candidatures.html.twig, validée par le
+  commanditaire. Corps de page institutionnel et sobre (panneaux blancs à
+  bordure fine, aucune ombre au repos, texte jamais sous 12 px ni en slate-400),
+  bandeau de page bleu marine avec filet orange du logo DAIP.
+
+  Contrastes à respecter en modifiant ces macros :
+    - texte secondaire slate-600 sur blanc = 7,0:1 ; slate-500 réservé aux icônes ;
+    - blanc sur le bandeau bleu marine = contraste supérieur à 7:1 ;
+    - bordure de champ slate-500 = 4,8:1 (limite visuelle d'une commande >= 3:1).
+
+  Tailwind uniquement : toute classe ajoutée ici doit être écrite en toutes
+  lettres (pas de nom de classe construit par concaténation), sans quoi le
+  build Encore ne la génère pas.
+
+  Usage : {% import 'partials/_ui.html.twig' as ui %}
+#}
+
+{#
+  Bandeau de page.
+
+  Dégradé bleu marine -> bleu soutenu et filet orange
+  #ED8F33 du logo, posé en barre interne clippée pour suivre les angles arrondis.
+  `bg-gradient-to-br` et non `-to-r` : ce dernier déclenchait autrefois une règle
+  globale de soulèvement au survol dans base_dashboard.
+
+  actions : liste facultative de { url, libelle, icone, principal }.
+  icone_sous_titre : icône facultative, en orange du logo, devant le sous-titre.
+  L'action `principal` est blanche à libellé bleu (un bouton orange plein ne
+  donnerait que 2,3:1 contre le fond) ; les autres sont translucides.
+#}
+{% macro bandeau(titre, sous_titre, icone, total = null, libelle_total = '', actions = [], icone_sous_titre = null) %}
+<div class="relative mb-6 overflow-hidden rounded-2xl border border-primary-200 bg-primary-100 p-6 text-primary-900 md:p-8">
+    <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div class="flex min-w-0 items-start gap-4">
+            <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-primary-200 bg-white text-2xl text-primary-700">
+                <i class="fas fa-{{ icone }}" aria-hidden="true"></i>
+            </div>
+
+            <div class="min-w-0">
+                <h1 class="break-words text-2xl font-bold tracking-tight text-primary-900 md:text-3xl">{{ titre }}</h1>
+                {% if sous_titre %}
+                    <p class="mt-1.5 flex items-center gap-2 break-words text-sm text-primary-800">
+                        {% if icone_sous_titre %}<i class="fas fa-{{ icone_sous_titre }} shrink-0 text-[#ED8F33]" aria-hidden="true"></i>{% endif %}{{ sous_titre }}
+                    </p>
+                {% endif %}
+
+                {% if actions is not empty %}
+                    <div class="mt-5 flex flex-wrap items-center gap-3">
+                        {% for action in actions %}
+                            {% if action.principal|default(false) %}
+                                <a href="{{ action.url }}"
+                                   class="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-primary-700 px-4 text-sm font-semibold text-white
+                                          transition duration-150 motion-reduce:transition-none hover:bg-primary-800
+                                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-primary-100">
+                                    {% if action.icone|default(null) %}<i class="fas fa-{{ action.icone }} text-xs" aria-hidden="true"></i>{% endif %}{{ action.libelle }}
+                                </a>
+                            {% else %}
+                                <a href="{{ action.url }}"
+                                   class="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-primary-300 bg-white px-4 text-sm font-semibold text-primary-800
+                                          transition duration-150 motion-reduce:transition-none hover:bg-primary-50
+                                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-primary-100">
+                                    {% if action.icone|default(null) %}<i class="fas fa-{{ action.icone }} text-xs" aria-hidden="true"></i>{% endif %}{{ action.libelle }}
+                                </a>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {# `is not null` et non `is not empty or == 0` : en PHP, null == 0 est vrai,
+           ce qui affichait une tuile de compteur vide sur les bandeaux sans total. #}
+        {% if total is not null and total is not same as('') %}
+            <div class="shrink-0 rounded-xl border border-primary-200 bg-white px-5 py-4 lg:text-right">
+                <p class="text-3xl font-bold leading-none tabular-nums">{{ total }}</p>
+                <p class="mt-2 text-xs uppercase tracking-wide text-primary-800">{{ libelle_total }}</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="absolute inset-x-0 bottom-0 h-1 bg-[#ED8F33]" aria-hidden="true"></div>
+</div>
+{% endmacro %}
+
+{# En-tête de colonne de tableau : 12 px slate-600 (7,5:1 sur slate-50). #}
+{% macro th(libelle, classes = '') %}
+<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 {{ classes }}">{{ libelle }}</th>
+{% endmacro %}
+
+{#
+  Action de ligne en lien : libellé toujours visible (plus d'icône seule),
+  cible de 44 px. amber pour modifier, indigo pour consulter, slate sinon.
+#}
+{% macro bouton_lien(url, icone, titre, ton = 'amber', contexte = null) %}
+<a href="{{ url }}"
+   class="inline-flex min-h-[44px] items-center gap-2 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium
+          transition duration-150 motion-reduce:transition-none
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2
+          {% if ton == 'amber' %}text-amber-800 hover:border-amber-300 hover:bg-amber-50
+          {% elseif ton == 'indigo' %}text-indigo-700 hover:border-indigo-300 hover:bg-indigo-50
+          {% else %}text-slate-700 hover:bg-slate-50{% endif %}">
+    <i class="fas fa-{{ icone }} text-xs" aria-hidden="true"></i>{{ titre }}{% if contexte %}<span class="sr-only"> {{ contexte }}</span>{% endif %}
+</a>
+{% endmacro %}
+
+{#
+  Action sensible ou destructive : POST + jeton CSRF (V2.6), libellé visible.
+  Le ton rouge porte une bordure rouge pour se distinguer d'une action voisine.
+#}
+{% macro bouton_post(url, jeton, icone, titre, ton = 'red', confirmation = null) %}
+<form method="post" action="{{ url }}" class="inline"
+      {% if confirmation %}onsubmit="return confirm('{{ confirmation|e('js') }}');"{% endif %}>
+    <input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+    <button type="submit"
+            class="inline-flex min-h-[44px] items-center gap-2 whitespace-nowrap rounded-lg border bg-white px-3 text-sm font-medium
+                   transition duration-150 motion-reduce:transition-none
+                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2
+                   {% if ton == 'red' %}border-red-200 text-red-700 hover:bg-red-50
+                   {% elseif ton == 'green' %}border-green-200 text-green-700 hover:bg-green-50
+                   {% elseif ton == 'indigo' %}border-slate-300 text-indigo-700 hover:border-indigo-300 hover:bg-indigo-50
+                   {% else %}border-slate-300 text-slate-700 hover:bg-slate-50{% endif %}">
+        <i class="fas fa-{{ icone }} text-xs" aria-hidden="true"></i>{{ titre }}
+    </button>
+</form>
+{% endmacro %}
+
+{# Badge : 12 px, texte -700 sur fond -50, bordure -200, pastille -500, sans survol. #}
+{% macro badge(libelle, ton = 'slate') %}
+<span class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-semibold
+             {% if ton == 'green' %}border-green-200 bg-green-50 text-green-700
+             {% elseif ton == 'amber' %}border-amber-200 bg-amber-50 text-amber-700
+             {% elseif ton == 'red' %}border-red-200 bg-red-50 text-red-700
+             {% elseif ton == 'blue' %}border-blue-200 bg-blue-50 text-blue-700
+             {% elseif ton == 'indigo' %}border-indigo-200 bg-indigo-50 text-indigo-700
+             {% elseif ton == 'purple' %}border-purple-200 bg-purple-50 text-purple-700
+             {% else %}border-slate-200 bg-slate-50 text-slate-700{% endif %}">
+    <span class="h-1.5 w-1.5 shrink-0 rounded-full
+                 {% if ton == 'green' %}bg-green-500
+                 {% elseif ton == 'amber' %}bg-amber-500
+                 {% elseif ton == 'red' %}bg-red-500
+                 {% elseif ton == 'blue' %}bg-blue-500
+                 {% elseif ton == 'indigo' %}bg-indigo-500
+                 {% elseif ton == 'purple' %}bg-purple-500
+                 {% else %}bg-slate-500{% endif %}" aria-hidden="true"></span>{{ libelle }}
+</span>
+{% endmacro %}
+
+{# État vide : icône, titre, explication, indication d'action (charte D.6). #}
+{% macro etat_vide(icone, titre, texte, action_libelle = null) %}
+<div class="px-6 py-14 text-center">
+    <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
+        <i class="fas fa-{{ icone }} text-xl text-slate-500" aria-hidden="true"></i>
+    </div>
+    <h3 class="text-base font-semibold text-slate-900">{{ titre }}</h3>
+    <p class="mx-auto mt-2 max-w-md text-sm text-slate-600">{{ texte }}</p>
+    {% if action_libelle %}
+        <p class="mt-4 text-sm font-medium text-indigo-700">
+            <i class="fas fa-arrow-up mr-1.5 text-xs" aria-hidden="true"></i>{{ action_libelle }}
+        </p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{# Champ de formulaire Symfony : libellé 14 px, champ 44 px à bordure slate-500. #}
+{#
+  `attributs` ajoute des attributs au widget — un `x-ref` ou un `@change` pour
+  brancher une liste en cascade, par exemple. Les classes restent celles de la
+  macro : un appelant ne les redéfinit pas, il complète.
+
+  `aide` affiche une ligne sous le champ, en plus du `help` porté par le
+  formulaire : utile pour un message d'état piloté par Alpine.
+#}
+{% macro champ(champ_form, colonnes = '', attributs = {}, aide = null) %}
+<div class="{{ colonnes }}">
+    {{ form_label(champ_form, null, {label_attr: {class: 'mb-1.5 block text-sm font-medium text-slate-700'}}) }}
+    {{ form_widget(champ_form, {attr: attributs|merge({
+        class: 'min-h-[44px] w-full rounded-lg border border-slate-500 bg-white px-3 py-2.5 text-sm text-slate-900
+                caret-indigo-600 placeholder:text-slate-500
+                transition duration-150 motion-reduce:transition-none
+                focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600
+                disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-600'
+    })}) }}
+    {% if aide %}
+        <p class="mt-1.5 text-sm text-slate-600">{{ aide|raw }}</p>
+    {% endif %}
+    {% if champ_form.vars.help is defined and champ_form.vars.help %}
+        <p class="mt-1.5 text-sm text-slate-600">{{ champ_form.vars.help }}</p>
+    {% endif %}
+    {{ form_errors(champ_form) }}
+</div>
+{% endmacro %}
+
+{#
+  Rappel du choix enregistré au dépôt quand l'offre du centre ne le propose
+  plus : la liste ne montre que l'offre actuelle, ce rappel évite de perdre ce
+  que le candidat avait demandé. Rien n'est affiché si le choix est dans la liste.
+#}
+{% macro choix_initial(champ_form, libelle_initial, nature) %}
+{%- if libelle_initial and champ_form.vars.choices|filter(c => c.label == libelle_initial)|length == 0 -%}
+<span class="mt-2 flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+    <i class="fas fa-clock-rotate-left mt-0.5 text-xs text-slate-600" aria-hidden="true"></i>
+    <span>Choix enregistré au dépôt : <strong class="font-semibold text-slate-900">{{ libelle_initial }}</strong>. Sélectionnez {{ nature }} proposé par le centre.</span>
+</span>
+{%- endif -%}
+{% endmacro %}
+
+{# Champ mot de passe avec bouton afficher / masquer la saisie. #}
+{% macro champ_mot_de_passe(champ_form, colonnes = '') %}
+<div class="{{ colonnes }}" x-data="{ visible: false }">
+    {{ form_label(champ_form, null, {label_attr: {class: 'mb-1.5 block text-sm font-medium text-slate-700'}}) }}
+    <div class="relative">
+        {{ form_widget(champ_form, {attr: {
+            ':type': "visible ? 'text' : 'password'",
+            class: 'min-h-[44px] w-full rounded-lg border border-slate-500 bg-white py-2.5 pl-3 pr-12 text-sm text-slate-900
+                    caret-indigo-600 placeholder:text-slate-500
+                    transition duration-150 motion-reduce:transition-none
+                    focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600'
+        }}) }}
+        <button type="button" @click="visible = !visible"
+                :aria-label="visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                :aria-pressed="visible.toString()"
+                class="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-slate-600 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-indigo-600">
+            <i class="fas" :class="visible ? 'fa-eye-slash' : 'fa-eye'" aria-hidden="true"></i>
+        </button>
+    </div>
+    {{ form_errors(champ_form) }}
+</div>
+{% endmacro %}
+
+{#
+  Indicateur chiffré : panneau à bordure fine, sans liseré coloré ni
+  soulèvement au survol. La couleur n'habille que la tuile d'icône.
+#}
+{% macro stat(libelle, valeur, icone, ton = 'indigo') %}
+<div class="rounded-lg border border-slate-200 bg-white p-5">
+    <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+            <p class="text-sm font-medium text-slate-600">{{ libelle }}</p>
+            <p class="mt-1.5 text-3xl font-bold text-slate-900 tabular-nums">{{ valeur }}</p>
+        </div>
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg
+                    {% if ton == 'green' %}bg-green-50 text-green-600
+                    {% elseif ton == 'amber' %}bg-amber-50 text-amber-600
+                    {% elseif ton == 'red' %}bg-red-50 text-red-600
+                    {% elseif ton == 'purple' %}bg-purple-50 text-purple-600
+                    {% elseif ton == 'blue' %}bg-blue-50 text-blue-600
+                    {% else %}bg-indigo-50 text-indigo-600{% endif %}">
+            <i class="fas fa-{{ icone }}" aria-hidden="true"></i>
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+{#
+  Graphique circulaire d'un écran de pilotage.
+
+  `valeurs` est une table {libellé: effectif}. Elle est passée au canvas par un
+  attribut `data-`, jamais par un <script> inline : c'est assets/app.js qui
+  instancie Chart.js, avec la palette imposée du projet. `couleurs` accepte une
+  liste de clés sémantiques ('succes', 'attente', 'refus', 'neutre') lorsque la
+  teinte porte un sens ; sinon les nuances de bleu DAIP s'appliquent.
+
+  La légende est rendue ici, avec les effectifs chiffrés, plutôt que par
+  Chart.js : elle reste lisible à l'impression et respecte la typographie.
+#}
+{% macro graphique(titre, icone, valeurs, couleurs = null, sous_titre = null) %}
+{% set total = 0 %}
+{% for effectif in valeurs %}{% set total = total + effectif %}{% endfor %}
+<div class="rounded-lg border border-slate-200 bg-white overflow-hidden">
+    <div class="px-6 py-5 border-b border-slate-200 flex items-center gap-3">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+            <i class="fas fa-{{ icone }}" aria-hidden="true"></i>
+        </div>
+        <div class="min-w-0">
+            <h2 class="text-sm font-bold text-slate-800">{{ titre }}</h2>
+            {% if sous_titre %}<p class="text-xs text-slate-600 mt-0.5">{{ sous_titre }}</p>{% endif %}
+        </div>
+    </div>
+
+    {% if total > 0 %}
+        <div class="p-6">
+            <div class="relative h-56 w-full">
+                <canvas data-valeurs="{{ valeurs|json_encode }}"
+                        {% if couleurs %}data-couleurs="{{ couleurs|join(',') }}"{% endif %}
+                        role="img"
+                        aria-label="{{ titre }} : {{ total }} dossier(s)"></canvas>
+            </div>
+
+            <dl class="mt-5 space-y-2">
+                {% for libelle, effectif in valeurs %}
+                    <div class="flex items-center justify-between gap-3 text-sm">
+                        <dt class="text-slate-600 truncate">{{ libelle }}</dt>
+                        <dd class="font-semibold text-slate-800 tabular-nums shrink-0">
+                            {{ effectif }}
+                            <span class="text-xs font-normal text-slate-600">
+                                ({{ (effectif * 100 / total)|number_format(0) }} %)
+                            </span>
+                        </dd>
+                    </div>
+                {% endfor %}
+            </dl>
+        </div>
+    {% else %}
+        {{ _self.etat_vide('chart-pie', 'Aucune donnée', 'Aucun dossier ne correspond à ce périmètre pour le moment.') }}
+    {% endif %}
+</div>
+{% endmacro %}
+
+{# Numéro VAE : identifiant administratif, en mono slate-900 à chiffres tabulaires. #}
+{% macro numero_vae(numero, taille = 'text-sm') %}
+<span class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-mono font-semibold tabular-nums text-slate-900 {{ taille }}">
+    <i class="fas fa-hashtag text-xs text-slate-500" aria-hidden="true"></i>{{ numero }}
+</span>
+{% endmacro %}
+
+{# Section thématique d'un formulaire ou d'une fiche. #}
+{% macro section(titre, sous_titre, icone, ton = 'indigo') %}
+<div class="mb-5 flex items-center gap-3 border-b border-slate-200 pb-4">
+    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg
+                {% if ton == 'orange' %}bg-orange-50 text-orange-600
+                {% elseif ton == 'amber' %}bg-amber-50 text-amber-600
+                {% elseif ton == 'purple' %}bg-purple-50 text-purple-600
+                {% else %}bg-indigo-50 text-indigo-600{% endif %}">
+        <i class="fas fa-{{ icone }}" aria-hidden="true"></i>
+    </div>
+    <div class="min-w-0">
+        <h2 class="text-base font-semibold text-slate-900">{{ titre }}</h2>
+        {% if sous_titre %}
+            <p class="mt-0.5 text-sm text-slate-600">{{ sous_titre }}</p>
+        {% endif %}
+    </div>
+</div>
+{% endmacro %}
+
+{#
+  Dépôt d'une pièce justificative : zone pointillée + nom du fichier déjà
+  transmis. Une fois un fichier choisi, un contrôle client (format et taille)
+  affiche immédiatement une coche verte de confirmation ou une erreur — avant
+  même la soumission — pour repérer un fichier trop lourd sans attendre l'aller-
+  retour serveur.
+#}
+{% macro document(champ_form, libelle, obligatoire = true, fichier_existant = null) %}
+<div class="rounded-lg border-2 border-dashed border-slate-300 bg-white p-4
+            transition duration-150 motion-reduce:transition-none hover:border-indigo-400"
+     x-data="pieceJustificative()">
+    <div class="flex items-start gap-3">
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
+            <i class="fas" :class="fichier ? 'fa-circle-check text-green-600' : '{{ fichier_existant ? 'fa-file-circle-check text-green-600' : 'fa-file-arrow-up text-slate-500' }}'" aria-hidden="true"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-slate-900">
+                {{ libelle }}
+                {% if obligatoire %}<span class="text-red-600" aria-hidden="true">*</span><span class="sr-only">(obligatoire)</span>{% endif %}
+            </p>
+            <p class="mt-0.5 text-sm text-slate-600">JPG, PNG ou PDF — 2 Mo maximum</p>
+
+            {% if fichier_existant %}
+                <p class="mt-1 text-sm text-green-700" x-show="!fichier">
+                    <i class="fas fa-check mr-1.5 text-xs" aria-hidden="true"></i>Pièce déjà transmise — envoyez un fichier pour la remplacer
+                </p>
+            {% endif %}
+
+            {% set input_id = champ_form.vars.id %}
+            <div class="mt-2 inline-flex rounded-lg focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-offset-2">
+                {# L'id n'est pas passé dans attr : Symfony émettrait alors deux attributs id, le navigateur garderait le premier et le label ne serait plus relié à l'input. #}
+                {{ form_widget(champ_form, {attr: {
+                    class: 'sr-only',
+                    '@change': 'verifier($event)'
+                }}) }}
+                <label for="{{ input_id }}" class="inline-flex min-h-[40px] items-center rounded-lg bg-indigo-50 px-3 text-sm font-medium text-indigo-700 cursor-pointer hover:bg-indigo-100 transition duration-200">
+                    Choisir un fichier
+                </label>
+            </div>
+
+            <p class="mt-1.5 text-sm text-green-700 flex items-center gap-1.5" x-show="fichier" x-cloak>
+                <i class="fas fa-circle-check text-xs" aria-hidden="true"></i>
+                <span x-text="fichier ? fichier.nom + ' (' + fichier.taille + ' Mo) prêt à être envoyé' : ''"></span>
+            </p>
+            <p class="mt-1.5 text-sm text-red-700 flex items-center gap-1.5" x-show="erreur" x-cloak>
+                <i class="fas fa-triangle-exclamation text-xs" aria-hidden="true"></i>
+                <span x-text="erreur"></span>
+            </p>
+
+            {{ form_errors(champ_form) }}
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+{#
+  Pied de liste paginée.
+
+  Écrit en Twig plutôt que via knp_pagination_render() : le gabarit KnpPaginator
+  configuré sort du balisage Bootstrap 4, que le projet ne style nulle part.
+  Les liens conservent les paramètres de la requête courante (filtres actifs).
+#}
+{% macro pagination(pagination) %}
+{% set page_courante = pagination.currentPageNumber %}
+{% set nb_pages = pagination.pageCount %}
+{% set total = pagination.getTotalItemCount %}
+{% if nb_pages > 1 %}
+    {% set route = pagination.route %}
+    {% set parametres = pagination.params|merge(app.request.query.all) %}
+    {% set premiere_affichee = max(1, page_courante - 2) %}
+    {% set derniere_affichee = min(nb_pages, page_courante + 2) %}
+    {% set lien = 'inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 tabular-nums transition duration-150 motion-reduce:transition-none hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2' %}
+    {% set inactif = 'inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-500' %}
+
+    <nav aria-label="Pagination"
+         class="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <p class="text-sm text-slate-700">
+            Page <span class="font-semibold text-slate-900 tabular-nums">{{ page_courante }}</span>
+            sur <span class="font-semibold text-slate-900 tabular-nums">{{ nb_pages }}</span>
+            — <span class="tabular-nums">{{ total }}</span> élément{{ total > 1 ? 's' : '' }}
+        </p>
+
+        <ul class="flex flex-wrap items-center gap-1">
+            <li>
+                {% if page_courante > 1 %}
+                    <a href="{{ path(route, parametres|merge({page: page_courante - 1})) }}" rel="prev" class="{{ lien }}">
+                        <i class="fas fa-chevron-left text-xs" aria-hidden="true"></i>Précédent
+                    </a>
+                {% else %}
+                    <span class="{{ inactif }}"><i class="fas fa-chevron-left text-xs" aria-hidden="true"></i>Précédent</span>
+                {% endif %}
+            </li>
+
+            {% if premiere_affichee > 1 %}
+                <li><a href="{{ path(route, parametres|merge({page: 1})) }}" aria-label="Page 1" class="{{ lien }}">1</a></li>
+                {% if premiere_affichee > 2 %}<li aria-hidden="true" class="px-1 text-sm text-slate-600">…</li>{% endif %}
+            {% endif %}
+
+            {% for numero in premiere_affichee..derniere_affichee %}
+                <li>
+                    {% if numero == page_courante %}
+                        <span aria-current="page" class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white tabular-nums">{{ numero }}</span>
+                    {% else %}
+                        <a href="{{ path(route, parametres|merge({page: numero})) }}" aria-label="Page {{ numero }}" class="{{ lien }}">{{ numero }}</a>
+                    {% endif %}
+                </li>
+            {% endfor %}
+
+            {% if derniere_affichee < nb_pages %}
+                {% if derniere_affichee < nb_pages - 1 %}<li aria-hidden="true" class="px-1 text-sm text-slate-600">…</li>{% endif %}
+                <li><a href="{{ path(route, parametres|merge({page: nb_pages})) }}" aria-label="Page {{ nb_pages }}" class="{{ lien }}">{{ nb_pages }}</a></li>
+            {% endif %}
+
+            <li>
+                {% if page_courante < nb_pages %}
+                    <a href="{{ path(route, parametres|merge({page: page_courante + 1})) }}" rel="next" class="{{ lien }}">
+                        Suivant<i class="fas fa-chevron-right text-xs" aria-hidden="true"></i>
+                    </a>
+                {% else %}
+                    <span class="{{ inactif }}">Suivant<i class="fas fa-chevron-right text-xs" aria-hidden="true"></i></span>
+                {% endif %}
+            </li>
+        </ul>
+    </nav>
+{% endif %}
+{% endmacro %}

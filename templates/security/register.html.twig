@@ -1,0 +1,576 @@
+{% extends 'public/base.html.twig' %}
+
+{% block title %}Préinscription candidat | DAIP - Direction de l'Apprentissage et de l'Insertion Professionnelle{% endblock %}
+
+{% block meta %}
+{{ parent() }}
+<meta name="description" content="Créez votre compte candidat pour postuler aux formations professionnelles de la DAIP et intégrer l'École de la Deuxième Chance">
+{% endblock %}
+
+{# Définition de la classe CSS réutilisable #}
+{% set input_class = 'min-h-[44px] w-full rounded-lg border border-slate-500 bg-white px-3 py-2.5 text-sm text-slate-900 caret-indigo-600 placeholder:text-slate-500 transition duration-150 motion-reduce:transition-none focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600' %}
+
+{% block body %}
+{% import _self as page %}
+
+{# Champ téléphone à la française : une seule boîte bordée, le drapeau et l'indicatif
+   fixes à gauche, le numéro à droite. L'indicatif n'est jamais posté ni enregistré :
+   la base garde les 10 chiffres du numéro (clé de connexion et de paiement). #}
+{% macro telephone(champ, libelle, aide, exemple, autocompletion, facultatif) %}
+    {% set erreur = champ.vars.errors|length > 0 %}
+    <div>
+        <label for="{{ champ.vars.id }}" class="mb-1 block text-sm font-medium text-slate-700">
+            {{ libelle }}{% if facultatif %} <span class="font-normal text-slate-600">(facultatif)</span>{% endif %}
+        </label>
+        <div data-telephone-boite class="flex min-h-[44px] rounded-lg border bg-white transition duration-150 motion-reduce:transition-none focus-within:ring-2 {{ erreur ? 'border-red-600 focus-within:border-red-600 focus-within:ring-red-600' : 'border-slate-500 focus-within:border-indigo-600 focus-within:ring-indigo-600' }}">
+            <span class="flex shrink-0 select-none items-center gap-2 rounded-l-[7px] border-r border-slate-300 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-800">
+                {{ include('partials/_drapeau_ci.html.twig') }}
+                +225<span class="sr-only"> (indicatif de la Côte d'Ivoire)</span>
+            </span>
+            {{ form_widget(champ, {
+                'attr': {
+                    'class': 'min-h-[44px] min-w-0 flex-1 rounded-r-lg border-0 bg-transparent px-3 py-2.5 text-base tabular-nums text-slate-900 caret-indigo-600 placeholder:text-slate-500 focus:outline-none focus:ring-0',
+                    'placeholder': exemple,
+                    'maxlength': '14',
+                    'inputmode': 'numeric',
+                    'autocomplete': autocompletion,
+                    'title': 'Le numéro doit contenir exactement 10 chiffres',
+                    'data-telephone-fr': '1',
+                    'data-sans-anneau': '1',
+                    'data-obligatoire': facultatif ? '0' : '1',
+                    'aria-describedby': champ.vars.id ~ '-aide',
+                    'aria-invalid': erreur ? 'true' : 'false'
+                }
+            }) }}
+        </div>
+        <p id="{{ champ.vars.id }}-aide" class="mt-1 text-sm text-slate-600">{{ aide }}</p>
+        <p id="{{ champ.vars.id }}-erreur" class="mt-1 hidden text-sm font-medium text-red-700" role="alert"></p>
+        {{ form_errors(champ) }}
+    </div>
+{% endmacro %}
+
+{# L'en-tête public fixe est déjà compensée par le correcteur de hauteur de
+   public/base.html.twig (72 px) : inutile d'ajouter un padding-top ici, ce
+   qui repoussait le formulaire vers le haut plutôt que de le centrer. #}
+<div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center py-10">
+<!-- ==================== MESSAGES ==================== -->
+<div class="container mx-auto px-4 mb-6 max-w-4xl">
+    {% include 'partials/_flash_messages.html.twig' %}
+</div>
+
+<!-- ==================== FORMULAIRE DE PRÉINSCRIPTION (WIZARD) ==================== -->
+<div class="container mx-auto px-4">
+    <div class="max-w-4xl mx-auto">
+        <!-- Barre de progression -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center">
+                    <span class="text-sm font-semibold text-indigo-600" id="step-indicator">Étape 1/4</span>
+                    <span class="text-sm text-slate-500 ml-2" id="step-name">Identité</span>
+                </div>
+                <span class="text-sm text-slate-500" id="progress-percent">25%</span>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-2.5">
+                <div class="bg-indigo-600 h-2.5 rounded-full transition-all duration-300" id="progress-bar" style="width: 25%"></div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="relative bg-gradient-to-br from-primary-900 to-secondary-800 px-6 py-4">
+                <h1 class="flex items-center text-xl font-semibold text-white">
+                    Préinscription - Validation Des Acquis De L'Expérience (VAE)
+                </h1>
+                <div class="absolute inset-x-0 bottom-0 h-1 bg-[#ED8F33]" aria-hidden="true"></div>
+            </div>
+        
+            <div class="p-8">
+                {{ form_start(form, {'attr': {'class': 'space-y-6', 'novalidate': 'novalidate', 'id': 'register-form'}}) }}
+        
+                <!-- Champ caché pour la redirection -->
+                {% if redirect is defined and redirect %}
+                    <input type="hidden" name="redirect" value="{{ redirect }}">
+                {% endif %}
+
+                <!-- ÉTAPE 1 : Identité -->
+                <div class="step" id="step1">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Nom -->
+                        <div class="md:col-span-1">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                                Nom
+                            </label>
+                            {{ form_widget(form.nom, {
+                                'attr': {
+                                    'class': input_class ~ ' text-uppercase',
+                                    'placeholder': 'Votre nom'
+                                }
+                            }) }}
+                        </div>
+                        
+                        <!-- Prénoms -->
+                        <div class="md:col-span-1">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                                Prénoms
+                            </label>
+                            {{ form_widget(form.prenoms, {
+                                'attr': {
+                                    'class': input_class,
+                                    'placeholder': 'Vos prénoms'
+                                }
+                            }) }}
+                        </div>
+
+                        <!-- Nom de jeune fille (facultatif) -->
+                        <div class="md:col-span-2">
+                            <label for="{{ form.nomJeuneFille.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
+                                Nom de jeune fille <span class="font-normal text-slate-600">(facultatif)</span>
+                            </label>
+                            {{ form_widget(form.nomJeuneFille, {
+                                'attr': {
+                                    'class': input_class ~ ' text-uppercase',
+                                    'aria-describedby': form.nomJeuneFille.vars.id ~ '_aide'
+                                }
+                            }) }}
+                            <p id="{{ form.nomJeuneFille.vars.id }}_aide" class="mt-1.5 text-sm text-slate-600">Uniquement si différent de votre nom actuel.</p>
+                        </div>
+
+                        <!-- Sexe -->
+                        <div class="md:col-span-1">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                                Sexe
+                            </label>
+                            {{ form_widget(form.sexe, {
+                                'attr': {
+                                    'class': input_class
+                                }
+                            }) }}
+                        </div>
+                        
+                        <!-- Situation matrimoniale -->
+                        <div class="md:col-span-1">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                                Situation matrimoniale
+                            </label>
+                            {{ form_widget(form.situationmat, {
+                                'attr': {
+                                    'class': input_class
+                                }
+                            }) }}
+                        </div>
+                    </div>
+                </div>
+        
+                <!-- ÉTAPE 2 : Naissance, nationalité et parents -->
+                <div class="step hidden" id="step2">
+                    <!-- Naissance et nationalité -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <!-- Date de naissance -->
+                        <div class="md:col-span-1">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                                Date de naissance
+                            </label>
+                            {{ form_widget(form.datenaissance, {
+                                'attr': {
+                                    'class': input_class
+                                }
+                            }) }}
+                        </div>
+                        
+                        <!-- Lieu de naissance -->
+                        <div class="md:col-span-1">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                                Lieu de naissance
+                            </label>
+                            {{ form_widget(form.lieunaissance, {
+                                'attr': {
+                                    'class': input_class,
+                                    'placeholder': 'Ville de naissance'
+                                }
+                            }) }}
+                        </div>
+                        
+                        <!-- Nationalité -->
+                        <div class="md:col-span-1">
+                            <p id="nationalite-libelle" class="mb-1 text-sm font-medium text-slate-700">Nationalité</p>
+                            {# Valeur imposée côté serveur (champ désactivé dans UserType) : on affiche un
+                               bloc en lecture seule plutôt qu'une liste grisée qui ressemble à une panne. #}
+                            {% do form.nationalite.setRendered %}
+                            <div role="group" aria-labelledby="nationalite-libelle" aria-describedby="nationalite-aide"
+                                 class="flex min-h-[44px] items-center gap-3 rounded-lg border border-slate-300 bg-slate-50 px-3 text-base text-slate-900">
+                                {{ include('partials/_drapeau_ci.html.twig') }}
+                                <span class="flex-1">Ivoirienne <span class="text-slate-600">· Côte d'Ivoire</span></span>
+                                <i class="fas fa-lock text-sm text-slate-600" aria-hidden="true"></i>
+                                <span class="sr-only">(non modifiable)</span>
+                            </div>
+                            <p id="nationalite-aide" class="mt-1 text-sm text-slate-600">Condition de candidature : être de nationalité ivoirienne.</p>
+                        </div>
+                        
+                    </div>
+        
+                </div>
+        
+                <!-- ÉTAPE 3 : Résidence et contact -->
+                <div class="step hidden" id="step3">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Ville de résidence -->
+                        <div class="md:col-span-1">
+                            <label for="{{ form.residence.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
+                                Ville de résidence
+                            </label>
+                            {{ form_widget(form.residence, {
+                                'attr': {
+                                    'class': input_class,
+                                    'placeholder': 'Votre ville, par exemple Bouaké'
+                                }
+                            }) }}
+                        </div>
+
+                        <!-- Boîte postale -->
+                        <div class="md:col-span-1">
+                            <label for="{{ form.boitePostale.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
+                                Boîte postale <span class="font-normal text-slate-600">(facultatif)</span>
+                            </label>
+                            {{ form_widget(form.boitePostale, {
+                                'attr': {
+                                    'class': input_class,
+                                    'placeholder': 'Par exemple 01 BP 1234 Abidjan 01'
+                                }
+                            }) }}
+                        </div>
+
+                        <div class="md:col-span-1">
+                            {{ page.telephone(form.contact, 'Téléphone portable', "Votre numéro, sans l'indicatif", '07 08 09 10 11', 'tel-national', false) }}
+                        </div>
+
+                        <div class="md:col-span-1">
+                            {{ page.telephone(form.contact2, 'Téléphone fixe', 'Un numéro de fixe où vous joindre', '27 22 00 00 00', 'off', true) }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ÉTAPE 4 : Identifiants de connexion et validation -->
+                <div class="step hidden" id="step4">
+                    <!-- Identifiants -->
+                    <div class="space-y-4 mb-6">
+                        <!-- Email -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                                Email
+                            </label>
+                            {{ form_widget(form.email, {
+                                'attr': {
+                                    'class': input_class,
+                                    'placeholder': 'exemple@email.com'
+                                }
+                            }) }}
+                            <div id="email-error" class="text-sm text-red-500 mt-1 hidden"></div>
+                        </div>
+                        
+                        <!-- Mot de passe et confirmation -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">
+                                    Mot de passe
+                                </label>
+                                <div class="relative" x-data="{ visible: false }">
+                                    {{ form_widget(form.password.first, {
+                                        'attr': {
+                                            'class': input_class ~ ' pr-12',
+                                            'placeholder': '8 caractères minimum',
+                                            ':type': "visible ? 'text' : 'password'"
+                                        }
+                                    }) }}
+                                    <button type="button" @click="visible = !visible"
+                                            :aria-label="visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                                            :aria-pressed="visible.toString()"
+                                            class="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-slate-600 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-indigo-600">
+                                        <i class="fas" :class="visible ? 'fa-eye-slash' : 'fa-eye'" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">
+                                    Confirmation
+                                </label>
+                                <div class="relative" x-data="{ visible: false }">
+                                    {{ form_widget(form.password.second, {
+                                        'attr': {
+                                            'class': input_class ~ ' pr-12',
+                                            'placeholder': '••••••••',
+                                            ':type': "visible ? 'text' : 'password'"
+                                        }
+                                    }) }}
+                                    <button type="button" @click="visible = !visible"
+                                            :aria-label="visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                                            :aria-pressed="visible.toString()"
+                                            class="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-slate-600 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-indigo-600">
+                                        <i class="fas" :class="visible ? 'fa-eye-slash' : 'fa-eye'" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                
+                    <!-- Case à cocher -->
+                    <div class="p-4 bg-slate-50 rounded-lg">
+                        <div class="flex items-start">
+                            <input type="checkbox" id="accept" class="mt-1 mr-3">
+                            <label for="accept" class="text-sm text-slate-600">
+                                J'accepte que les informations fournies soient utilisées dans le cadre de ma candidature 
+                                et j'atteste sur l'honneur leur exactitude.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+        
+                <!-- Boutons de navigation -->
+                <div class="flex justify-between items-center pt-6 border-t border-slate-200">
+                    <button type="button" id="prev-btn" class="px-6 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fas fa-arrow-left mr-2"></i>
+                        Précédent
+                    </button>
+                    
+                    <div class="flex gap-3">
+                        <button type="button" id="next-btn" class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
+                            Suivant
+                            <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                        
+                        <button type="submit" id="submit-btn" class="px-8 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                            <span class="spinner-border spinner-border-sm hidden mr-2" id="spinner"></span>
+                            <i class="fas fa-check-circle mr-2"></i>
+                            Finaliser ma préinscription
+                        </button>
+                    </div>
+                </div>
+        
+                {{ form_end(form) }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Lien retour accueil et retour page précédente -->
+    <div class="text-center mt-4 space-y-2">
+        {% if redirect is defined and redirect %}
+            <a href="{{ redirect }}" class="text-sm text-slate-500 hover:text-indigo-600 transition inline-flex items-center mr-4">
+                <i class="fas fa-arrow-left mr-1"></i>
+                Retour à la page précédente
+            </a>
+        {% endif %}
+        <a href="{{ path('app_home') }}" class="text-sm text-slate-500 hover:text-indigo-600 transition inline-flex items-center">
+            <i class="fas fa-home mr-1"></i>
+            Retour à l'accueil
+        </a>
+    </div>
+</div>
+
+<!-- ==================== JAVASCRIPT ==================== -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('register-form');
+    const steps = document.querySelectorAll('.step');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const submitBtn = document.getElementById('submit-btn');
+    const stepIndicator = document.getElementById('step-indicator');
+    const stepName = document.getElementById('step-name');
+    const progressBar = document.getElementById('progress-bar');
+    const progressPercent = document.getElementById('progress-percent');
+    const spinner = document.getElementById('spinner');
+    const emailInput = document.getElementById('{{ form.email.vars.id }}');
+    const emailError = document.getElementById('email-error');
+    
+    const stepNames = ['Identité', 'Naissance', 'Contact', 'Connexion'];
+    let currentStep = 0;
+    const totalSteps = steps.length;
+
+    // Fonction pour mettre à jour l'affichage des étapes
+    function updateSteps() {
+        steps.forEach((step, index) => {
+            if (index === currentStep) {
+                step.classList.remove('hidden');
+            } else {
+                step.classList.add('hidden');
+            }
+        });
+
+        prevBtn.disabled = currentStep === 0;
+        
+        if (currentStep === totalSteps - 1) {
+            nextBtn.classList.add('hidden');
+            submitBtn.classList.remove('hidden');
+        } else {
+            nextBtn.classList.remove('hidden');
+            submitBtn.classList.add('hidden');
+        }
+
+        stepIndicator.textContent = `Étape ${currentStep + 1}/${totalSteps}`;
+        stepName.textContent = stepNames[currentStep];
+        
+        const progress = ((currentStep + 1) / totalSteps) * 100;
+        progressBar.style.width = `${progress}%`;
+        progressPercent.textContent = `${Math.round(progress)}%`;
+    }
+
+    // Contrôle des numéros : 10 chiffres exactement, message clair sous le champ.
+    function messageTelephone(champ) {
+        var chiffres = champ.value.replace(/\D/g, '');
+        if (chiffres.length === 0) {
+            return champ.dataset.obligatoire === '1' ? 'Saisissez votre numéro de téléphone : 10 chiffres.' : '';
+        }
+        if (chiffres.length !== 10) {
+            return 'Ce numéro a ' + chiffres.length + ' chiffre' + (chiffres.length > 1 ? 's' : '') + ' : il en faut exactement 10.';
+        }
+        return '';
+    }
+
+    function afficherErreurTelephone(champ, message) {
+        var zone = document.getElementById(champ.id + '-erreur');
+        var boite = champ.closest('[data-telephone-boite]');
+        zone.textContent = message;
+        zone.classList.toggle('hidden', !message);
+        champ.setAttribute('aria-invalid', message ? 'true' : 'false');
+        boite.classList.toggle('border-red-600', !!message);
+        boite.classList.toggle('border-slate-500', !message);
+    }
+
+    function validerTelephones() {
+        var champs = Array.from(document.querySelectorAll('[data-telephone-fr]'));
+        var premier = null;
+        champs.forEach(function (champ) {
+            var message = messageTelephone(champ);
+            if (!message && champ !== champs[0] && champ.value.replace(/\D/g, '') !== '' &&
+                champ.value.replace(/\D/g, '') === champs[0].value.replace(/\D/g, '')) {
+                message = 'Le 2ᵉ contact doit être différent du premier.';
+            }
+            afficherErreurTelephone(champ, message);
+            if (message && !premier) { premier = champ; }
+        });
+        return premier;
+    }
+
+    function validateStep(step) {
+        if (!steps[step].querySelector('[data-telephone-fr]')) { return true; }
+        var invalide = validerTelephones();
+        if (invalide) { invalide.focus(); return false; }
+        return true;
+    }
+
+    // Navigation suivante
+    nextBtn.addEventListener('click', function() {
+        if (currentStep < totalSteps - 1) {
+            if (validateStep(currentStep)) {
+                currentStep++;
+                updateSteps();
+            }
+        }
+    });
+
+    // Navigation précédente
+    prevBtn.addEventListener('click', function() {
+        if (currentStep > 0) {
+            currentStep--;
+            updateSteps();
+        }
+    });
+
+    // Vérification email unique
+    if (emailInput) {
+        emailInput.addEventListener('blur', function() {
+            const email = this.value;
+            if (email && email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+                fetch('/user/email/' + encodeURIComponent(email))
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.exists) {
+                            emailError.textContent = 'Cet email est déjà utilisé. Veuillez vous connecter ou utiliser une autre adresse.';
+                            emailError.classList.remove('hidden');
+                            emailInput.classList.add('border-red-500', 'focus:ring-red-500');
+                        } else {
+                            emailError.classList.add('hidden');
+                            emailInput.classList.remove('border-red-500', 'focus:ring-red-500');
+                        }
+                    })
+                    .catch(error => console.error('Erreur:', error));
+            }
+        });
+    }
+
+    // Animation du spinner au submit
+    form.addEventListener('submit', function(e) {
+        // Vérification finale avant soumission : on ramène l'utilisateur à l'étape des numéros.
+        var invalide = validerTelephones();
+        if (invalide) {
+            e.preventDefault();
+            currentStep = Array.from(steps).indexOf(invalide.closest('.step'));
+            updateSteps();
+            invalide.focus();
+            return;
+        }
+        
+        spinner.classList.remove('hidden');
+        submitBtn.disabled = true;
+    });
+
+    // Animation des champs au focus
+    const inputs = document.querySelectorAll('input:not([data-sans-anneau]), select');
+    inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+            this.classList.add('ring-2', 'ring-indigo-300');
+        });
+        input.addEventListener('blur', function() {
+            this.classList.remove('ring-2', 'ring-indigo-300');
+        });
+    });
+
+    // Numéros affichés par paires (07 08 09 10 11) ; le serveur retire les espaces.
+    function formaterTelephone(champ) {
+        var chiffres = champ.value.replace(/\D/g, '');
+        // Numéro collé avec l'indicatif (+225 07 ...) : l'indicatif est déjà affiché.
+        if (chiffres.length > 10 && chiffres.indexOf('225') === 0) { chiffres = chiffres.slice(3); }
+        champ.value = chiffres.slice(0, 10).replace(/(\d{2})(?=\d)/g, '$1 ');
+    }
+    document.querySelectorAll('[data-telephone-fr]').forEach(function (champ) {
+        formaterTelephone(champ);
+        champ.addEventListener('input', function () {
+            formaterTelephone(champ);
+            if (champ.getAttribute('aria-invalid') === 'true') { afficherErreurTelephone(champ, messageTelephone(champ)); }
+        });
+        champ.addEventListener('blur', function () {
+            if (champ.value !== '') { afficherErreurTelephone(champ, messageTelephone(champ)); }
+        });
+    });
+
+    // Après une erreur renvoyée par le serveur, on rouvre l'étape qui la porte.
+    var enErreur = document.querySelector('.step [aria-invalid="true"]');
+    if (enErreur) { currentStep = Array.from(steps).indexOf(enErreur.closest('.step')); }
+
+    // Initialisation
+    updateSteps();
+});
+</script>
+
+<style>
+/* Style pour le texte en majuscules */
+.text-uppercase {
+    text-transform: uppercase;
+}
+
+/* Animation de pulsation pour le bouton désactivé */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+button[type="submit"]:disabled {
+    animation: pulse 1.5s infinite;
+    cursor: not-allowed;
+}
+
+/* Transition fluide */
+.step {
+    transition: opacity 0.3s ease-in-out;
+}
+</style>
+</div>
+{% endblock %}

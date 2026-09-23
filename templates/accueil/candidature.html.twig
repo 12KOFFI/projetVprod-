@@ -1,0 +1,185 @@
+{# Consultation d'un dossier par l'agent d'accueil. #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% set candidat = candidature.user %}
+{% set etude = candidature.resultatEtude %}
+{% set recevabilite = candidature.resultatRecevabilite %}
+
+{% block title %}Dossier {{ candidature.numero }} — Accueil{% endblock %}
+
+{% block body %}
+{% set actions = [] %}
+{% if is_granted('CANDIDATURE_EDIT', candidature) %}
+    {% set actions = actions|merge([{url: path('app_accueil_candidature_modifier', {id: candidature.id}), libelle: 'Modifier le dossier', icone: 'pen', principal: true}]) %}
+{% endif %}
+{% set actions = actions|merge([{url: path(is_granted('ROLE_ADMIN') ? 'app_admin_candidature_index' : 'app_accueil_candidatures'), libelle: 'Retour à la liste', icone: 'arrow-left'}]) %}
+
+{{ ui.bandeau(
+    candidat ? candidat.nomComplet : 'Candidat inconnu',
+    candidature.numero ~ ' · ' ~ (candidature.metier ? candidature.metier.libelle : '—'),
+    'file-lines',
+    null,
+    '',
+    actions
+) }}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+        {# ===== Statut et décisions ===== #}
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-sm font-bold text-slate-800">Statut du dossier</h2>
+                    <p class="text-xs text-slate-600 mt-0.5 tabular-nums">
+                        Déposé le {{ candidature.creation ? candidature.creation|date('d/m/Y') : '—' }}
+                        {% if candidature.conseiller %} · suivi par {{ candidature.conseiller.nomComplet }}{% endif %}
+                    </p>
+                </div>
+                {{ include('partials/_statut_badge.html.twig', { statut: statut_candidature(candidature) }) }}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                <div class="px-6 py-5">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">Étude du dossier</p>
+                    {% if etude and etude.name != 'EN_ATTENTE' %}
+                        <div class="mt-2">{{ ui.badge(etude.libelle, etude.couleur) }}</div>
+                        <p class="text-xs text-slate-600 mt-2 tabular-nums">
+                            {{ candidature.etuDate ? candidature.etuDate|date('d/m/Y') : '—' }}
+                        </p>
+                        {% if candidature.etuCom %}
+                            <p class="text-xs text-slate-600 mt-3 leading-relaxed bg-slate-50 rounded-lg p-3 border border-slate-100">
+                                {{ candidature.etuCom }}
+                            </p>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-sm text-slate-600 mt-2">Pas encore rendue</p>
+                    {% endif %}
+                </div>
+
+                <div class="px-6 py-5">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">Recevabilité</p>
+                    {% if recevabilite and recevabilite.name != 'EN_ATTENTE' %}
+                        <div class="mt-2">{{ ui.badge(recevabilite.libelle, recevabilite.couleur) }}</div>
+                        <p class="text-xs text-slate-600 mt-2 tabular-nums">
+                            {{ candidature.recDate ? candidature.recDate|date('d/m/Y') : '—' }}
+                        </p>
+                    {% elseif candidature_en_attente_paiement(candidature) %}
+                        <p class="text-sm text-slate-600 mt-2">Après règlement des frais de dossier</p>
+                    {% else %}
+                        <p class="text-sm text-slate-600 mt-2">Pas encore rendue</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# ===== Éléments du dossier ===== #}
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-200">
+                <h2 class="text-sm font-bold text-slate-800">Éléments du dossier</h2>
+            </div>
+
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-px bg-slate-100">
+                {% set lignes = {
+                    'Centre': candidature.centre ? candidature.centre.nom : null,
+                    'Métier': candidature.metier ? candidature.metier.libelle : null,
+                    'Situation professionnelle': candidature.situationPro,
+                    "Années d'expérience": candidature.nbAnneesExperience ~ ' an(s)',
+                    'Diplôme visé': candidature.diplomedemande,
+                    'Diplôme académique obtenu(e)': candidature.diplome,
+                    'Titre professionnel': candidature.titrepro,
+                    "Entreprise ou organisme d'attache": candidature.nomEntreprise,
+                    "Références de l'entreprise": candidature.refentreprise,
+                    "Lieu d'exercice (Région, Département, Sous-préfecture)": candidature.lieuExercice,
+                    'Poste de travail': candidature.fonction,
+                    'Référence du contrat de travail': candidature.refContrat,
+                    "Contact de l'employeur": candidature.contactemployeur,
+                    "Langue d'évaluation": candidature.langue
+                } %}
+
+                {% for libelle, valeur in lignes %}
+                    <div class="bg-white px-6 py-4">
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-600">{{ libelle }}</dt>
+                        <dd class="text-sm text-slate-700 mt-1">{{ valeur ?: '—' }}</dd>
+                    </div>
+                {% endfor %}
+            </dl>
+        </div>
+
+        {# ===== Pièces justificatives ===== #}
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-200">
+                <h2 class="text-sm font-bold text-slate-800">Pièces justificatives</h2>
+            </div>
+
+            {% if documents is not empty %}
+                <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {% for champ, document in documents %}
+                        <a href="{{ asset('media/' ~ candidature.numero ~ '/' ~ document.fichier) }}" target="_blank" rel="noopener"
+                           class="flex items-center gap-3 p-4 rounded-lg border border-slate-200
+                                  hover:border-indigo-400 hover:bg-indigo-50/30 transition-all duration-200">
+                            <div class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0">
+                                <i class="fas fa-file-{{ document.fichier ends with '.pdf' ? 'pdf' : 'image' }} text-sm" aria-hidden="true"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-xs font-semibold text-slate-700 truncate">{{ document.libelle }}</p>
+                                <p class="text-xs text-slate-600">Ouvrir la pièce</p>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                {{ ui.etat_vide('paperclip', 'Aucune pièce', 'Ce dossier ne comporte aucune pièce justificative.') }}
+            {% endif %}
+        </div>
+    </div>
+
+    {# ===== Colonne latérale ===== #}
+    <div class="space-y-6">
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-200">
+                <h2 class="text-sm font-bold text-slate-800">Candidat</h2>
+            </div>
+            <dl class="divide-y divide-slate-100">
+                {% set identite = {
+                    'Nom complet': candidat ? candidat.nomComplet : null,
+                    'Contact': candidat ? candidat.contact : null,
+                    'Adresse e-mail': candidat ? candidat.email : null,
+                    'Date de naissance': candidat and candidat.datenaissance ? candidat.datenaissance|date('d/m/Y') : null,
+                    'Lieu de naissance': candidat ? candidat.lieunaissance : null,
+                    'Résidence': candidat ? candidat.residence : null
+                } %}
+                {% for libelle, valeur in identite %}
+                    <div class="px-6 py-3.5">
+                        <dt class="text-xs text-slate-600">{{ libelle }}</dt>
+                        <dd class="text-sm text-slate-700 mt-0.5">{{ valeur ?: '—' }}</dd>
+                    </div>
+                {% endfor %}
+            </dl>
+        </div>
+
+        {# ===== Historique ===== #}
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-200">
+                <h2 class="text-sm font-bold text-slate-800">Historique du dossier</h2>
+            </div>
+
+            {% if historique is not empty %}
+                <div class="divide-y divide-slate-100">
+                    {% for ligne in historique|reverse %}
+                        <div class="px-6 py-4">
+                            <p class="text-xs font-semibold text-slate-700">{{ ligne.motif ?: ligne.statutApres.libelle }}</p>
+                            <p class="text-xs text-slate-600 mt-1 tabular-nums">
+                                {{ ligne.creation|date('d/m/Y à H\\hi') }}
+                                · {{ ligne.auteur ? ligne.auteur.nomComplet : 'Système' }}
+                            </p>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                {{ ui.etat_vide('clock-rotate-left', 'Aucun évènement', 'Ce dossier n\'a encore aucun historique.') }}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

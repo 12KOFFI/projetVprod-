@@ -1,0 +1,14 @@
+{# Thème de formulaire global : les erreurs de champ s'affichent en rouge,
+   avec une icône, partout où form_errors() est appelé (macro ui.champ comprise). #}
+{%- block form_errors -%}
+    {%- if errors|length > 0 -%}
+        <ul class="mt-1.5 space-y-1">
+            {%- for error in errors -%}
+                <li class="flex items-start gap-1.5 text-sm font-medium text-red-700" role="alert">
+                    <i class="fas fa-circle-exclamation mt-0.5 shrink-0 text-xs" aria-hidden="true"></i>
+                    <span>{{ error.message }}</span>
+                </li>
+            {%- endfor -%}
+        </ul>
+    {%- endif -%}
+{%- endblock form_errors -%}

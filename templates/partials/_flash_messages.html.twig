@@ -1,0 +1,56 @@
+{# templates/partials/_flash_messages.html.twig #}
+
+{# Messages flash : classes écrites en toutes lettres pour que le build Tailwind les génère. #}
+{% set styles_flash = {
+    'success': { boite: 'border-green-200 bg-green-50 text-green-800', icone: 'fa-check-circle text-green-600' },
+    'error':   { boite: 'border-red-200 bg-red-50 text-red-800',       icone: 'fa-exclamation-circle text-red-600' },
+    'info':    { boite: 'border-blue-200 bg-blue-50 text-blue-800',    icone: 'fa-info-circle text-blue-600' }
+} %}
+{% for type, messages in app.flashes %}
+    {% set style = styles_flash[type]|default(styles_flash.info) %}
+    {% for message in messages %}
+        <div role="{{ type == 'error' ? 'alert' : 'status' }}" class="mb-4 rounded-lg border p-4 text-sm {{ style.boite }}">
+            <div class="flex items-center">
+                <i class="fas {{ style.icone }} mr-3" aria-hidden="true"></i>
+                <p>{{ message|raw }}</p>
+            </div>
+        </div>
+    {% endfor %}
+{% endfor %}
+
+{# Message d'erreur d'authentification (optionnel) #}
+{% if error is defined and error %}
+    <div role="alert" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <div class="flex items-center">
+            <i class="fas fa-exclamation-circle mr-3 text-red-600" aria-hidden="true"></i>
+            <p>{{ error.messageKey|trans(error.messageData, 'security') }}</p>
+        </div>
+    </div>
+{% endif %}
+
+<style>
+/* Animation pour les messages */
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+.animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+/* Animation de shake pour les erreurs */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+.animate-shake {
+    animation: shake 0.6s ease-in-out;
+}
+</style>

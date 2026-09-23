@@ -1,0 +1,250 @@
+{# Centre d'édition partagé : les cartes affichées dépendent du rôle (CatalogueImpressions). #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Impressions — VAE Côte d'Ivoire{% endblock %}
+
+{% block body %}
+{{ ui.bandeau(
+    ma_candidature ? 'Mes documents' : 'Impressions',
+    ma_candidature
+        ? 'Dossier ' ~ ma_candidature.numero ~ ' — fiche d\'inscription et reçus de paiement.'
+        : 'Fiches, listes et statistiques de votre périmètre.',
+    'print'
+) }}
+
+{% include 'partials/_flash_messages.html.twig' %}
+
+{% if centre_impose is not null and not choisit_le_centre %}
+    <div class="mb-6 rounded-lg bg-slate-50 border border-slate-200 px-4 py-3">
+        <p class="text-xs text-slate-700 flex items-center gap-2">
+            <i class="fas fa-building text-slate-500" aria-hidden="true"></i>
+            Les éditions ci-dessous portent sur votre centre de rattachement :
+            <strong class="font-semibold text-slate-900">{{ centre_impose.nom }}</strong>
+        </p>
+    </div>
+{% endif %}
+
+<div class="space-y-6">
+
+    {# ===== Volet candidat : sa fiche ===== #}
+    {% if ma_candidature %}
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-200 flex items-center gap-3">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg
+                            {{ ma_fiche_disponible ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-500' }}">
+                    <i class="fas fa-id-card" aria-hidden="true"></i>
+                </div>
+                <h2 class="text-sm font-bold text-slate-800">Fiche d'inscription</h2>
+            </div>
+            <div class="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <p class="text-sm text-slate-600 leading-relaxed">
+                    {% if ma_fiche_disponible %}
+                        Votre inscription est définitive : cette fiche en fait foi.
+                    {% else %}
+                        Disponible une fois votre inscription finalisée, après règlement confirmé des frais de dossier.
+                    {% endif %}
+                </p>
+
+                {% if ma_fiche_disponible %}
+                    <a href="{{ path('app_candidat_fiche_inscription') }}" target="_blank" rel="noopener"
+                       class="inline-flex min-h-[44px] items-center justify-center gap-2 px-4 rounded-lg text-sm font-medium text-white
+                              bg-indigo-600 hover:bg-indigo-700 transition duration-200 shrink-0
+                              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                        <i class="fas fa-file-pdf text-xs" aria-hidden="true"></i>Imprimer la fiche
+                    </a>
+                {% else %}
+                    <span class="inline-flex min-h-[44px] items-center gap-2 px-4 rounded-lg text-sm font-medium
+                                 text-slate-600 bg-slate-50 border border-slate-200 cursor-not-allowed shrink-0">
+                        <i class="fas fa-lock text-xs" aria-hidden="true"></i>Non disponible
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+
+        {# ===== Volet candidat : ses reçus ===== #}
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-200 flex items-center gap-3">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                    <i class="fas fa-receipt" aria-hidden="true"></i>
+                </div>
+                <div>
+                    <h2 class="text-sm font-bold text-slate-800">Reçus de paiement</h2>
+                    <p class="text-xs text-slate-600 mt-0.5">Un reçu par règlement abouti.</p>
+                </div>
+            </div>
+
+            {% if mes_recus is empty %}
+                {{ ui.etat_vide('receipt', 'Aucun reçu pour le moment', 'Vos reçus apparaîtront ici après chaque règlement abouti.') }}
+            {% else %}
+                <dl class="divide-y divide-slate-100">
+                    {% for ligne in mes_recus %}
+                        <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <dt class="text-sm font-semibold text-slate-800">{{ ligne.type.libelle }}</dt>
+                                <dd class="text-xs text-slate-600 mt-0.5 tabular-nums">
+                                    {{ ligne.montant|number_format(0, ',', ' ') }} FCFA
+                                    {% if ligne.paiement.datePaiement %}
+                                        · réglé le {{ ligne.paiement.datePaiement|date('d/m/Y') }}
+                                    {% endif %}
+                                </dd>
+                            </div>
+                            <a href="{{ path('app_candidat_paiement_recu', {id: ligne.paiement.id}) }}" target="_blank" rel="noopener"
+                               class="inline-flex min-h-[44px] items-center gap-2 px-4 rounded-lg text-sm font-medium
+                                      text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 transition duration-200">
+                                <i class="fas fa-receipt text-xs" aria-hidden="true"></i>Imprimer
+                            </a>
+                        </div>
+                    {% endfor %}
+                </dl>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {# ===== Fiche par numéro, pour le personnel ===== #}
+    {% if recherche_par_numero %}
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-200 flex items-center gap-3">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                    <i class="fas fa-id-card" aria-hidden="true"></i>
+                </div>
+                <div>
+                    <h2 class="text-sm font-bold text-slate-800">Fiche d'inscription</h2>
+                    <p class="text-xs text-slate-600 mt-0.5">Rechercher un dossier par son numéro VAE.</p>
+                </div>
+            </div>
+
+            <div class="p-6">
+                <form method="get" class="flex flex-col sm:flex-row gap-3">
+                    <label for="numero-fiche" class="sr-only">Numéro VAE</label>
+                    <input type="text" id="numero-fiche" name="numero" value="{{ numero }}" required
+                           placeholder="Numéro VAE — par exemple VAE26001"
+                           class="flex-1 px-4 py-2.5 rounded-lg border border-slate-500 font-mono text-sm text-slate-900 tabular-nums
+                                  focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition duration-200">
+                    <button type="submit"
+                            class="inline-flex min-h-[44px] items-center justify-center gap-2 px-5 rounded-lg text-sm font-medium text-white
+                                   bg-indigo-600 hover:bg-indigo-700 transition duration-200
+                                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                        <i class="fas fa-magnifying-glass text-xs" aria-hidden="true"></i>Rechercher
+                    </button>
+                </form>
+
+                {% if fiche %}
+                    <div class="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-5">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="min-w-0">
+                                <p class="font-mono text-sm font-semibold text-slate-900 tabular-nums">{{ fiche.numero }}</p>
+                                <p class="text-sm font-medium text-slate-800 mt-1">
+                                    {{ fiche.user ? fiche.user.nomComplet : '—' }}
+                                </p>
+                                <p class="text-xs text-slate-600 mt-0.5">
+                                    {{ fiche.centre ? fiche.centre.nom : '—' }}
+                                    · {{ fiche.metier ? fiche.metier.libelle : '—' }}
+                                </p>
+                                <div class="mt-2">
+                                    {{ include('partials/_statut_badge.html.twig', { statut: fiche.statut }) }}
+                                </div>
+                            </div>
+
+                            {% if is_granted('CANDIDATURE_PRINT_FICHE', fiche) %}
+                                <a href="{{ path('app_impressions_fiche', {numero: fiche.numero}) }}" target="_blank" rel="noopener"
+                                   class="inline-flex min-h-[44px] items-center justify-center gap-2 px-4 rounded-lg text-sm font-medium
+                                          text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 transition duration-200 shrink-0">
+                                    <i class="fas fa-file-pdf text-xs" aria-hidden="true"></i>Imprimer la fiche
+                                </a>
+                            {% else %}
+                                <span class="inline-flex min-h-[44px] items-center gap-2 px-4 rounded-lg text-sm font-medium
+                                             text-slate-600 bg-white border border-slate-200 cursor-not-allowed shrink-0">
+                                    <i class="fas fa-lock text-xs" aria-hidden="true"></i>Inscription non finalisée
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    {# ===== Listes de dossiers ===== #}
+    {% for cle, liste in listes %}
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-200 flex items-center gap-3">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg
+                            {{ liste.ton == 'green' ? 'bg-green-50 text-green-600' : 'bg-indigo-50 text-indigo-600' }}">
+                    <i class="fas fa-{{ liste.icone }}" aria-hidden="true"></i>
+                </div>
+                <div class="min-w-0">
+                    <h2 class="text-sm font-bold text-slate-800">{{ liste.libelle }}</h2>
+                    <p class="text-xs text-slate-600 mt-0.5">{{ liste.description }}</p>
+                </div>
+            </div>
+
+            <div class="p-6">
+                <form method="get" action="{{ path('app_impressions_liste', {liste: cle}) }}"
+                      class="flex flex-col lg:flex-row lg:items-end gap-3">
+
+                    {% if choisit_le_centre %}
+                        <div class="flex-1 min-w-0">
+                            <label for="centre-{{ cle }}" class="block text-sm font-medium text-slate-700 mb-1.5">Centre</label>
+                            <select name="centre" id="centre-{{ cle }}"
+                                    class="w-full px-3.5 py-2.5 rounded-lg border border-slate-500 text-sm text-slate-700 bg-white
+                                           focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition duration-200">
+                                <option value="">Tous les centres</option>
+                                {% for centre in centres %}
+                                    <option value="{{ centre.id }}">{{ centre.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    {% endif %}
+
+                    <div class="flex flex-col sm:flex-row gap-3 {{ choisit_le_centre ? 'shrink-0' : 'lg:justify-end' }}">
+                        <button type="submit" name="format" value="pdf"
+                                class="inline-flex min-h-[44px] items-center justify-center gap-2 px-4 rounded-lg text-sm font-medium
+                                       text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 transition duration-200">
+                            <i class="fas fa-file-pdf text-xs" aria-hidden="true"></i>Générer le PDF
+                        </button>
+                        <button type="submit" name="format" value="excel"
+                                class="inline-flex min-h-[44px] items-center justify-center gap-2 px-4 rounded-lg text-sm font-medium
+                                       text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 transition duration-200">
+                            <i class="fas fa-file-excel text-xs" aria-hidden="true"></i>Exporter en Excel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {% endfor %}
+
+    {# ===== Statistiques ===== #}
+    {% if statistiques %}
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-200 flex items-center gap-3">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                    <i class="fas fa-chart-pie" aria-hidden="true"></i>
+                </div>
+                <div>
+                    <h2 class="text-sm font-bold text-slate-800">Statistiques</h2>
+                    <p class="text-xs text-slate-600 mt-0.5">Effectifs par statut, sexe et métier de votre périmètre.</p>
+                </div>
+            </div>
+            <div class="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <p class="text-sm text-slate-600 leading-relaxed">
+                    Les chiffres détaillés, avec leurs graphiques, sont consultables à l'écran dans les Indicateurs.
+                </p>
+                <a href="{{ path('app_indicateurs') }}"
+                   class="inline-flex min-h-[44px] items-center justify-center gap-2 px-4 rounded-lg text-sm font-medium
+                          text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition duration-200 shrink-0">
+                    <i class="fas fa-chart-column text-xs" aria-hidden="true"></i>Ouvrir les Indicateurs
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if listes is empty and not recherche_par_numero and not ma_candidature %}
+        {{ ui.etat_vide(
+            'print',
+            'Aucune édition disponible',
+            "Votre profil ne donne accès à aucune édition. Si vous pensez qu'il s'agit d'une erreur, contactez l'administrateur."
+        ) }}
+    {% endif %}
+</div>
+{% endblock %}

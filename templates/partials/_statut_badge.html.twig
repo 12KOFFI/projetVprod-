@@ -1,0 +1,26 @@
+{#
+    Badge de statut de candidature.
+
+    Composant partagé par tous les modules : ne pas réécrire ce balisage
+    ailleurs (règle DRY). La couleur provient de StatutCandidature::couleur().
+
+    Référence visuelle : conseiller/candidatures.html.twig. Texte 12 px (au lieu
+    de 9,6 px), -700 sur fond -50 avec bordure -200 et pastille -500. Aucune
+    inversion au survol : un statut n'est pas une commande, il ne doit pas
+    réagir au pointeur.
+
+    Usage : {{ include('partials/_statut_badge.html.twig', { statut: statut_candidature(candidature) }) }}
+#}
+{% set tons = {
+    'slate':  { fond: 'bg-slate-50 text-slate-700 border-slate-200',    point: 'bg-slate-500' },
+    'amber':  { fond: 'bg-amber-50 text-amber-700 border-amber-200',    point: 'bg-amber-500' },
+    'red':    { fond: 'bg-red-50 text-red-700 border-red-200',          point: 'bg-red-500' },
+    'blue':   { fond: 'bg-blue-50 text-blue-700 border-blue-200',       point: 'bg-blue-500' },
+    'indigo': { fond: 'bg-indigo-50 text-indigo-700 border-indigo-200', point: 'bg-indigo-500' },
+    'purple': { fond: 'bg-purple-50 text-purple-700 border-purple-200', point: 'bg-purple-500' },
+    'green':  { fond: 'bg-green-50 text-green-700 border-green-200',    point: 'bg-green-500' }
+} %}
+{% set ton = tons[statut.couleur()]|default(tons.slate) %}
+<span class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-semibold {{ ton.fond }}">
+    <span class="h-1.5 w-1.5 shrink-0 rounded-full {{ ton.point }}" aria-hidden="true"></span>{{ statut.libelle() }}
+</span>

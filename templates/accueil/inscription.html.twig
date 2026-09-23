@@ -1,0 +1,162 @@
+{# Écran E3.7 : inscription assistée par l'agent d'accueil (F3.6). #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Nouvelle préinscription — {{ centre.nom }}{% endblock %}
+
+{% block body %}
+{{ ui.bandeau(
+    'Préinscription assistée',
+    'Création du compte candidat et dépôt du dossier — ' ~ centre.nom,
+    'user-plus'
+) }}
+
+<form method="post" enctype="multipart/form-data" novalidate x-data="depotCandidature()" @submit="verifierAvantEnvoi($event)">
+<div class="space-y-6">
+
+    {# ===== Identité du candidat (orange) ===== #}
+    <div class="bg-white rounded-lg border border-slate-200 p-6">
+        {{ ui.section('Identité du candidat', 'Ces informations créent son compte d\'accès à la plateforme', 'id-card', 'orange') }}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {{ ui.champ(form_candidat.nom) }}
+            {{ ui.champ(form_candidat.prenoms) }}
+            {{ ui.champ(form_candidat.nomJeuneFille) }}
+            {{ ui.champ(form_candidat.sexe) }}
+            {{ ui.champ(form_candidat.datenaissance) }}
+            {{ ui.champ(form_candidat.lieunaissance) }}
+            {{ ui.champ(form_candidat.situationmat) }}
+            {{ ui.champ(form_candidat.nationalite) }}
+            {{ ui.champ(form_candidat.residence) }}
+            {{ ui.champ(form_candidat.boitePostale) }}
+            {{ ui.champ(form_candidat.contact) }}
+            {{ ui.champ(form_candidat.contact2) }}
+            {{ ui.champ(form_candidat.email) }}
+        </div>
+    </div>
+
+    {# ===== Accès du candidat (indigo) ===== #}
+    <div class="bg-white rounded-lg border border-slate-200 p-6">
+        {{ ui.section('Mot de passe du candidat', 'Choisissez-le avec le candidat — 8 caractères minimum', 'key', 'indigo') }}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {{ ui.champ_mot_de_passe(form_candidat.password.first) }}
+            {{ ui.champ_mot_de_passe(form_candidat.password.second) }}
+        </div>
+        {# Erreur « les mots de passe ne correspondent pas » : portée par le champ parent. #}
+        {{ form_errors(form_candidat.password) }}
+
+        <div class="mt-5 rounded-lg bg-indigo-50 border border-indigo-100 p-4">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-circle-info text-indigo-600 mt-0.5" aria-hidden="true"></i>
+                <p class="text-sm text-indigo-800 leading-relaxed">
+                    Le candidat se connectera avec son email ou son numéro de téléphone et ce mot de passe.
+                    Il pourra le modifier à tout moment depuis son espace, rubrique « Mon profil ».
+                </p>
+            </div>
+        </div>
+    </div>
+
+    {# ===== Formation visée (indigo) ===== #}
+    <div class="bg-white rounded-lg border border-slate-200 p-6">
+        {{ ui.section('Formation visée', 'Le centre est celui auquel vous êtes rattaché', 'graduation-cap', 'indigo') }}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+                <p class="block text-xs font-semibold text-slate-600 mb-1.5">Centre de dépôt</p>
+                <div class="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-500">
+                    <i class="fas fa-lock text-xs mr-1.5 opacity-60"></i>{{ centre.nom }}
+                </div>
+            </div>
+            {{ ui.champ(form_dossier.metier, '', {'x-ref': 'metier', '@change': 'chargerCertifications()'}) }}
+        </div>
+    </div>
+
+    {# ===== Expérience professionnelle (amber) ===== #}
+    <div class="bg-white rounded-lg border border-slate-200 p-6">
+        {{ ui.section('Expérience professionnelle', 'Elle aide à choisir le diplôme visé', 'briefcase', 'amber') }}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {{ ui.champ(form_dossier.nbAnneesExperience) }}
+            {{ ui.champ(
+                form_dossier.certification,
+                '',
+                {'x-ref': 'certification', 'data-centre': form_dossier.vars.data.centre ? form_dossier.vars.data.centre.id : ''},
+                '<span x-show="chargementCertifications"><i class="fas fa-circle-notch fa-spin mr-1"></i>Chargement des diplômes du centre…</span>'
+            ) }}
+            {{ ui.champ(form_dossier.situationPro) }}
+            {{ ui.champ(form_dossier.diplome) }}
+            {{ ui.champ(form_dossier.titrepro) }}
+        </div>
+
+        <div class="mt-5 rounded-lg bg-amber-50 border border-amber-200 p-4">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-lightbulb text-amber-500 mt-0.5"></i>
+                <p class="text-xs text-amber-800 leading-relaxed">
+                    Au moins 5 ans d'expérience pour le <strong>CQP</strong> ; au moins 7 ans pour
+                    le <strong>CAP</strong>.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    {# ===== Entreprise (orange) ===== #}
+    <div class="bg-white rounded-lg border border-slate-200 p-6">
+        {{ ui.section('Entreprise ou atelier', 'Facultatif', 'building', 'orange') }}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {{ ui.champ(form_dossier.nomEntreprise) }}
+            {{ ui.champ(form_dossier.refentreprise) }}
+            {{ ui.champ(form_dossier.lieuExercice) }}
+            {{ ui.champ(form_dossier.directionService) }}
+            {{ ui.champ(form_dossier.fonction) }}
+            {{ ui.champ(form_dossier.refContrat) }}
+            {{ ui.champ(form_dossier.contactemployeur) }}
+            {{ ui.champ(form_dossier.langue) }}
+            {{ ui.champ(form_dossier.preciserlangue) }}
+        </div>
+    </div>
+
+    {# ===== Pièces justificatives (purple) ===== #}
+    <div class="bg-white rounded-lg border border-slate-200 p-6">
+        {{ ui.section('Pièces justificatives', 'JPG, PNG ou PDF — 2 Mo maximum par pièce', 'paperclip', 'purple') }}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for champ, libelle in documents_obligatoires %}
+                {% if form_dossier[champ] is defined %}
+                    {{ ui.document(form_dossier[champ], libelle, true) }}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    {# ===== Actions ===== #}
+    <div class="bg-white rounded-lg border border-slate-200 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <p class="text-xs text-slate-600 leading-relaxed">
+            <i class="fas fa-user-shield mr-1.5 opacity-60"></i>
+            Cette préinscription sera enregistrée à votre nom pour traçabilité.
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <a href="{{ path('app_accueil_dashboard') }}"
+               class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium
+                      text-slate-600 bg-slate-100 hover:bg-slate-200 transition duration-200">
+                Annuler
+            </a>
+            <button type="submit"
+                    class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-white
+                           bg-indigo-600 hover:bg-indigo-700 transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                <i class="fas fa-paper-plane text-xs"></i>Enregistrer la préinscription
+            </button>
+        </div>
+    </div>
+
+    {#
+        Les deux formulaires partagent une seule balise <form> : leurs champs
+        résiduels, jetons CSRF compris, sont rendus ici explicitement (V3.4).
+    #}
+    {{ form_rest(form_candidat) }}
+    {{ form_rest(form_dossier) }}
+</div>
+</form>
+{% endblock %}

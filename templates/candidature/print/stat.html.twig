@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>STATISTIQUES DES CANDIDATURES</title>
+    <style>
+        @page { size: A4 landscape; margin: 0.5cm; }
+        body { font-family: Arial, sans-serif; font-size: 10pt; }
+        .header { text-align: center; margin-bottom: 15px; }
+        .header img { max-width: 100%; height: auto; }
+        .title { font-size: 14pt; font-weight: bold; margin: 10px 0; text-align: center; }
+        .subtitle { font-size: 11pt; margin: 5px 0 15px; text-align: center; color: #666; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th { background: #f0f0f0; font-weight: bold; text-align: center; padding: 6px; border: 1px solid #ddd; }
+        td { padding: 4px 6px; border: 1px solid #ddd; }
+        .text-end { text-align: right; }
+        .text-primary { color: #6571ff; }
+        .text-success { color: #05a34a; }
+        .text-danger { color: #ff3366; }
+        .text-secondary { color: #7987a1; }
+        .fw-bold { font-weight: bold; }
+        .footer { position: fixed; bottom: 10; width: 100%; text-align: center; font-size: 8pt; color: #999; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="{{ image.entete ?? '' }}" style="max-width: 100%; height: 60px;">
+    </div>
+    
+    <div class="title">STATISTIQUES DES CANDIDATURES</div>
+    <div class="subtitle">Généré le {{ "now"|date('d/m/Y à H:i') }}</div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>N°</th>
+                <th>Métier</th>
+                <th class="text-primary">Postes</th>
+                <th>Hommes</th>
+                <th>Femmes</th>
+                <th>Total</th>
+                <th>Évalués</th>
+                <th class="text-danger">Non évalués</th>
+                <th class="text-secondary">Admissibles</th>
+                <th class="text-success">Admis</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set totals = {'pl':0, 'h':0, 'f':0, 'total':0, 'eval':0, 'non_eval':0, 'adm':0, 'admis':0} %}
+            {% for result in results %}
+                {% set reste = result.sum - result.sum_evalue %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ result.name }}</td>
+                    <td class="text-end text-primary">{{ result.sum_pl }}</td>
+                    <td class="text-end">{{ result.sum_h }}</td>
+                    <td class="text-end">{{ result.sum_f }}</td>
+                    <td class="text-end fw-bold">{{ result.sum }}</td>
+                    <td class="text-end">{{ result.sum_evalue }}</td>
+                    <td class="text-end text-danger">{{ reste }}</td>
+                    <td class="text-end text-secondary">{{ result.sum_admissible }}</td>
+                    <td class="text-end text-success">{{ result.sum_admis }}</td>
+                </tr>
+                {% set totals = {
+                    'pl': totals.pl + result.sum_pl,
+                    'h': totals.h + result.sum_h,
+                    'f': totals.f + result.sum_f,
+                    'total': totals.total + result.sum,
+                    'eval': totals.eval + result.sum_evalue,
+                    'non_eval': totals.non_eval + reste,
+                    'adm': totals.adm + result.sum_admissible,
+                    'admis': totals.admis + result.sum_admis
+                } %}
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="fw-bold">
+                <td></td>
+                <td>TOTAUX</td>
+                <td class="text-end text-primary">{{ totals.pl }}</td>
+                <td class="text-end">{{ totals.h }}</td>
+                <td class="text-end">{{ totals.f }}</td>
+                <td class="text-end">{{ totals.total }}</td>
+                <td class="text-end">{{ totals.eval }}</td>
+                <td class="text-end text-danger">{{ totals.non_eval }}</td>
+                <td class="text-end text-secondary">{{ totals.adm }}</td>
+                <td class="text-end text-success">{{ totals.admis }}</td>
+            </tr>
+        </tfoot>
+    </table>
+    
+    <div class="footer">
+        Direction de l'Apprentissage et de l'Insertion Professionnelle - Tous droits réservés
+    </div>
+</body>
+</html>

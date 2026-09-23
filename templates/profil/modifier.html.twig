@@ -1,0 +1,86 @@
+{# Modification par l'utilisateur connecté de ses informations personnelles. #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Mon profil — VAE Côte d'Ivoire{% endblock %}
+
+{% block body %}
+{{ ui.bandeau(
+    'Mon profil',
+    'Modifiez vos informations personnelles et votre mot de passe.',
+    'user-pen'
+) }}
+
+{# Un seul formulaire et un seul bouton : informations et mot de passe
+   s'enregistrent ensemble. #}
+{{ form_start(form, {attr: {novalidate: 'novalidate', 'x-data': 'validationFormulaire()', '@submit': 'verifierAvantEnvoi($event)'}}) }}
+<div class="space-y-6">
+
+    {% if form.vars.errors|length > 0 %}
+        <div role="alert" class="rounded-lg p-4 text-sm bg-red-50 text-red-800 border border-red-200">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-exclamation-circle text-red-600 mt-0.5" aria-hidden="true"></i>
+                <div>{{ form_errors(form) }}</div>
+            </div>
+        </div>
+    {% endif %}
+
+    {# ===== Identité ===== #}
+    <div class="bg-white rounded-lg border border-slate-200 p-6">
+        {{ ui.section('Identité', 'État civil', 'id-card', 'indigo') }}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {{ ui.champ(form.nom) }}
+            {{ ui.champ(form.prenoms) }}
+            {{ ui.champ(form.nomJeuneFille) }}
+            {{ ui.champ(form.sexe) }}
+            {{ ui.champ(form.situationmat) }}
+            {{ ui.champ(form.datenaissance) }}
+            {{ ui.champ(form.lieunaissance) }}
+            {{ ui.champ(form.nationalite) }}
+        </div>
+    </div>
+
+    {# ===== Coordonnées ===== #}
+    <div class="bg-white rounded-lg border border-slate-200 p-6">
+        {{ ui.section('Coordonnées', 'Votre téléphone ou votre email sert à vous connecter', 'address-book', 'orange') }}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {{ ui.champ(form.contact) }}
+            {{ ui.champ(form.contact2) }}
+            {{ ui.champ(form.email, 'md:col-span-2') }}
+            {{ ui.champ(form.residence) }}
+            {{ ui.champ(form.boitePostale) }}
+        </div>
+    </div>
+
+    {# ===== Mot de passe (facultatif) ===== #}
+    <div class="bg-white rounded-lg border border-slate-200 p-6">
+        {{ ui.section('Mot de passe', 'Facultatif — laissez vide pour garder votre mot de passe actuel', 'key', 'purple') }}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {{ ui.champ(form.motDePasseActuel) }}
+            <div class="hidden md:block" aria-hidden="true"></div>
+            {{ ui.champ(form.nouveauMotDePasse.first) }}
+            {{ ui.champ(form.nouveauMotDePasse.second) }}
+        </div>
+        {# Erreur « les mots de passe ne correspondent pas » : portée par le champ parent. #}
+        {{ form_errors(form.nouveauMotDePasse) }}
+
+        <p class="mt-4 text-sm text-slate-600">
+            8 caractères minimum. Le mot de passe actuel n'est demandé que si vous en choisissez un nouveau.
+        </p>
+    </div>
+
+    {# ===== Enregistrement ===== #}
+    <div class="bg-white rounded-lg border border-slate-200 p-5 flex justify-end">
+        <button type="submit"
+                class="inline-flex w-full sm:w-auto min-h-[44px] items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white
+                       bg-indigo-600 hover:bg-indigo-700 transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+            <i class="fas fa-floppy-disk text-xs" aria-hidden="true"></i>
+            Enregistrer les modifications
+        </button>
+    </div>
+</div>
+{{ form_end(form) }}
+{% endblock %}
