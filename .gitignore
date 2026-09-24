@@ -49,3 +49,6 @@ yarn-error.log
 .phpunit.result.cache
 /phpunit.xml
 ###< symfony/phpunit-bridge ###
+
+# Les tests restent en local : ils n'ont pas leur place sur l'hebergement mutualise.
+/tests/
