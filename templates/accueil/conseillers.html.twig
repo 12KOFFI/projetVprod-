@@ -15,7 +15,8 @@
 
 <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
     {% if conseillers is not empty %}
-        <div class="overflow-x-auto">
+        {# ===== Tableau, à partir de l'écran large ===== #}
+        <div class="hidden lg:block overflow-x-auto">
             <table class="w-full min-w-[700px]">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
@@ -40,7 +41,7 @@
                                 <span class="text-sm font-semibold text-slate-700 tabular-nums">{{ ligne.charge }}</span>
                                 <span class="text-xs text-slate-600 ml-1">dossier(s)</span>
                             </td>
-                            <td class="px-6 py-4 text-xs text-slate-500">
+                            <td class="px-6 py-4 text-xs text-slate-600 tabular-nums">
                                 {{ ligne.conseiller.contact ?: ligne.conseiller.email ?: '—' }}
                             </td>
                         </tr>
@@ -48,6 +49,29 @@
                 </tbody>
             </table>
         </div>
+
+        {# ===== Liste empilée, sur petit écran ===== #}
+        <ul class="lg:hidden divide-y divide-slate-100">
+            {% for ligne in conseillers %}
+                <li class="flex items-center justify-between gap-3 px-4 py-4">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold shrink-0" aria-hidden="true">
+                            {{ ligne.conseiller.nom|default('?')|slice(0, 1)|upper }}
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-slate-800 truncate">{{ ligne.conseiller.nomComplet ?: '—' }}</p>
+                            <p class="text-xs text-slate-600 mt-0.5 tabular-nums truncate">
+                                {{ ligne.conseiller.contact ?: ligne.conseiller.email ?: '—' }}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="shrink-0 text-right">
+                        <p class="text-base font-semibold text-slate-800 tabular-nums">{{ ligne.charge }}</p>
+                        <p class="text-xs text-slate-600">dossier(s)</p>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
     {% else %}
         {{ ui.etat_vide(
             'user-tie',

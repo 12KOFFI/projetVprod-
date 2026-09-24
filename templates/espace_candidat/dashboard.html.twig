@@ -7,16 +7,16 @@
 {% block body %}
 {% if candidature %}
     {# ===== Dossier en cours ===== #}
-    <div class="relative mb-6 overflow-hidden rounded-2xl border border-primary-200 bg-primary-100 p-6 text-primary-900 md:p-8">
+    <div class="relative mb-5 overflow-hidden rounded-2xl border border-primary-200 bg-primary-100 p-4 text-primary-900 sm:mb-6 sm:p-6 md:p-8">
 
-        <div class="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
-            <div class="flex items-center gap-4">
-                <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-primary-200 bg-white text-2xl text-primary-700">
+        <div class="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-5">
+            <div class="flex items-start gap-3 sm:items-center sm:gap-4">
+                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary-200 bg-white text-xl text-primary-700 sm:h-14 sm:w-14 sm:text-2xl">
                     <i class="fas fa-folder-open" aria-hidden="true"></i>
                 </div>
                 <div>
                     <p class="text-primary-800 text-xs uppercase tracking-wide">Mon dossier VAE</p>
-                    <h1 class="text-2xl font-bold tracking-tight text-primary-900 md:text-3xl mt-0.5">
+                    <h1 class="text-xl font-bold tracking-tight text-primary-900 sm:text-2xl md:text-3xl mt-0.5 break-words">
                         {{ candidature.metier ? candidature.metier.libelle : 'Métier non renseigné' }}
                     </h1>
                     <p class="text-primary-800 text-sm mt-1">
@@ -25,9 +25,9 @@
                 </div>
             </div>
 
-            <div class="rounded-xl border border-primary-200 bg-white px-5 py-4">
-                <p class="text-xs text-primary-800 uppercase tracking-wide mb-1.5">Numéro d'inscription</p>
-                <p class="font-mono text-lg font-bold tracking-tight">{{ candidature.numero }}</p>
+            <div class="flex items-baseline justify-between gap-3 rounded-xl border border-primary-200 bg-white px-4 py-3 sm:block sm:px-5 sm:py-4">
+                <p class="text-xs text-primary-800 uppercase tracking-wide sm:mb-1.5">Numéro d'inscription</p>
+                <p class="font-mono text-base font-bold tracking-tight tabular-nums sm:text-lg">{{ candidature.numero }}</p>
             </div>
         </div>
             <div class="absolute inset-x-0 bottom-0 h-1 bg-[#ED8F33]" aria-hidden="true"></div>
@@ -102,14 +102,14 @@
         </div>
     {% endif %}
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {# ===== Suivi des étapes ===== #}
         <div class="lg:col-span-2 bg-white rounded-lg border border-slate-200 overflow-hidden">
-            <div class="px-6 py-5 border-b border-slate-200">
+            <div class="px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-200">
                 <h2 class="text-sm font-bold text-slate-800">Suivi des étapes</h2>
                 <p class="text-xs text-slate-600 mt-0.5">Avancement de votre parcours de certification</p>
             </div>
-            <div class="p-6">
+            <div class="p-4 sm:p-6">
                 {{ include('partials/_timeline_parcours.html.twig', { etapes: etapes }) }}
             </div>
         </div>
@@ -117,7 +117,7 @@
         {# ===== Récapitulatif du dossier ===== #}
         <div class="space-y-6">
             <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                <div class="px-6 py-5 border-b border-slate-200">
+                <div class="px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-200">
                     <h2 class="text-sm font-bold text-slate-800">Mon dossier</h2>
                 </div>
                 <dl class="divide-y divide-slate-100">
@@ -173,10 +173,10 @@
 
             {# ===== Mes documents et règlements ===== #}
             <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                <div class="px-6 py-5 border-b border-slate-200">
+                <div class="px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-200">
                     <h2 class="text-sm font-bold text-slate-800">Démarches</h2>
                 </div>
-                <div class="p-6 space-y-3">
+                <div class="p-4 sm:p-6 space-y-3">
                     <a href="{{ path('app_candidat_paiements') }}"
                        class="w-full inline-flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium
                               text-slate-700 bg-slate-100 hover:bg-slate-200 transition duration-200">

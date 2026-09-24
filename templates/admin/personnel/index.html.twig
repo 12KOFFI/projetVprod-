@@ -58,7 +58,8 @@
     </div>
 
     {% if pagination.getTotalItemCount > 0 %}
-        <div class="overflow-x-auto">
+        {# ===== Tableau, à partir de l'écran large ===== #}
+        <div class="hidden lg:block overflow-x-auto">
             <table class="w-full min-w-[900px]">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
@@ -88,7 +89,7 @@
                                 {% endfor %}
                             </td>
                             <td class="px-6 py-4">
-                                <p class="text-sm text-slate-500">
+                                <p class="text-sm text-slate-700">
                                     {{ utilisateur.centre ? utilisateur.centre.nom : 'Aucun centre' }}
                                 </p>
                                 {% if utilisateur.metier %}
@@ -142,6 +143,73 @@
                 </tbody>
             </table>
         </div>
+
+        {# ===== Liste empilée, sur petit écran ===== #}
+        <ul class="lg:hidden divide-y divide-slate-100">
+            {% for utilisateur in pagination %}
+                <li class="px-4 py-4 {{ utilisateur.actif ? '' : 'opacity-60' }}">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-slate-800 truncate">{{ utilisateur.nomComplet ?: '—' }}</p>
+                            <p class="text-xs text-slate-600 mt-0.5 break-words">
+                                {{ utilisateur.email ?: 'Aucune adresse' }}
+                                {% if utilisateur.contact %} · <span class="tabular-nums">{{ utilisateur.contact }}</span>{% endif %}
+                            </p>
+                            <p class="text-xs text-slate-600 mt-0.5">
+                                {{ utilisateur.centre ? utilisateur.centre.nom : 'Aucun centre' }}
+                                {% if utilisateur.metier %} · {{ utilisateur.metier.libelle }}{% endif %}
+                            </p>
+                            {% if utilisateur.doitChangerMotDePasse %}
+                                <p class="text-xs text-amber-700 mt-1.5">
+                                    <i class="fas fa-key mr-1" aria-hidden="true"></i>Mot de passe à changer
+                                </p>
+                            {% endif %}
+                        </div>
+                        <div class="shrink-0 space-y-1.5 text-right">
+                            {% for cle, libelle in roles %}
+                                {% if cle in utilisateur.roles %}
+                                    {{ ui.badge(libelle, cle == 'ROLE_ADMIN' ? 'indigo' : 'blue') }}
+                                {% endif %}
+                            {% endfor %}
+                            <div>
+                                {% if utilisateur.actif %}
+                                    {{ ui.badge('Actif', 'green') }}
+                                {% else %}
+                                    {{ ui.badge('Désactivé', 'red') }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        {{ ui.bouton_post(
+                            path('app_admin_personnel_reinitialiser', {id: utilisateur.id}),
+                            'reinitialiser_' ~ utilisateur.id,
+                            'key', 'Réinitialiser le mot de passe', 'slate',
+                            'Générer un nouveau mot de passe pour ce compte ? L\'ancien cessera immédiatement de fonctionner.'
+                        ) }}
+                        {% if utilisateur.actif %}
+                            {{ ui.bouton_post(
+                                path('app_admin_personnel_basculer_activation', {id: utilisateur.id}),
+                                'activation_' ~ utilisateur.id,
+                                'user-slash', 'Désactiver le compte', 'red',
+                                'Désactiver ce compte ? La personne ne pourra plus se connecter.'
+                            ) }}
+                        {% else %}
+                            {{ ui.bouton_post(
+                                path('app_admin_personnel_basculer_activation', {id: utilisateur.id}),
+                                'activation_' ~ utilisateur.id,
+                                'user-check', 'Réactiver le compte', 'green'
+                            ) }}
+                        {% endif %}
+                        {{ ui.bouton_lien(
+                            path('app_admin_personnel_modifier', {id: utilisateur.id}),
+                            'pen', 'Modifier'
+                        ) }}
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
 
         {{ ui.pagination(pagination) }}
     {% else %}

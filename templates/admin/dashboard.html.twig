@@ -18,7 +18,7 @@
 ) }}
 
 {# ===== Compteurs : étapes franchies, en cumulé ===== #}
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
+<div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-5 mb-8">
     {{ ui.stat('Total dossiers', synthese.total, 'folder-open', 'indigo') }}
     {{ ui.stat('Inscrits', synthese.inscrits, 'user-check', 'indigo') }}
     {{ ui.stat('Recevables', synthese.recevables, 'circle-check', 'blue') }}
@@ -27,7 +27,7 @@
 </div>
 
 {# ===== Répartitions ===== #}
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
     {{ ui.graphique('Répartition par statut', 'chart-pie', par_statut, null, 'Étape où se trouve chaque dossier') }}
     {{ ui.graphique('Répartition par sexe', 'venus-mars', par_sexe) }}
     {{ ui.graphique('Cinq premiers centres', 'building', par_centre, null, 'Centres aux plus forts effectifs') }}
@@ -53,7 +53,7 @@
     {% endfor %}
 
     {% if synthese.total > 0 %}
-        <div class="p-6 space-y-3">
+        <div class="p-4 sm:p-6 space-y-3">
             {% for etape in entonnoir %}
                 {% set largeur = maximum > 0 ? (etape.effectif * 100 / maximum)|round : 0 %}
                 <div>

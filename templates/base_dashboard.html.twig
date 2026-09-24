@@ -20,84 +20,8 @@ optgroup {
     font-weight: 600;
     color: #0B669D;
 }
-
-/* Style personnalisé pour DataTables */
-.dataTables_wrapper {
-    padding: 1rem;
-}
-
-.dataTables_length {
-    margin-bottom: 1rem;
-}
-
-.dataTables_length select {
-    @apply w-auto px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition;
-    margin: 0 0.5rem;
-}
-
-.dataTables_filter {
-    margin-bottom: 1rem;
-}
-
-.dataTables_filter input {
-    @apply px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition;
-    margin-left: 0.5rem;
-    width: 250px;
-}
-
-.dataTables_info {
-    @apply text-sm text-slate-600;
-    padding-top: 1rem !important;
-}
-
-.dataTables_paginate {
-    @apply flex justify-end gap-1;
-    padding-top: 1rem !important;
-}
-
-.dataTables_paginate .paginate_button {
-    @apply px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-indigo-50 hover:border-indigo-300 transition cursor-pointer;
-    margin: 0 2px;
-}
-
-.dataTables_paginate .paginate_button.current {
-    @apply bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-transparent;
-}
-
-.dataTables_paginate .paginate_button.disabled {
-    @apply opacity-50 cursor-not-allowed hover:bg-transparent;
-}
-
-.dataTables_paginate .paginate_button:hover:not(.disabled):not(.current) {
-    @apply bg-indigo-50 border-indigo-300;
-}
-
-table.dataTable {
-    @apply w-full;
-}
-
-table.dataTable thead th {
-    @apply px-6 py-4 text-left text-sm font-semibold text-slate-600 bg-slate-50 border-b border-slate-200;
-}
-
-table.dataTable thead th.sorting_asc:after,
-table.dataTable thead th.sorting_desc:after {
-    @apply ml-1 text-indigo-600;
-}
-
-table.dataTable tbody td {
-    @apply px-6 py-4 text-sm border-b border-slate-200;
-}
-
-table.dataTable tbody tr:hover {
-    @apply bg-slate-50;
-}
-
-.dataTables_processing {
-    @apply bg-white/80 backdrop-blur-sm;
-}
 </style>
-    
+
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
@@ -106,37 +30,74 @@ table.dataTable tbody tr:hover {
     
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .sidebar-transition {
-            transition: width 0.3s ease-in-out;
-        }
-        .sidebar-transition * {
-            transition: opacity 0.2s ease-in-out;
-        }
         [x-cloak] { display: none !important; }
     </style>
     
     {% block stylesheets %}{% endblock %}
 </head>
 <body class="bg-gray-50">
-    <div class="flex h-screen overflow-hidden">
+    {#
+        Sous lg, la barre latérale devient un tiroir hors-champ : à 375 px, ses
+        256 px ne laissaient que 119 px de contenu. Au-dessus de lg, elle
+        retrouve sa place dans le flux et son repli w-64 / w-20 inchangé.
+        Le défilement interne (h-screen + overflow) ne vaut lui aussi qu'à
+        partir de lg : sur téléphone, c'est la page qui défile, ce qui laisse
+        la barre d'adresse du navigateur se replier.
+    #}
+    <div class="flex min-h-screen lg:h-screen lg:overflow-hidden"
+         x-data="{ menuOuvert: false }"
+         @keydown.escape.window="menuOuvert = false">
+
+        <!-- Voile du tiroir, mobile uniquement -->
+        <div x-show="menuOuvert" x-cloak
+             @click="menuOuvert = false"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-40 bg-slate-900/60 lg:hidden"
+             aria-hidden="true"></div>
+
         <!-- Sidebar -->
-        <aside class="relative w-64 bg-gradient-to-b from-primary-900 to-secondary-900 text-white flex-shrink-0 overflow-y-auto sidebar-transition" x-data="{ collapsed: false }">
+        <aside id="menu-lateral"
+               :class="menuOuvert ? 'translate-x-0' : '-translate-x-full'"
+               @click="if ($event.target.closest('a')) menuOuvert = false"
+               class="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] -translate-x-full overflow-y-auto bg-gradient-to-b from-primary-900 to-secondary-900 text-white transition-all duration-300 ease-in-out motion-reduce:transition-none lg:relative lg:z-auto lg:w-64 lg:max-w-none lg:flex-shrink-0 lg:translate-x-0">
             <div class="p-6">
+                <button type="button" @click="menuOuvert = false" x-ref="fermerMenu"
+                        class="mb-4 inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold text-indigo-100 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white lg:hidden">
+                    <i class="fas fa-xmark" aria-hidden="true"></i>Fermer le menu
+                </button>
                 {% block sidebar %}
                     {% include 'sidebar.html.twig' %}
                 {% endblock %}
             </div>
         </aside>
-        
+
+        {# `overflow-hidden` seulement à partir de lg : sous ce seuil, un conteneur
+           de débordement casserait le `sticky` de la barre supérieure, qui se
+           positionne alors par rapport à lui et non à la fenêtre. #}
         <!-- Main Content -->
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex-1 flex flex-col lg:overflow-hidden">
             <!-- Navbar -->
-            <header class="border-b border-slate-200 bg-white">
-                <div class="px-6 py-4 flex justify-between items-center">
-                    <button id="sidebarToggle" type="button" aria-label="Réduire ou déployer le menu" class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600">
-                        <i class="fas fa-bars text-xl"></i>
+            <header class="sticky top-0 z-30 border-b border-slate-200 bg-white lg:static">
+                <div class="px-4 py-3 sm:px-6 sm:py-4 flex justify-between items-center gap-3">
+                    {# Deux commandes distinctes plutôt qu'une seule au comportement
+                       variable : ouvrir le tiroir sous lg, replier la barre au-dessus. #}
+                    <button type="button" @click="menuOuvert = true; $nextTick(() => $refs.fermerMenu.focus())"
+                            :aria-expanded="menuOuvert ? 'true' : 'false'"
+                            aria-controls="menu-lateral"
+                            class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 lg:hidden">
+                        <span class="sr-only">Ouvrir le menu</span>
+                        <i class="fas fa-bars text-xl" aria-hidden="true"></i>
                     </button>
-                    
+
+                    <button id="sidebarToggle" type="button" aria-label="Réduire ou déployer le menu" class="hidden min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 lg:inline-flex">
+                        <i class="fas fa-bars text-xl" aria-hidden="true"></i>
+                    </button>
+
                     <div class="flex items-center space-x-4">
                         {% if app.user %}
                         <div class="relative" x-data="{ open: false }">
@@ -169,7 +130,9 @@ table.dataTable tbody tr:hover {
                 se placent par rapport à la fenêtre, échappent au défilement interne de
                 <main> et allongent la page, qui défile alors au-delà de la barre latérale.
             #}
-            <main class="relative flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6 lg:p-8 selection:bg-indigo-100 selection:text-indigo-900">
+            {# pb-24 réserve la hauteur de la barre d'onglets basse ; lg:pb-8 la
+               rend à sa valeur normale dès que cette barre disparaît. #}
+            <main class="relative flex-1 bg-gray-50 p-4 pb-24 sm:p-6 sm:pb-24 lg:overflow-y-auto lg:p-8 lg:pb-8 selection:bg-indigo-100 selection:text-indigo-900">
                 {% for label, messages in app.flashes %}
                     {% for message in messages %}
                         <div role="{{ label == 'error' ? 'alert' : 'status' }}" class="mb-6 rounded-lg p-4 text-sm {% if label == 'success' %}bg-green-50 text-green-800 border border-green-200{% elseif label == 'error' %}bg-red-50 text-red-800 border border-red-200{% else %}bg-blue-50 text-blue-800 border border-blue-200{% endif %}">
@@ -184,61 +147,34 @@ table.dataTable tbody tr:hover {
                 {% block body %}{% endblock %}
             </main>
         </div>
+
+        {% include 'partials/_nav_mobile.html.twig' %}
     </div>
-    
+
     {{ encore_entry_script_tags('app') }}
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-    
+
     <script>
+        // Repli de la barre latérale, sur grand écran uniquement : les classes
+        // basculées portent le préfixe lg: pour ne pas entrer en conflit avec
+        // la largeur du tiroir mobile (w-72), qui reste seule sous 1024 px.
         document.addEventListener('DOMContentLoaded', function() {
-            const sidebar = document.querySelector('aside');
+            const sidebar = document.getElementById('menu-lateral');
             const toggleBtn = document.getElementById('sidebarToggle');
+            if (!sidebar || !toggleBtn) { return; }
+
             const navTexts = sidebar.querySelectorAll('.nav-text');
             const sidebarLogo = sidebar.querySelector('.sidebar-logo-text');
-            
-            if (toggleBtn) {
-                toggleBtn.addEventListener('click', function() {
-                    sidebar.classList.toggle('w-64');
-                    sidebar.classList.toggle('w-20');
-                    
-                    // Cacher/monther les textes
-                    navTexts.forEach(el => el.classList.toggle('hidden'));
-                    if (sidebarLogo) sidebarLogo.classList.toggle('hidden');
-                });
-            }
+
+            toggleBtn.addEventListener('click', function() {
+                sidebar.classList.toggle('lg:w-64');
+                sidebar.classList.toggle('lg:w-20');
+
+                // Cacher/montrer les textes
+                navTexts.forEach(el => el.classList.toggle('lg:hidden'));
+                if (sidebarLogo) sidebarLogo.classList.toggle('lg:hidden');
+            });
         });
     </script>
-    
-    <script>
-    $(document).ready(function() {
-        $('#dataTable').DataTable({
-            language: {
-                url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/fr-FR.json',
-                search: "Rechercher :",
-                lengthMenu: "Afficher _MENU_ éléments",
-                info: "Affichage de _START_ à _END_ sur _TOTAL_ éléments",
-                infoEmpty: "Affichage de 0 à 0 sur 0 élément",
-                infoFiltered: "(filtré sur _MAX_ éléments au total)",
-                paginate: {
-                    first: "Premier",
-                    last: "Dernier",
-                    next: "Suivant",
-                    previous: "Précédent"
-                }
-            },
-            pageLength: 25,
-            order: [[1, 'asc']],
-            columnDefs: [
-                { orderable: false, targets: [5] },
-                { searchable: false, targets: [0, 3, 4, 5] },
-                { className: "text-center", targets: [3, 4] },
-                { className: "text-right", targets: [5] }
-            ]
-        });
-    });
-    </script>
-    
     
     {% block javascripts %}{% endblock %}
 </body>

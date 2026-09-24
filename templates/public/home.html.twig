@@ -18,22 +18,22 @@
     {% set extension = doc.chemin|split('.')|last|upper %}
     {% if doc.disponible %}
         <a href="{{ asset(doc.chemin) }}" download
-           class="group flex items-center gap-4 min-h-[64px] rounded-lg border border-slate-300 bg-white px-5 py-4 text-left transition-colors duration-200 hover:border-indigo-600 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+           class="group flex flex-wrap items-center gap-x-4 gap-y-3 min-h-[64px] rounded-lg border border-slate-300 bg-white px-4 py-4 text-left transition-colors duration-200 hover:border-indigo-600 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:px-5">
             <span class="shrink-0 w-11 h-11 rounded-md bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 group-hover:bg-white" aria-hidden="true">
                 <i class="fas {{ extension == 'DOCX' ? 'fa-file-word' : 'fa-file-pdf' }} text-lg"></i>
             </span>
-            <span class="min-w-0 flex-1">
+            <span class="min-w-0 flex-1 basis-40">
                 <span class="block text-base font-bold text-slate-800">{{ titre }}</span>
                 <span class="block mt-0.5 text-sm text-slate-600">{{ detail }} · {{ extension }}</span>
             </span>
-            <span class="inline-flex shrink-0 items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white group-hover:bg-indigo-700">
+            <span class="inline-flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-md bg-indigo-600 px-3 text-sm font-semibold text-white group-hover:bg-indigo-700 sm:w-auto">
                 <i class="fas fa-download" aria-hidden="true"></i>Télécharger
             </span>
             <span class="sr-only">(télécharge le document {{ extension }})</span>
         </a>
     {% else %}
         <div aria-disabled="true"
-             class="flex items-center gap-4 rounded-lg border border-slate-200 bg-white px-5 py-4 text-left">
+             class="flex items-center gap-4 rounded-lg border border-slate-200 bg-white px-4 py-4 text-left sm:px-5">
             <span class="shrink-0 w-11 h-11 rounded-md bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500" aria-hidden="true">
                 <i class="fas {{ extension == 'DOCX' ? 'fa-file-word' : 'fa-file-pdf' }} text-lg"></i>
             </span>
@@ -49,14 +49,14 @@
    1. Annonce de la session
    ============================================================ #}
 <section id="session" class="bg-primary-50 border-b border-primary-200 scroll-mt-24">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-16 grid gap-8 lg:gap-14 lg:grid-cols-12 lg:items-center">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10 md:py-16 grid gap-8 lg:gap-14 lg:grid-cols-12 lg:items-center">
 
         <div class="lg:col-span-7">
-            <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight text-primary-900 leading-[1.1] text-balance">
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-primary-900 leading-[1.1] text-balance">
                 Faites reconnaître votre métier par un diplôme officiel
             </h1>
 
-            <p class="mt-5 text-lg leading-relaxed text-slate-700 max-w-[52ch]">
+            <p class="mt-4 sm:mt-5 text-base sm:text-lg leading-relaxed text-slate-700 max-w-[52ch]">
                 Avec la VAE, faites valider votre expérience pour obtenir un
                 Certificat de Qualification Professionnelle (CQP) ou un
                 Certificat d'Aptitude Professionnelle (CAP).
@@ -72,29 +72,31 @@
                 </p>
             </div>
 
-            <div class="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-                <a href="#conditions"
-                   class="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-lg bg-primary-800 px-7 text-base font-bold text-white transition-colors duration-200 hover:bg-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800">
+            <div class="mt-6 sm:mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+                <a href="#conditions-candidature"
+                   class="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-lg bg-primary-800 px-7 text-base font-bold text-white transition-colors duration-200 hover:bg-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800 sm:w-auto">
                     Vérifier les conditions
                     <i class="fas fa-arrow-down text-sm" aria-hidden="true"></i>
                 </a>
-                <a href="#deroulement"
+                <a href="{{ path('app_session_deroulement') }}"
                    class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-2 text-base font-semibold text-primary-800 underline underline-offset-4 hover:text-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800">
                     Voir le déroulement
                 </a>
             </div>
 
-            <dl class="mt-9 grid grid-cols-3 gap-4 border-t border-primary-200 pt-6 max-w-lg">
-                <div class="flex flex-col-reverse justify-end gap-1">
+            {# Sur téléphone, les trois chiffres passent en lignes : en colonnes,
+               les libellés se cassent mot à mot sous 360 px. #}
+            <dl class="mt-8 sm:mt-9 max-w-lg border-t border-primary-200 pt-2 sm:pt-6 flex flex-col divide-y divide-primary-200 sm:grid sm:grid-cols-3 sm:gap-4 sm:divide-y-0">
+                <div class="flex flex-row-reverse items-baseline justify-between gap-3 py-2.5 sm:flex-col-reverse sm:items-start sm:justify-end sm:gap-1 sm:py-0">
                     <dt class="text-sm text-slate-700">travailleurs et artisans</dt>
                     <dd class="text-2xl font-extrabold text-primary-900 tabular-nums">1&nbsp;500</dd>
                 </div>
-                <div class="flex flex-col-reverse justify-end gap-1">
+                <div class="flex flex-row-reverse items-baseline justify-between gap-3 py-2.5 sm:flex-col-reverse sm:items-start sm:justify-end sm:gap-1 sm:py-0">
                     <dt class="text-sm text-slate-700">métiers concernés</dt>
                     <dd class="text-2xl font-extrabold text-primary-900 tabular-nums">30</dd>
                 </div>
-                <div class="flex flex-col-reverse justify-end gap-1">
-                    <dt class="text-sm text-slate-700">centres VAE </dt>
+                <div class="flex flex-row-reverse items-baseline justify-between gap-3 py-2.5 sm:flex-col-reverse sm:items-start sm:justify-end sm:gap-1 sm:py-0">
+                    <dt class="text-sm text-slate-700">centres VAE</dt>
                     <dd class="text-2xl font-extrabold text-primary-900 tabular-nums">30</dd>
                 </div>
             </dl>
@@ -156,39 +158,15 @@
 {# ============================================================
    2. Conditions et dossier de candidature
    ============================================================ #}
-<section id="conditions" class="py-16 md:py-24 bg-slate-50 border-b border-slate-200 scroll-mt-24">
+<section id="conditions" class="py-10 sm:py-14 md:py-24 bg-slate-50 border-b border-slate-200 scroll-mt-24">
     <div class="max-w-6xl mx-auto px-4 sm:px-6">
 
-        <ol class="grid gap-3 md:grid-cols-3" aria-label="Parcours de préinscription">
-            <li class="flex gap-4 rounded-lg bg-indigo-600 p-5 text-white">
-                <span class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-white text-indigo-700" aria-hidden="true"><i class="fas fa-list-check text-lg"></i></span>
-                <div>
-                    <h3 class="font-bold"><span class="tabular-nums">1.</span> Vérifiez les conditions</h3>
-                    <p class="mt-1 text-sm leading-relaxed text-indigo-100">Lisez les critères ci-dessous avant de vous préinscrire.</p>
-                </div>
-            </li>
-            <li class="flex gap-4 rounded-lg border border-slate-200 bg-white p-5">
-                <span class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700" aria-hidden="true"><i class="fas fa-folder-open text-lg"></i></span>
-                <div>
-                    <h3 class="font-bold text-slate-800"><span class="tabular-nums">2.</span> Préparez votre dossier</h3>
-                    <p class="mt-1 text-sm leading-relaxed text-slate-600">Préparez les pièces à soumettre en ligne.</p>
-                </div>
-            </li>
-            <li class="flex gap-4 rounded-lg border border-slate-200 bg-white p-5">
-                <span class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700" aria-hidden="true"><i class="fas fa-pen-to-square text-lg"></i></span>
-                <div>
-                    <h3 class="font-bold text-slate-800"><span class="tabular-nums">3.</span> Commencez votre préinscription</h3>
-                    <p class="mt-1 text-sm leading-relaxed text-slate-600">Une fois prêt, accédez au formulaire en cliquant sur le bouton bleu « Commencer ma préinscription ».</p>
-                </div>
-            </li>
-        </ol>
-
-        <div class="mt-10 grid lg:grid-cols-12 gap-6 items-start">
+        <div class="grid lg:grid-cols-12 gap-6 items-start">
 
             {# Conditions + frais #}
             <div class="lg:col-span-7 rounded-lg bg-white border border-slate-200">
-                <div class="p-6 md:p-8">
-                    <h3 id="conditions-candidature" class="flex items-center gap-3 text-xl font-bold text-slate-800"><i class="fas fa-clipboard-check text-indigo-700" aria-hidden="true"></i>Conditions de candidature</h3>
+                <div class="p-5 sm:p-6 md:p-8">
+                    <h3 id="conditions-candidature" class="scroll-mt-24 flex items-center gap-3 text-xl font-bold text-slate-800"><i class="fas fa-clipboard-check text-indigo-700" aria-hidden="true"></i>Conditions de candidature</h3>
 
                     <ul class="mt-6 space-y-5">
                         <li class="flex gap-4">
@@ -235,7 +213,7 @@
                 </div>
 
                 {# Frais de participation — séparés pour que le montant se lise d'un coup d'œil. #}
-                <div class="border-t border-slate-200 p-6 md:p-8">
+                <div class="border-t border-slate-200 p-5 sm:p-6 md:p-8">
                     <h3 class="flex items-center gap-3 text-xl font-bold text-slate-800"><i class="fas fa-coins text-indigo-700" aria-hidden="true"></i>Frais de participation</h3>
 
                     <dl class="mt-5 grid sm:grid-cols-2 gap-3">
@@ -257,7 +235,7 @@
             </div>
 
             {# Pièces du dossier #}
-            <div id="preparer-dossier" class="lg:col-span-5 rounded-lg bg-white border border-slate-200 p-6 md:p-8">
+            <div id="preparer-dossier" class="lg:col-span-5 rounded-lg bg-white border border-slate-200 p-5 sm:p-6 md:p-8">
                 <h3 class="flex items-center gap-3 text-xl font-bold text-slate-800"><i class="fas fa-folder-open text-indigo-700" aria-hidden="true"></i>Ce que vous devez préparer</h3>
                 <p class="mt-2 text-sm text-slate-600">Ces pièces sont à présenter dans votre centre VAE.</p>
 
@@ -315,7 +293,7 @@
                 </p>
             </div>
             <a href="{{ path('app_register') }}"
-               class="mt-5 md:mt-0 inline-flex items-center justify-center gap-2 min-h-[48px] px-7 py-3.5 rounded-lg bg-indigo-600 text-white text-base font-bold hover:bg-indigo-700 transition-colors duration-200 whitespace-nowrap">
+               class="mt-5 md:mt-0 inline-flex w-full md:w-auto items-center justify-center gap-2 min-h-[52px] px-7 py-3.5 rounded-lg bg-indigo-600 text-white text-base font-bold hover:bg-indigo-700 transition-colors duration-200 whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
                 Commencer ma préinscription
                 <i class="fas fa-arrow-right text-sm" aria-hidden="true"></i>
             </a>
@@ -325,97 +303,62 @@
 
 
 {# ============================================================
-   3. Déroulement de la session
-   La numérotation porte la chronologie : elle informe.
+   3. Carte informative : le déroulement détaillé vit désormais sur sa
+   propre page (app_session_deroulement). L'accueil n'en garde qu'une
+   porte d'entrée, pour ne pas concurrencer la vérification des
+   conditions de candidature, qui reste l'objectif de cette page.
+   L'ancre #deroulement est conservée : des liens externes la visent.
    ============================================================ #}
-<section id="deroulement" class="py-16 md:py-24 bg-white scroll-mt-24">
+<section id="deroulement" class="py-10 sm:py-14 md:py-24 bg-white scroll-mt-24">
     <div class="max-w-6xl mx-auto px-4 sm:px-6">
 
-        <div class="max-w-2xl">
-            <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-800 text-balance">
-                Déroulement de la session 2026
-            </h2>
-            <p class="mt-4 text-base leading-[1.75] text-slate-600">
-                Quatre phases, de l'inscription aux épreuves de certification.
-            </p>
-        </div>
-
-        {% set phases = [
-            {
-                titre: 'Accueil et inscription',
-                icone: 'fa-file-pen',
-                periode: 'Du 21 septembre au 17 octobre 2026',
-                activites: [
-                    "Préinscription en ligne sur cette plateforme.",
-                    "Enregistrement du dossier de candidature (pièces administratives et justificatifs de l'expérience professionnelle) dans l'un des 30 centres VAE.",
-                    "Paiement des frais de participation à la session VAE via Trésor Pay."
-                ]
-            },
-            {
-                titre: "Recevabilité des dossiers et éligibilité",
-                icone: 'fa-scale-balanced',
-                activites: [
-                    "Orientation dans le choix de la certification visée.",
-                    "Aide à la constitution du dossier de preuves (pièces administratives et justificatifs de l'expérience professionnelle).",
-                    "Tenue du jury local de recevabilité.",
-                    "Tenue du jury national d'éligibilité.",
-                    "Publication des résultats des candidats éligibles sur cette plateforme."
-                ]
-            },
-            {
-                titre: 'Accompagnement des candidats',
-                icone: 'fa-handshake-angle',
-                activites: [
-                    "Les accompagnateurs aident les candidats à élaborer leur livret de preuves et à se préparer aux épreuves de certification."
-                ]
-            },
-            {
-                titre: 'Épreuves de certification',
-                icone: 'fa-award',
-                activites: [
-                    "Épreuves d'entretien et de mise en situation professionnelle, selon le calendrier fixé."
-                ]
-            }
+        {% set apercu_phases = [
+            'Accueil et inscription',
+            'Recevabilité des dossiers et éligibilité',
+            'Accompagnement des candidats',
+            'Épreuves de certification'
         ] %}
 
-        <ol class="mt-12 border-t border-slate-200">
-            {% for phase in phases %}
-                <li class="grid lg:grid-cols-12 gap-x-8 gap-y-4 py-8 border-b border-slate-200">
-                    <div class="lg:col-span-4 flex gap-4">
-                        <span class="shrink-0 w-10 h-10 rounded-full border-2 {{ loop.first ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-200 bg-white text-indigo-700' }} flex items-center justify-center text-base font-bold tabular">
-                            {{ loop.index }}
+        <a href="{{ path('app_session_deroulement') }}"
+           class="group block rounded-lg border border-slate-200 bg-white p-5 sm:p-6 md:p-8 transition-colors duration-200 motion-reduce:transition-none hover:border-indigo-600 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+            <div class="grid gap-6 lg:grid-cols-12 lg:gap-10">
+
+                <div class="lg:col-span-7">
+                    {# Icône au-dessus du titre sur téléphone : à côté, elle décalait
+                       titre et texte d'un cran par rapport à la liste des phases. #}
+                    <div class="flex flex-col items-start gap-3 sm:flex-row sm:gap-4">
+                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-indigo-100 bg-indigo-50 text-indigo-700 transition-colors duration-200 motion-reduce:transition-none group-hover:bg-white" aria-hidden="true">
+                            <i class="fas fa-list-check text-lg"></i>
                         </span>
-                        <span class="shrink-0 w-10 h-10 rounded-md bg-indigo-50 text-indigo-700 flex items-center justify-center" aria-hidden="true">
-                            <i class="fas {{ phase.icone }}"></i>
-                        </span>
-                        <div class="pt-1.5">
-                            <h3 class="text-lg font-bold text-slate-800 text-balance">{{ phase.titre }}</h3>
-                            {% if phase.periode is defined %}
-                                <p class="mt-1.5 inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 tabular">
-                                    <i class="fas fa-calendar-days" aria-hidden="true"></i>
-                                    {{ phase.periode }}
-                                </p>
-                            {% endif %}
+                        <div class="min-w-0">
+                            <h2 class="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-slate-800 text-balance">
+                                Tout savoir sur le déroulement de la session VAE 2026
+                            </h2>
+                            <p class="mt-2.5 text-base leading-relaxed text-slate-600 max-w-[60ch]">
+                                Quatre phases, de l'inscription aux épreuves de certification&nbsp;:
+                                ce qui se passe à chaque étape, à quelle date, et ce que vous avez à faire.
+                            </p>
                         </div>
                     </div>
+                </div>
 
-                    <div class="lg:col-span-8 lg:pt-1.5">
-                        {% if phase.activites|length > 1 %}
-                            <ul class="space-y-2.5">
-                                {% for activite in phase.activites %}
-                                    <li class="flex gap-3 text-base leading-relaxed text-slate-700 max-w-[68ch]">
-                                        <span class="shrink-0 mt-[0.7rem] w-1.5 h-1.5 rounded-full bg-slate-500" aria-hidden="true"></span>
-                                        <span>{{ activite }}</span>
-                                    </li>
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            <p class="text-base leading-relaxed text-slate-700 max-w-[68ch]">{{ phase.activites|first }}</p>
-                        {% endif %}
-                    </div>
-                </li>
-            {% endfor %}
-        </ol>
+                <div class="lg:col-span-5">
+                    <ol class="grid gap-2.5 sm:grid-cols-2 sm:gap-x-6 lg:grid-cols-1">
+                        {% for phase in apercu_phases %}
+                            <li class="flex items-center gap-3">
+                                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-indigo-200 bg-white text-xs font-bold text-indigo-700 tabular-nums">{{ loop.index }}</span>
+                                <span class="text-sm font-medium text-slate-700">{{ phase }}</span>
+                            </li>
+                        {% endfor %}
+                    </ol>
+                </div>
+            </div>
+
+            <p class="mt-6 inline-flex min-h-[44px] items-center gap-2 text-base font-bold text-indigo-700">
+                Voir le déroulement détaillé
+                <i class="fas fa-arrow-right text-sm transition-transform duration-200 motion-reduce:transition-none group-hover:translate-x-1" aria-hidden="true"></i>
+            </p>
+        </a>
     </div>
 </section>
 
@@ -423,7 +366,7 @@
 {# ============================================================
    4. Aide à l'inscription
    ============================================================ #}
-<section class="py-16 md:py-20 bg-slate-50 border-t border-slate-200">
+<section class="py-10 sm:py-14 md:py-20 bg-slate-50 border-t border-slate-200">
     <div class="max-w-6xl mx-auto px-4 sm:px-6">
         <div class="grid lg:grid-cols-12 gap-8 items-center">
             <div class="lg:col-span-7">
@@ -440,6 +383,76 @@
                 </div>
             </div>
         </div>
+    </div>
+</section>
+
+
+{# ============================================================
+   5. Qui êtes-vous ? — entrées de connexion par profil.
+   En bas de page, volontairement : l'accueil oriente d'abord vers la
+   vérification des conditions de candidature. Les deux cartes
+   réutilisent la logique d'authentification existante — même route
+   app_login, seul le paramètre `profil` change, comme dans le menu
+   « Mon espace » de l'en-tête.
+   ============================================================ #}
+<section id="qui-etes-vous" class="py-10 sm:py-14 md:py-24 bg-white border-t border-slate-200 scroll-mt-24">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+
+        <div class="max-w-2xl">
+            <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800 text-balance">
+                Qui êtes-vous&nbsp;?
+            </h2>
+            <p class="mt-3 text-base leading-[1.75] text-slate-600">
+                Vous avez déjà un compte&nbsp;? Rejoignez l'espace qui correspond à votre rôle.
+            </p>
+        </div>
+
+        {% set profils = [
+            {
+                titre: 'Candidat',
+                icone: 'fa-user',
+                accroche: "Transformez votre expérience professionnelle en diplôme reconnu.",
+                detail: "Suivez l'avancement de votre dossier, réglez vos frais et consultez vos résultats.",
+                action: 'Accéder à mon espace candidat',
+                url: path('app_login')
+            },
+            {
+                titre: 'Professionnels de la VAE',
+                icone: 'fa-user-tie',
+                accroche: "Accompagnez les candidats et instruisez les dossiers de votre centre.",
+                detail: "Conseillers VAE, accompagnateurs, agents d'accueil et administrateurs.",
+                action: 'Accéder à mon espace professionnel',
+                url: path('app_login', {'profil': 'professionnel'})
+            }
+        ] %}
+
+        <div class="mt-8 grid gap-4 sm:grid-cols-2 sm:gap-5">
+            {% for profil in profils %}
+                <a href="{{ profil.url }}"
+                   class="group flex flex-col rounded-lg border border-slate-200 bg-white p-5 sm:p-6 transition-colors duration-200 motion-reduce:transition-none hover:border-indigo-600 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                    <span class="flex h-14 w-14 items-center justify-center rounded-md border border-indigo-100 bg-indigo-50 text-2xl text-indigo-700 transition-colors duration-200 motion-reduce:transition-none group-hover:bg-white" aria-hidden="true">
+                        <i class="fas {{ profil.icone }}"></i>
+                    </span>
+
+                    <h3 class="mt-4 text-xl font-bold text-slate-800">{{ profil.titre }}</h3>
+                    <p class="mt-2 text-base leading-relaxed text-slate-700">{{ profil.accroche }}</p>
+                    <p class="mt-1.5 text-sm leading-relaxed text-slate-600">{{ profil.detail }}</p>
+
+                    <span class="mt-5 inline-flex min-h-[44px] items-center gap-2 text-base font-bold text-indigo-700">
+                        {{ profil.action }}
+                        <i class="fas fa-arrow-right text-sm transition-transform duration-200 motion-reduce:transition-none group-hover:translate-x-1" aria-hidden="true"></i>
+                    </span>
+                </a>
+            {% endfor %}
+        </div>
+
+        <p class="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-slate-700">
+            <i class="fas fa-circle-info text-[#ED8F33]" aria-hidden="true"></i>
+            Vous n'avez pas encore de compte&nbsp;?
+            <a href="#conditions-candidature" class="inline-flex min-h-[32px] items-center font-semibold text-indigo-700 underline underline-offset-4 hover:text-indigo-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                Vérifiez d'abord les conditions de candidature
+            </a>
+        </p>
     </div>
 </section>
 

@@ -47,6 +47,7 @@ security:
     - { path: "^/inscription", roles: PUBLIC_ACCESS }
     - { path: "^/mot-de-passe-oublie", roles: PUBLIC_ACCESS }
     - { path: "^/resultats", roles: PUBLIC_ACCESS }
+    - { path: "^/deroulement-session-2026", roles: PUBLIC_ACCESS }
 
     # Écrans transverses. Les Indicateurs sont fermés au candidat (des
     # statistiques sur un unique dossier n'auraient pas de sens, son suivi

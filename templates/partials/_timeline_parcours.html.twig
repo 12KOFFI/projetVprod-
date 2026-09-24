@@ -56,8 +56,9 @@
                     {% endif %}
                 </div>
 
-                <p class="text-xs mt-1 leading-relaxed
-                          {{ etape.etat == 'a_venir' ? 'text-slate-500' : 'text-slate-500' }}">
+                {# 14 px et slate-600 : le candidat doit pouvoir lire cette ligne
+                   sur un téléphone d'entrée de gamme (slate-500 est réservé aux icônes). #}
+                <p class="mt-1 text-sm leading-relaxed text-slate-600">
                     {{ etape.description }}
                 </p>
 

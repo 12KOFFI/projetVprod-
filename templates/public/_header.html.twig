@@ -19,9 +19,9 @@
 
                 <nav class="hidden lg:flex items-center gap-1" aria-label="Navigation principale">
                     <a href="{{ path('app_home') }}#session" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition-colors duration-200 whitespace-nowrap">La session</a>
-                    <a href="{{ path('app_home') }}#deroulement" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition-colors duration-200 whitespace-nowrap">Déroulement</a>
+                    <a href="{{ path('app_session_deroulement') }}" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition-colors duration-200 whitespace-nowrap">Déroulement</a>
                     {# Le pied de page (#contact) est inclus sur chaque page publique : ancre locale, sans rechargement. #}
-                         <a href="{{ path('app_home') }}#conditions" class="ml-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#ED8F33] hover:bg-[#ED8F33]/90 transition-colors duration-200 whitespace-nowrap">Vérifier les conditions</a>
+                         <a href="{{ path('app_home') }}#conditions-candidature" class="ml-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#ED8F33] hover:bg-[#ED8F33]/90 transition-colors duration-200 whitespace-nowrap">Vérifier les conditions</a>
                     <a href="#contact" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition-colors duration-200 whitespace-nowrap">Contact</a>
               
                 </nav>
@@ -98,12 +98,12 @@
          class="lg:hidden bg-white border-b border-slate-200 shadow-lg max-h-[calc(100vh-72px)] overflow-y-auto">
         <nav class="max-w-6xl mx-auto px-4 py-4 flex flex-col gap-1" aria-label="Navigation mobile">
             <a href="{{ path('app_home') }}#session" @click="menuOuvert = false" class="px-4 py-3 rounded-lg text-sm font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors duration-200">La session</a>
-            <a href="{{ path('app_home') }}#deroulement" @click="menuOuvert = false" class="px-4 py-3 rounded-lg text-sm font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors duration-200">Déroulement</a>
+            <a href="{{ path('app_session_deroulement') }}" @click="menuOuvert = false" class="px-4 py-3 rounded-lg text-sm font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors duration-200">Déroulement</a>
             <a href="#contact" @click="menuOuvert = false" class="px-4 py-3 rounded-lg text-sm font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors duration-200">Contact</a>
 
             <div class="h-px bg-slate-200 my-3"></div>
 
-            <a href="{{ path('app_home') }}#conditions" @click="menuOuvert = false" class="px-4 py-3 rounded-lg bg-[#ED8F33] text-white text-sm font-semibold text-center hover:bg-[#ED8F33]/90 transition-colors duration-200">Vérifier les conditions</a>
+            <a href="{{ path('app_home') }}#conditions-candidature" @click="menuOuvert = false" class="px-4 py-3 rounded-lg bg-[#ED8F33] text-white text-sm font-semibold text-center hover:bg-[#ED8F33]/90 transition-colors duration-200">Vérifier les conditions</a>
 
             {% if app.user %}
                 <a href="{{ path('app_dashboard') }}" class="px-4 py-3 rounded-lg bg-indigo-600 text-white text-sm font-semibold text-center">Mon espace</a>

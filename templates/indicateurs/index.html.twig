@@ -41,7 +41,7 @@
 {% endif %}
 
 {# ===== Compteurs ===== #}
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
+<div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-5 mb-8">
     {{ ui.stat('Total dossiers', synthese.total, 'folder-open', 'indigo') }}
     {{ ui.stat('Inscrits', synthese.inscrits, 'user-check', 'indigo') }}
     {{ ui.stat('Recevables', synthese.recevables, 'circle-check', 'blue') }}
@@ -63,7 +63,7 @@
 {% if est_admin %}
     {# Répartition par centre #}
     <div class="bg-white rounded-lg border border-slate-200 overflow-hidden mb-6">
-        <div class="px-6 py-5 border-b border-slate-200">
+        <div class="px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-200">
             <h2 class="text-sm font-bold text-slate-800">Effectifs par centre</h2>
             <p class="text-xs text-slate-600 mt-0.5">Tous statuts confondus</p>
         </div>
@@ -84,7 +84,7 @@
 
     {# Tableau croisé centre × statut #}
     <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
-        <div class="px-6 py-5 border-b border-slate-200">
+        <div class="px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-200">
             <h2 class="text-sm font-bold text-slate-800">Répartition par centre et par étape</h2>
             <p class="text-xs text-slate-600 mt-0.5">
                 {{ tableau_croise.total_general }} dossier(s) au total

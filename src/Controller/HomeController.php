@@ -45,4 +45,17 @@ class HomeController extends AbstractController
             'documents' => $documents,
         ]);
     }
+
+    /**
+     * Deroulement detaille de la session, extrait de la page d'accueil.
+     *
+     * Contrairement a l'accueil, cette page ne redirige pas l'utilisateur
+     * connecte : c'est une page d'information que le candidat doit pouvoir
+     * consulter a tout moment de son parcours.
+     */
+    #[Route('/deroulement-session-2026', name: 'app_session_deroulement', methods: ['GET'])]
+    public function deroulement(): Response
+    {
+        return $this->render('public/session.html.twig');
+    }
 }
