@@ -194,6 +194,37 @@
 {% endmacro %}
 
 {#
+  Champ téléphone : indicatif +225 fixe à gauche (jamais posté), numéro limité à
+  10 chiffres, comme dans le formulaire de préinscription. Le formatage par
+  paires passe par Alpine ; le serveur retire les espaces avant validation.
+#}
+{% macro champ_telephone(champ_form, colonnes = '') %}
+{% set erreur = champ_form.vars.errors|length > 0 %}
+<div class="{{ colonnes }}">
+    {{ form_label(champ_form, null, {label_attr: {class: 'mb-1.5 block text-sm font-medium text-slate-700'}}) }}
+    <div class="flex min-h-[44px] rounded-lg border bg-white transition duration-150 motion-reduce:transition-none focus-within:ring-2 {{ erreur ? 'border-red-600 focus-within:border-red-600 focus-within:ring-red-600' : 'border-slate-500 focus-within:border-indigo-600 focus-within:ring-indigo-600' }}">
+        <span class="flex shrink-0 select-none items-center gap-2 rounded-l-[7px] border-r border-slate-300 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-800">
+            {{ include('partials/_drapeau_ci.html.twig') }}
+            +225<span class="sr-only"> (indicatif de la Côte d'Ivoire)</span>
+        </span>
+        {{ form_widget(champ_form, {attr: {
+            class: 'min-h-[44px] min-w-0 flex-1 rounded-r-lg border-0 bg-transparent px-3 py-2.5 text-base tabular-nums text-slate-900 caret-indigo-600 placeholder:text-slate-500 focus:outline-none focus:ring-0',
+            placeholder: '07 08 09 10 11',
+            maxlength: '14',
+            inputmode: 'numeric',
+            autocomplete: 'off',
+            title: 'Le numéro doit contenir exactement 10 chiffres',
+            'x-data': '',
+            'x-init': "$el.value = $el.value.replace(/\\D/g, '').slice(0, 10).replace(/(\\d{2})(?=\\d)/g, '$1 ')",
+            '@input': "let c = $el.value.replace(/\\D/g, ''); if (c.length > 10 && c.indexOf('225') === 0) { c = c.slice(3) } $el.value = c.slice(0, 10).replace(/(\\d{2})(?=\\d)/g, '$1 ')"
+        }}) }}
+    </div>
+    <p class="mt-1.5 text-sm text-slate-600">10 chiffres, sans l'indicatif.</p>
+    {{ form_errors(champ_form) }}
+</div>
+{% endmacro %}
+
+{#
   Rappel du choix enregistré au dépôt quand l'offre du centre ne le propose
   plus : la liste ne montre que l'offre actuelle, ce rappel évite de perdre ce
   que le candidat avait demandé. Rien n'est affiché si le choix est dans la liste.

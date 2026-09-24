@@ -35,9 +35,9 @@
     ] %}
 {% elseif is_granted('ROLE_CANDIDAT') %}
     {% set onglets = [
-        { url: path('app_candidat_dashboard'), libelle: 'Mon dossier', icone: 'fa-folder-open', routes: ['app_candidat_dashboard', 'app_candidat_candidature'] },
-        { url: path('app_candidat_paiements'), libelle: 'Paiements', icone: 'fa-credit-card', routes: ['app_candidat_paiement'] },
-        { url: path('app_impressions'), libelle: 'Impressions', icone: 'fa-print', routes: ['app_impressions'] }
+        { url: path('app_candidat_candidature'), libelle: 'Candidature', icone: 'fa-file-lines', routes: ['app_candidat_candidature'] },
+        { url: path('app_candidat_dashboard'), libelle: 'Suivi', icone: 'fa-route', routes: ['app_candidat_dashboard'] },
+        { url: path('app_candidat_paiements'), libelle: 'Paiements', icone: 'fa-credit-card', routes: ['app_candidat_paiement'] }
     ] %}
 {% elseif is_granted('ROLE_ACCOMPAGNATEUR') %}
     {% set onglets = [

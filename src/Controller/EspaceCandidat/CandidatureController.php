@@ -53,7 +53,33 @@ class CandidatureController extends AbstractController
         ]);
     }
 
-    #[Route('/candidature/nouvelle', name: 'candidature_nouvelle', methods: ['GET', 'POST'])]
+    #[Route('/candidature', name: 'candidature', methods: ['GET'])]
+    public function consulter(): Response
+    {
+        $candidature = $this->candidatureRepository->findDernierePourCandidat($this->candidat());
+
+        if ($candidature === null) {
+            return $this->redirectToRoute('app_candidat_dashboard');
+        }
+
+        $this->denyAccessUnlessGranted(CandidatureVoter::VIEW, $candidature);
+
+        $documents = [];
+        foreach (CandidatureDepotDto::documentsObligatoires() as $champ => $libelle) {
+            $fichier = $candidature->{'get' . ucfirst($champ)}();
+
+            if (!in_array($fichier, [null, ''], true)) {
+                $documents[$champ] = ['libelle' => $libelle, 'fichier' => $fichier];
+            }
+        }
+
+        return $this->render('espace_candidat/candidature.html.twig', [
+            'candidature' => $candidature,
+            'documents' => $documents,
+        ]);
+    }
+
+    #[Route('/candidature/nouvelle',name: 'candidature_nouvelle', methods: ['GET', 'POST'])]
     public function nouvelle(Request $request): Response
     {
         $candidat = $this->candidat();

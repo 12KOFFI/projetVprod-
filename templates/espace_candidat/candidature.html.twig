@@ -1,0 +1,85 @@
+{# Consultation de la candidature par le candidat ; modifiable tant que l'étude n'est pas rendue. #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Ma candidature — VAE Côte d'Ivoire{% endblock %}
+
+{% block body %}
+{{ ui.bandeau(
+    'Ma candidature',
+    'Dossier ' ~ candidature.numero,
+    'file-lines'
+) }}
+
+<div class="space-y-6">
+    <div class="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div class="flex flex-wrap items-center gap-3">
+            <span class="text-sm text-slate-600">Statut</span>
+            {{ include('partials/_statut_badge.html.twig', { statut: statut_candidature(candidature) }) }}
+        </div>
+
+        {% if is_granted('CANDIDATURE_EDIT', candidature) %}
+            <a href="{{ path('app_candidat_candidature_modifier', {id: candidature.id}) }}"
+               class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition duration-200 hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                <i class="fas fa-pen text-xs" aria-hidden="true"></i>Modifier ma candidature
+            </a>
+        {% else %}
+            <p class="text-sm text-slate-600">Modification impossible : l'étude de votre dossier a été rendue par un conseiller VAE.</p>
+        {% endif %}
+    </div>
+
+    <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div class="border-b border-slate-200 px-6 py-5">
+            <h2 class="text-sm font-bold text-slate-800">Éléments du dossier</h2>
+        </div>
+        <dl class="grid grid-cols-1 gap-px bg-slate-100 sm:grid-cols-2">
+            {% set lignes = {
+                'Centre': candidature.centre ? candidature.centre.nom : null,
+                'Métier': candidature.metier ? candidature.metier.libelle : null,
+                'Situation professionnelle': candidature.situationPro,
+                "Années d'expérience": candidature.nbAnneesExperience ~ ' an(s)',
+                'Diplôme visé': candidature.diplomedemande,
+                'Diplôme académique obtenu(e)': candidature.diplome,
+                'Titre professionnel': candidature.titrepro,
+                "Entreprise ou organisme d'attache": candidature.nomEntreprise,
+                "Références de l'entreprise": candidature.refentreprise,
+                "Lieu d'exercice (Région, Département, Sous-préfecture)": candidature.lieuExercice,
+                'Poste de travail': candidature.fonction,
+                'Référence du contrat de travail': candidature.refContrat,
+                "Contact de l'employeur": candidature.contactemployeur ? '+225 ' ~ candidature.contactemployeur : null,
+                "Langue d'évaluation": candidature.langue
+            } %}
+            {% for libelle, valeur in lignes %}
+                <div class="bg-white px-6 py-4">
+                    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-600">{{ libelle }}</dt>
+                    <dd class="mt-1 text-sm tabular-nums text-slate-700">{{ valeur ?: '—' }}</dd>
+                </div>
+            {% endfor %}
+        </dl>
+    </div>
+
+    <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div class="border-b border-slate-200 px-6 py-5">
+            <h2 class="text-sm font-bold text-slate-800">Pièces justificatives</h2>
+        </div>
+        {% if documents is not empty %}
+            <div class="grid grid-cols-1 gap-3 p-6 sm:grid-cols-2">
+                {% for champ, document in documents %}
+                    <a href="{{ asset('media/' ~ candidature.numero ~ '/' ~ document.fichier) }}" target="_blank" rel="noopener"
+                       class="flex items-center gap-3 rounded-lg border border-slate-200 p-4 transition duration-200 hover:border-indigo-400 hover:bg-indigo-50/30">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
+                            <i class="fas fa-file-{{ document.fichier ends with '.pdf' ? 'pdf' : 'image' }} text-sm" aria-hidden="true"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-semibold text-slate-700">{{ document.libelle }}</p>
+                            <p class="text-sm text-slate-600">Ouvrir la pièce</p>
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            {{ ui.etat_vide('paperclip', 'Aucune pièce', 'Ce dossier ne comporte aucune pièce justificative.') }}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

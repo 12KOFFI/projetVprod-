@@ -39,11 +39,20 @@
 
     {% if is_granted('ROLE_CANDIDAT') and not est_admin %}
     <!-- Espace candidat (module M3) -->
+    <a href="{{ path('app_candidat_candidature') }}"
+       class="{{ nav_classes.base_link }} {{ app.current_route starts with 'app_candidat_candidature' ? nav_classes.active_link : nav_classes.inactive_link }}">
+        <i class="fas fa-file-lines w-5 text-lg"></i>
+        <span class="nav-text text-sm font-medium">Candidature</span>
+        {% if app.current_route starts with 'app_candidat_candidature' %}
+        <span class="{{ nav_classes.active_indicator }}"></span>
+        {% endif %}
+    </a>
+
     <a href="{{ path('app_candidat_dashboard') }}"
-       class="{{ nav_classes.base_link }} {{ app.current_route == 'app_candidat_dashboard' or app.current_route starts with 'app_candidat_candidature' ? nav_classes.active_link : nav_classes.inactive_link }}">
-        <i class="fas fa-folder-open w-5 text-lg"></i>
-        <span class="nav-text text-sm font-medium">Mon dossier</span>
-        {% if app.current_route == 'app_candidat_dashboard' or app.current_route starts with 'app_candidat_candidature' %}
+       class="{{ nav_classes.base_link }} {{ app.current_route == 'app_candidat_dashboard' ? nav_classes.active_link : nav_classes.inactive_link }}">
+        <i class="fas fa-route w-5 text-lg"></i>
+        <span class="nav-text text-sm font-medium">Suivi des étapes</span>
+        {% if app.current_route == 'app_candidat_dashboard' %}
         <span class="{{ nav_classes.active_indicator }}"></span>
         {% endif %}
     </a>
