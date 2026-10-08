@@ -86,6 +86,17 @@ class PaiementController extends AbstractController
             return $this->redirectToRoute('app_candidat_paiements');
         }
 
+        // Frais pas encore dus : pas de formulaire de paiement à l'écran. Le
+        // service refait ce contrôle à la soumission (R5.5).
+        if (!$this->paiementService->estDebloque($candidature, $typeFrais)) {
+            $this->addFlash('info', sprintf(
+                'Les %s ne peuvent pas encore être réglés : votre dossier n\'a pas atteint l\'étape correspondante.',
+                mb_strtolower($typeFrais->libelle())
+            ));
+
+            return $this->redirectToRoute('app_candidat_paiements');
+        }
+
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('paiement_' . $typeFrais->value, (string) $request->request->get('_token'))) {
                 $this->addFlash('error', 'Action expirée, veuillez réessayer.');
@@ -106,6 +117,13 @@ class PaiementController extends AbstractController
                 $this->candidat(),
                 $this->generateUrl('app_candidat_paiement_retour', [], UrlGeneratorInterface::ABSOLUTE_URL)
             );
+
+            // Passerelle réelle : le candidat règle sur la page du fournisseur,
+            // qui le renverra sur la page de retour. La démo confirme sur place.
+            $urlPasserelle = $this->paiementService->urlPasserelle($paiement);
+            if ($urlPasserelle !== null) {
+                return $this->redirect($urlPasserelle);
+            }
 
             return $this->redirectToRoute('app_candidat_paiement_retour', ['reference' => $paiement->getReferencePaiement()]);
         }
@@ -132,6 +150,17 @@ class PaiementController extends AbstractController
         }
 
         $this->denyAccessUnlessGranted(CandidatureVoter::PAY, $paiement->getCandidature());
+
+        // Passerelle réelle : au retour du candidat, l'état est redemandé au
+        // fournisseur (la notification serveur peut ne pas être encore arrivée).
+        // Jamais avec la démo, dont la vérification répond toujours « réussi ».
+        if (!$paiement->estReussi() && !$this->paiementService->passerelleEstSimulee()) {
+            try {
+                $this->paiementService->confirmer($paiement);
+            } catch (\Throwable) {
+                $this->addFlash('info', 'Le Trésor n\'a pas encore confirmé votre règlement : actualisez cette page dans quelques instants.');
+            }
+        }
 
         // L'état affiché provient de la base, jamais d'un paramètre d'URL : le
         // retour du navigateur ne prouve rien (règle de sécurité S2).

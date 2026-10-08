@@ -2,7 +2,7 @@
 {% extends 'base_dashboard.html.twig' %}
 {% import 'partials/_ui.html.twig' as ui %}
 
-{% block title %}Mon profil — VAE Côte d'Ivoire{% endblock %}
+{% block title %}Mon profil — Côte d'Ivoire VAE{% endblock %}
 
 {% block body %}
 {{ ui.bandeau(
@@ -32,7 +32,6 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             {{ ui.champ(form.nom) }}
             {{ ui.champ(form.prenoms) }}
-            {{ ui.champ(form.nomJeuneFille) }}
             {{ ui.champ(form.sexe) }}
             {{ ui.champ(form.situationmat) }}
             {{ ui.champ(form.datenaissance) }}
@@ -46,8 +45,8 @@
         {{ ui.section('Coordonnées', 'Votre téléphone ou votre email sert à vous connecter', 'address-book', 'orange') }}
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {{ ui.champ(form.contact) }}
-            {{ ui.champ(form.contact2) }}
+            {{ ui.champ_telephone(form.contact) }}
+            {{ ui.champ_telephone(form.contact2) }}
             {{ ui.champ(form.email, 'md:col-span-2') }}
             {{ ui.champ(form.residence) }}
             {{ ui.champ(form.boitePostale) }}

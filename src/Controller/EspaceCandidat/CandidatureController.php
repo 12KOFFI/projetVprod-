@@ -64,8 +64,10 @@ class CandidatureController extends AbstractController
 
         $this->denyAccessUnlessGranted(CandidatureVoter::VIEW, $candidature);
 
+        // Le candidat consulte aussi la pièce jointe par son conseiller
+        // (justificatif d'expérience), sans pouvoir la déposer lui-même.
         $documents = [];
-        foreach (CandidatureDepotDto::documentsObligatoires() as $champ => $libelle) {
+        foreach (CandidatureDepotDto::champsDocuments() as $champ => $libelle) {
             $fichier = $candidature->{'get' . ucfirst($champ)}();
 
             if (!in_array($fichier, [null, ''], true)) {
@@ -178,7 +180,7 @@ class CandidatureController extends AbstractController
     {
         $documents = [];
 
-        foreach (array_keys(CandidatureDepotDto::documentsObligatoires()) as $champ) {
+        foreach (array_keys(CandidatureDepotDto::champsDocuments()) as $champ) {
             if ($form->has($champ)) {
                 $documents[$champ] = $form->get($champ)->getData();
             }

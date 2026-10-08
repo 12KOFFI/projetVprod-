@@ -194,32 +194,107 @@
 {% endmacro %}
 
 {#
-  Champ téléphone : indicatif +225 fixe à gauche (jamais posté), numéro limité à
-  10 chiffres, comme dans le formulaire de préinscription. Le formatage par
-  paires passe par Alpine ; le serveur retire les espaces avant validation.
+  Liste longue avec recherche intégrée (composant Alpine « listeDeroulante »),
+  pour un ChoiceType non déplié : nationalité de l'inscription assistée, etc.
+  Sans JavaScript, la liste native reste affichée. drapeau_ci : valeur pour
+  laquelle afficher le drapeau ivoirien dans le bouton (facultatif).
+  attributs : ajoutés à la <select> native (data-*, @change…).
 #}
-{% macro champ_telephone(champ_form, colonnes = '') %}
+{% macro champ_liste_recherche(champ_form, colonnes = '', libelle_liste = '', libelle_recherche = 'Rechercher', aide = null, drapeau_ci = null, attributs = {}) %}
 {% set erreur = champ_form.vars.errors|length > 0 %}
+{% set id = champ_form.vars.id %}
 <div class="{{ colonnes }}">
-    {{ form_label(champ_form, null, {label_attr: {class: 'mb-1.5 block text-sm font-medium text-slate-700'}}) }}
-    <div class="flex min-h-[44px] rounded-lg border bg-white transition duration-150 motion-reduce:transition-none focus-within:ring-2 {{ erreur ? 'border-red-600 focus-within:border-red-600 focus-within:ring-red-600' : 'border-slate-500 focus-within:border-indigo-600 focus-within:ring-indigo-600' }}">
-        <span class="flex shrink-0 select-none items-center gap-2 rounded-l-[7px] border-r border-slate-300 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-800">
-            {{ include('partials/_drapeau_ci.html.twig') }}
-            +225<span class="sr-only"> (indicatif de la Côte d'Ivoire)</span>
-        </span>
-        {{ form_widget(champ_form, {attr: {
-            class: 'min-h-[44px] min-w-0 flex-1 rounded-r-lg border-0 bg-transparent px-3 py-2.5 text-base tabular-nums text-slate-900 caret-indigo-600 placeholder:text-slate-500 focus:outline-none focus:ring-0',
-            placeholder: '07 08 09 10 11',
-            maxlength: '14',
-            inputmode: 'numeric',
-            autocomplete: 'off',
-            title: 'Le numéro doit contenir exactement 10 chiffres',
-            'x-data': '',
-            'x-init': "$el.value = $el.value.replace(/\\D/g, '').slice(0, 10).replace(/(\\d{2})(?=\\d)/g, '$1 ')",
-            '@input': "let c = $el.value.replace(/\\D/g, ''); if (c.length > 10 && c.indexOf('225') === 0) { c = c.slice(3) } $el.value = c.slice(0, 10).replace(/(\\d{2})(?=\\d)/g, '$1 ')"
-        }}) }}
+    <label id="{{ id }}-libelle" for="{{ id }}" class="mb-1.5 block text-sm font-medium text-slate-700">{{ champ_form.vars.label }}</label>
+    <div class="relative" x-data="listeDeroulante"
+         @click.outside="fermer(false)" @keydown.escape="if (ouverte) { $event.preventDefault(); fermer(true); }"
+         @focusout="quitter($event)">
+        {{ form_widget(champ_form, {attr: attributs|merge({
+            class: 'min-h-[44px] w-full rounded-lg border border-slate-500 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600',
+            'x-ref': 'natif',
+            'aria-invalid': erreur ? 'true' : 'false'
+        })}) }}
+        <button type="button" x-cloak x-ref="bouton" @click="ouverte ? fermer(true) : ouvrir()"
+                @keydown.arrow-down.prevent="ouvrir()" @keydown.arrow-up.prevent="ouvrir()"
+                aria-haspopup="listbox" :aria-expanded="ouverte ? 'true' : 'false'"
+                aria-labelledby="{{ id }}-libelle {{ id }}-valeur" aria-invalid="{{ erreur ? 'true' : 'false' }}"
+                class="flex min-h-[44px] w-full items-center gap-3 rounded-lg border bg-white px-3 text-left text-sm text-slate-900 transition duration-150 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 {{ erreur ? 'border-red-600' : 'border-slate-500' }} {{ champ_form.vars.required ? 'border-l-[3px] border-l-primary-600' }}"
+                :class="ouverte ? 'border-indigo-600 ring-2 ring-indigo-600' : ''">
+            {% if drapeau_ci %}
+                <span x-show="valeur === '{{ drapeau_ci|e('js') }}'" class="flex shrink-0">{{ include('partials/_drapeau_ci.html.twig') }}</span>
+            {% endif %}
+            <span id="{{ id }}-valeur" class="min-w-0 flex-1 truncate" :class="valeur ? '' : 'text-slate-500'">
+                <span x-text="choisie ? choisie.principal : vide"></span>
+                <span x-show="choisie && choisie.secondaire" class="text-slate-600" x-text="choisie ? '· ' + choisie.secondaire : ''"></span>
+            </span>
+            <i class="fas fa-chevron-down shrink-0 text-sm text-slate-600 transition-transform duration-200 motion-reduce:transition-none" :class="ouverte ? 'rotate-180' : ''" aria-hidden="true"></i>
+        </button>
+        {{ include('partials/_liste_deroulante.html.twig', {libelle_liste: libelle_liste ?: champ_form.vars.label, libelle_recherche: libelle_recherche}) }}
     </div>
-    <p class="mt-1.5 text-sm text-slate-600">10 chiffres, sans l'indicatif.</p>
+    {% if aide %}
+        <p class="mt-1.5 text-sm text-slate-600">{{ aide }}</p>
+    {% endif %}
+    {{ form_errors(champ_form) }}
+</div>
+{% endmacro %}
+
+{#
+  Champ de numéro de téléphone avec indicatif (TelephoneType) : le pays se
+  choisit dans une liste avec recherche (+225 Côte d'Ivoire par défaut), le
+  numéro se met en forme selon le pays. Sans JavaScript, la liste native des
+  indicatifs reste affichée à gauche du numéro.
+
+  Les attributs data-telephone-fr / -erreur servent au contrôle immédiat de
+  l'assistant d'inscription (security/register.html.twig).
+#}
+{% macro champ_telephone(champ_form, colonnes = '', aide = null, facultatif = null, exemple = '07 08 09 10 11', autocompletion = 'tel-national') %}
+{% set erreur = champ_form.vars.errors|length > 0 %}
+{% set numero = champ_form.numero %}
+{% set facultatif = facultatif ?? not champ_form.vars.required %}
+<div class="{{ colonnes }}">
+    <label for="{{ numero.vars.id }}" class="mb-1.5 block text-sm font-medium text-slate-700">
+        {{ champ_form.vars.label }}{% if facultatif %} <span class="font-normal text-slate-600">(facultatif)</span>{% endif %}
+    </label>
+    <div class="relative" x-data="listeDeroulante"
+         @click.outside="fermer(false)" @keydown.escape="if (ouverte) { $event.preventDefault(); fermer(true); }"
+         @focusout="quitter($event)">
+        <div data-telephone-boite class="flex min-h-[44px] rounded-lg border bg-white transition duration-150 motion-reduce:transition-none focus-within:ring-2 {{ erreur ? 'border-red-600 focus-within:border-red-600 focus-within:ring-red-600' : 'border-slate-500 focus-within:border-indigo-600 focus-within:ring-indigo-600' }}">
+            {{ form_widget(champ_form.pays, {attr: {
+                class: 'max-w-[9rem] shrink-0 rounded-l-[7px] border-0 !border-l-0 border-r border-slate-300 bg-slate-50 py-0 pl-2 pr-7 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-0',
+                'x-ref': 'natif',
+                'aria-label': 'Indicatif du pays',
+                '@change': "$refs.apresChoix.value = formaterNumero($refs.apresChoix.value, $el.value)"
+            }}) }}
+            <button type="button" x-cloak x-ref="bouton" @click="ouverte ? fermer(true) : ouvrir()"
+                    @keydown.arrow-down.prevent="ouvrir()" @keydown.arrow-up.prevent="ouvrir()"
+                    aria-haspopup="listbox" :aria-expanded="ouverte ? 'true' : 'false'"
+                    :aria-label="'Indicatif : ' + (choisie ? choisie.texte : '') + '. Changer l\'indicatif'"
+                    class="flex shrink-0 items-center gap-1.5 rounded-l-[7px] border-r border-slate-300 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-800 transition-colors duration-150 motion-reduce:transition-none hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600">
+                <span x-show="valeur === 'CI'" class="flex">{{ include('partials/_drapeau_ci.html.twig') }}</span>
+                <span x-text="choisie ? choisie.court : ''"></span>
+                <i class="fas fa-chevron-down text-xs text-slate-600 transition-transform duration-200 motion-reduce:transition-none" :class="ouverte ? 'rotate-180' : ''" aria-hidden="true"></i>
+            </button>
+            {# !border-l-0 (numéro et liste native) : la règle « champ obligatoire » de
+               base_dashboard (trait de 3 px à gauche) tomberait au milieu de la boîte. #}
+            {{ form_widget(numero, {attr: {
+                class: 'min-h-[44px] min-w-0 flex-1 rounded-r-lg border-0 !border-l-0 bg-transparent px-3 py-2.5 text-base tabular-nums text-slate-900 caret-indigo-600 placeholder:text-slate-500 focus:outline-none focus:ring-0',
+                placeholder: exemple,
+                maxlength: '20',
+                inputmode: 'tel',
+                autocomplete: autocompletion,
+                'x-ref': 'apresChoix',
+                'x-init': "$el.value = formaterNumero($el.value, $refs.natif.value)",
+                '@input': "$el.value = formaterNumero($el.value, $refs.natif.value)",
+                'data-telephone-fr': '1',
+                'data-sans-anneau': '1',
+                'data-obligatoire': facultatif ? '0' : '1',
+                'aria-describedby': numero.vars.id ~ '-aide',
+                'aria-invalid': erreur ? 'true' : 'false'
+            }}) }}
+        </div>
+        {{ include('partials/_liste_deroulante.html.twig', {libelle_liste: 'Indicatifs des pays', libelle_recherche: 'Rechercher un pays ou un indicatif'}) }}
+    </div>
+    <p id="{{ numero.vars.id }}-aide" class="mt-1.5 text-sm text-slate-600">{{ aide ?? "Choisissez l'indicatif du pays, puis tapez le numéro." }}</p>
+    <p id="{{ numero.vars.id }}-erreur" class="mt-1 hidden text-sm font-medium text-red-700" role="alert"></p>
     {{ form_errors(champ_form) }}
 </div>
 {% endmacro %}
@@ -427,31 +502,59 @@
   Écrit en Twig plutôt que via knp_pagination_render() : le gabarit KnpPaginator
   configuré sort du balisage Bootstrap 4, que le projet ne style nulle part.
   Les liens conservent les paramètres de la requête courante (filtres actifs).
+
+  - pagination(pagination) : à partir d'un objet KnpPaginator (espaces de gestion).
+  - pagination_pages(...)  : même composant, à partir de valeurs simples ; le nom
+    du paramètre de page et l'ancre sont libres, ce qui permet plusieurs listes
+    paginées sur une même page (?pm=, ?pc=…).
+  - pagination_alpine(...) : même balisage et mêmes classes, piloté par un
+    composant Alpine qui fournit pages[type], nbPages(type), trouves(type),
+    numeros(type) et allerA(type, n) ; pour les listes filtrées pendant la frappe.
 #}
 {% macro pagination(pagination) %}
-{% set page_courante = pagination.currentPageNumber %}
-{% set nb_pages = pagination.pageCount %}
-{% set total = pagination.getTotalItemCount %}
+{% import _self as ui %}
+{{ ui.pagination_pages(
+    pagination.currentPageNumber,
+    pagination.pageCount,
+    pagination.getTotalItemCount,
+    pagination.route,
+    pagination.params|merge(app.request.query.all)
+) }}
+{% endmacro %}
+
+{# Classes partagées par les deux variantes de la pagination. #}
+{% macro classe_pagination(nom) %}
+{%- if nom == 'nav' -%}
+flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5
+{%- elseif nom == 'lien' -%}
+inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 tabular-nums transition duration-150 motion-reduce:transition-none hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2
+{%- elseif nom == 'inactif' -%}
+inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-500
+{%- elseif nom == 'courante' -%}
+inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white tabular-nums
+{%- endif -%}
+{% endmacro %}
+
+{% macro pagination_pages(page_courante, nb_pages, total, route, parametres = {}, nom_parametre = 'page', ancre = '', libelle = 'Pagination', unite = 'élément', unites = null) %}
+{% import _self as ui %}
 {% if nb_pages > 1 %}
-    {% set route = pagination.route %}
-    {% set parametres = pagination.params|merge(app.request.query.all) %}
     {% set premiere_affichee = max(1, page_courante - 2) %}
     {% set derniere_affichee = min(nb_pages, page_courante + 2) %}
-    {% set lien = 'inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 tabular-nums transition duration-150 motion-reduce:transition-none hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2' %}
-    {% set inactif = 'inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-500' %}
+    {% set lien = ui.classe_pagination('lien') %}
+    {% set inactif = ui.classe_pagination('inactif') %}
+    {% set suffixe = ancre ? '#' ~ ancre : '' %}
 
-    <nav aria-label="Pagination"
-         class="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+    <nav aria-label="{{ libelle }}" class="{{ ui.classe_pagination('nav') }}">
         <p class="text-sm text-slate-700">
             Page <span class="font-semibold text-slate-900 tabular-nums">{{ page_courante }}</span>
             sur <span class="font-semibold text-slate-900 tabular-nums">{{ nb_pages }}</span>
-            — <span class="tabular-nums">{{ total }}</span> élément{{ total > 1 ? 's' : '' }}
+            — <span class="tabular-nums">{{ total }}</span> {{ total > 1 ? (unites ?? unite ~ 's') : unite }}
         </p>
 
         <ul class="flex flex-wrap items-center gap-1">
             <li>
                 {% if page_courante > 1 %}
-                    <a href="{{ path(route, parametres|merge({page: page_courante - 1})) }}" rel="prev" class="{{ lien }}">
+                    <a href="{{ path(route, parametres|merge({(nom_parametre): page_courante - 1})) }}{{ suffixe }}" rel="prev" class="{{ lien }}">
                         <i class="fas fa-chevron-left text-xs" aria-hidden="true"></i>Précédent
                     </a>
                 {% else %}
@@ -460,28 +563,28 @@
             </li>
 
             {% if premiere_affichee > 1 %}
-                <li><a href="{{ path(route, parametres|merge({page: 1})) }}" aria-label="Page 1" class="{{ lien }}">1</a></li>
+                <li><a href="{{ path(route, parametres|merge({(nom_parametre): 1})) }}{{ suffixe }}" aria-label="Page 1" class="{{ lien }}">1</a></li>
                 {% if premiere_affichee > 2 %}<li aria-hidden="true" class="px-1 text-sm text-slate-600">…</li>{% endif %}
             {% endif %}
 
             {% for numero in premiere_affichee..derniere_affichee %}
                 <li>
                     {% if numero == page_courante %}
-                        <span aria-current="page" class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white tabular-nums">{{ numero }}</span>
+                        <span aria-current="page" class="{{ ui.classe_pagination('courante') }}">{{ numero }}</span>
                     {% else %}
-                        <a href="{{ path(route, parametres|merge({page: numero})) }}" aria-label="Page {{ numero }}" class="{{ lien }}">{{ numero }}</a>
+                        <a href="{{ path(route, parametres|merge({(nom_parametre): numero})) }}{{ suffixe }}" aria-label="Page {{ numero }}" class="{{ lien }}">{{ numero }}</a>
                     {% endif %}
                 </li>
             {% endfor %}
 
             {% if derniere_affichee < nb_pages %}
                 {% if derniere_affichee < nb_pages - 1 %}<li aria-hidden="true" class="px-1 text-sm text-slate-600">…</li>{% endif %}
-                <li><a href="{{ path(route, parametres|merge({page: nb_pages})) }}" aria-label="Page {{ nb_pages }}" class="{{ lien }}">{{ nb_pages }}</a></li>
+                <li><a href="{{ path(route, parametres|merge({(nom_parametre): nb_pages})) }}{{ suffixe }}" aria-label="Page {{ nb_pages }}" class="{{ lien }}">{{ nb_pages }}</a></li>
             {% endif %}
 
             <li>
                 {% if page_courante < nb_pages %}
-                    <a href="{{ path(route, parametres|merge({page: page_courante + 1})) }}" rel="next" class="{{ lien }}">
+                    <a href="{{ path(route, parametres|merge({(nom_parametre): page_courante + 1})) }}{{ suffixe }}" rel="next" class="{{ lien }}">
                         Suivant<i class="fas fa-chevron-right text-xs" aria-hidden="true"></i>
                     </a>
                 {% else %}
@@ -491,4 +594,42 @@
         </ul>
     </nav>
 {% endif %}
+{% endmacro %}
+
+{% macro pagination_alpine(type, libelle = 'Pagination', unite = 'élément', unites = null) %}
+{% import _self as ui %}
+{% set lien = ui.classe_pagination('lien') %}
+{% set inactif = ui.classe_pagination('inactif') %}
+{% set pluriel = unites ?? unite ~ 's' %}
+<nav aria-label="{{ libelle }}" class="{{ ui.classe_pagination('nav') }}" x-cloak x-show="nbPages('{{ type }}') > 1">
+    <p class="text-sm text-slate-700" aria-live="polite">
+        Page <span class="font-semibold text-slate-900 tabular-nums" x-text="pages.{{ type }}"></span>
+        sur <span class="font-semibold text-slate-900 tabular-nums" x-text="nbPages('{{ type }}')"></span>
+        — <span class="tabular-nums" x-text="trouves('{{ type }}').length + (trouves('{{ type }}').length > 1 ? ' {{ pluriel }}' : ' {{ unite }}')"></span>
+    </p>
+
+    <ul class="flex flex-wrap items-center gap-1">
+        <li>
+            <button type="button" x-show="pages.{{ type }} > 1" @click="allerA('{{ type }}', pages.{{ type }} - 1)" class="{{ lien }}">
+                <i class="fas fa-chevron-left text-xs" aria-hidden="true"></i>Précédent
+            </button>
+            <span x-show="pages.{{ type }} <= 1" class="{{ inactif }}"><i class="fas fa-chevron-left text-xs" aria-hidden="true"></i>Précédent</span>
+        </li>
+        <template x-for="(numero, rang) in numeros('{{ type }}')" :key="rang + '-' + numero">
+            <li :aria-hidden="numero === '…' ? 'true' : null" :class="numero === '…' ? 'px-1 text-sm text-slate-600' : ''">
+                <template x-if="numero === '…'"><span>…</span></template>
+                <template x-if="numero === pages.{{ type }}"><span aria-current="page" class="{{ ui.classe_pagination('courante') }}" x-text="numero"></span></template>
+                <template x-if="numero !== '…' && numero !== pages.{{ type }}">
+                    <button type="button" @click="allerA('{{ type }}', numero)" :aria-label="'Page ' + numero" class="{{ lien }}" x-text="numero"></button>
+                </template>
+            </li>
+        </template>
+        <li>
+            <button type="button" x-show="pages.{{ type }} < nbPages('{{ type }}')" @click="allerA('{{ type }}', pages.{{ type }} + 1)" class="{{ lien }}">
+                Suivant<i class="fas fa-chevron-right text-xs" aria-hidden="true"></i>
+            </button>
+            <span x-show="pages.{{ type }} >= nbPages('{{ type }}')" class="{{ inactif }}">Suivant<i class="fas fa-chevron-right text-xs" aria-hidden="true"></i></span>
+        </li>
+    </ul>
+</nav>
 {% endmacro %}

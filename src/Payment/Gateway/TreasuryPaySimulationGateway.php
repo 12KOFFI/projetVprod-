@@ -7,7 +7,9 @@ use App\Enum\StatutPaiement;
 use App\Payment\Dto\PaymentRequest;
 use App\Payment\Dto\PaymentResponse;
 use App\Payment\PaymentGatewayInterface;
+use App\Payment\SelecteurPasserelle;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**
  * Passerelle simulée, en attendant l'ouverture du compte Trésor Pay.
@@ -22,6 +24,7 @@ use Psr\Log\LoggerInterface;
  * Aucune clé d'API ne figure ici : la passerelle réelle lira les siennes dans
  * .env.local (règle R5.9).
  */
+#[AutoconfigureTag(SelecteurPasserelle::TAG)]
 class TreasuryPaySimulationGateway implements PaymentGatewayInterface
 {
     private const NOM = 'tresor_pay_simulation';
@@ -122,6 +125,26 @@ class TreasuryPaySimulationGateway implements PaymentGatewayInterface
     public function estSimulation(): bool
     {
         return true;
+    }
+
+    /**
+     * La démo n'accepte aucune notification : sa vérification renvoie
+     * toujours « réussi », une notification acceptée permettrait donc de
+     * marquer payé n'importe quel règlement.
+     */
+    public static function cle(): string
+    {
+        return SelecteurPasserelle::PAR_DEFAUT;
+    }
+
+    public function lireNotification(string $corps, array $entetes): ?string
+    {
+        return null;
+    }
+
+    public function hoteAutorise(): ?string
+    {
+        return null;
     }
 
     private function statutSimule(PaymentRequest $requete): StatutPaiement

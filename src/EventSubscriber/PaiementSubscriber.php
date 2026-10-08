@@ -3,7 +3,9 @@
 namespace App\EventSubscriber;
 
 use App\Enum\StatutCandidature;
+use App\Enum\TypeFrais;
 use App\Event\PaiementReussiEvent;
+use App\Service\Accompagnement\AccompagnementService;
 use App\Service\Candidature\TransitionCandidature;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -21,6 +23,7 @@ class PaiementSubscriber implements EventSubscriberInterface
     public function __construct(
         private readonly TransitionCandidature $transition,
         private readonly LoggerInterface $logger,
+        private readonly AccompagnementService $accompagnement,
     ) {
     }
 
@@ -36,8 +39,16 @@ class PaiementSubscriber implements EventSubscriberInterface
         $candidature = $evenement->getCandidature();
         $type = $evenement->getType();
 
-        // Les frais d'accompagnement et d'examen lèvent une garde de paiement
-        // mais ne font franchir aucune étape à eux seuls.
+        // Les frais d'accompagnement affectent l'accompagnateur choisi par le
+        // candidat (étape 5) ; aucune étape n'est franchie pour autant.
+        if ($type === TypeFrais::ACCOMPAGNEMENT) {
+            $this->accompagnement->affecterApresPaiement($candidature);
+
+            return;
+        }
+
+        // Les frais d'examen lèvent une garde de paiement mais ne font franchir
+        // aucune étape à eux seuls.
         if ($type->statutApresPaiement() !== StatutCandidature::INSCRIT) {
             return;
         }

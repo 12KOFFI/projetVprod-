@@ -6,6 +6,7 @@ use App\Entity\Candidature;
 use App\Entity\Centre;
 use App\Entity\Certification;
 use App\Entity\Metier;
+use App\Referentiel\ProfilProfessionnel;
 use App\Validator\CertificationOfferte;
 use App\Validator\MetierOuvertDansCentre;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -30,7 +31,7 @@ class CandidatureDepotDto
     public ?Metier $metier = null;
 
     #[Assert\NotNull(message: "Le nombre d'années d'expérience est obligatoire.")]
-    #[Assert\PositiveOrZero(message: "Le nombre d'années d'expérience ne peut pas être négatif.")]
+    #[Assert\GreaterThanOrEqual(value: ProfilProfessionnel::ANNEES_CQP, message: "La VAE demande au moins {{ compared_value }} ans d'expérience dans le métier.")]
     #[Assert\LessThanOrEqual(value: 60, message: "Le nombre d'années d'expérience ne peut pas dépasser {{ compared_value }}.")]
     public ?int $nbAnneesExperience = null;
 
@@ -38,9 +39,10 @@ class CandidatureDepotDto
      * Certification visée — le diplôme réellement préparé, « CAP Boulangerie-
      * Pâtisserie » et non le seul type « CAP ».
      *
-     * Le choix appartient au candidat : son expérience n'oriente pas la liste,
-     * elle n'est qu'un repère affiché. La cohérence avec le couple (centre,
-     * métier) est vérifiée par la contrainte CertificationOfferte.
+     * Son type dépend de l'expérience : CQP de 5 à 6 ans, CAP à partir de
+     * 7 ans, ou CQP quand le centre ne prépare aucun CAP pour ce métier. Ce
+     * type et la cohérence avec le couple (centre, métier) sont vérifiés par
+     * la contrainte CertificationOfferte.
      */
     #[Assert\NotNull(message: 'Le diplôme visé est obligatoire.')]
     public ?Certification $certification = null;
@@ -49,12 +51,23 @@ class CandidatureDepotDto
     #[Assert\Length(max: 255)]
     public ?string $situationPro = null;
 
+    #[Assert\When(
+        expression: 'this.situationPro === "AUTRE"',
+        constraints: [new Assert\NotBlank(message: 'Précisez la situation professionnelle.')],
+    )]
+    #[Assert\Length(max: 255)]
+    public ?string $situationProPrecision = null;
+
     /** Diplôme académique déjà obtenu (CEPE, BEPC, BAC…). */
     #[Assert\Length(max: 255)]
     public ?string $diplome = null;
 
+    #[Assert\When(
+        expression: 'this.diplome === "AUTRE"',
+        constraints: [new Assert\NotBlank(message: 'Précisez le diplôme obtenu.')],
+    )]
     #[Assert\Length(max: 255)]
-    public ?string $titrepro = null;
+    public ?string $diplomePrecision = null;
 
     #[Assert\Length(max: 255)]
     public ?string $nomEntreprise = null;
@@ -74,21 +87,23 @@ class CandidatureDepotDto
     #[Assert\Length(max: 255)]
     public ?string $directionService = null;
 
-    #[Assert\Regex(
-        pattern: '/^\d{10}$/',
-        message: "Le contact de l'employeur doit contenir 10 chiffres.",
-    )]
+    /** Numéro international (TelephoneType en contrôle la longueur). */
+    #[Assert\Length(max: 22)]
     public ?string $contactemployeur = null;
 
     #[Assert\Length(max: 45)]
     public ?string $langue = null;
 
+    #[Assert\When(
+        expression: 'this.langue === "AUTRE"',
+        constraints: [new Assert\NotBlank(message: 'Précisez la langue d\'évaluation.')],
+    )]
     #[Assert\Length(max: 100)]
     public ?string $preciserlangue = null;
 
     /**
-     * Documents justificatifs. Les cinq pièces, photo d'identité comprise,
-     * sont obligatoires au premier dépôt, mais pas lors d'une
+     * Documents justificatifs. Les trois pièces du candidat, photo d'identité
+     * comprise, sont obligatoires au premier dépôt, mais pas lors d'une
      * modification où un fichier déjà transmis fait foi (règle métier R3.8).
      *
      * @var array<string, UploadedFile|null>
@@ -103,12 +118,34 @@ class CandidatureDepotDto
     public static function documentsObligatoires(): array
     {
         return [
-            'fextrait' => 'Extrait de naissance',
             'fpiece' => "Pièce d'identité",
-            'fexperiencepro' => "Justificatif d'expérience professionnelle",
             'fcmu' => 'Attestation CMU',
             'fphoto' => "Photo d'identité",
         ];
+    }
+
+    /**
+     * Pièces jointes par le conseiller VAE seul, pendant l'étude du dossier :
+     * non exigées au dépôt, consultables par le candidat (sans pouvoir les
+     * modifier), absentes des écrans de l'agent d'accueil.
+     *
+     * @return array<string, string>
+     */
+    public static function documentsConseiller(): array
+    {
+        return [
+            'fexperiencepro' => "Justificatif d'expérience professionnelle",
+        ];
+    }
+
+    /**
+     * Tous les champs de pièce du formulaire, quel que soit le rôle.
+     *
+     * @return array<string, string>
+     */
+    public static function champsDocuments(): array
+    {
+        return self::documentsObligatoires() + self::documentsConseiller();
     }
 
     /**
@@ -126,8 +163,9 @@ class CandidatureDepotDto
         $dto->nbAnneesExperience = $candidature->getNbAnneesExperience();
         $dto->certification = $certification;
         $dto->situationPro = $candidature->getSituationPro();
+        $dto->situationProPrecision = $candidature->getSituationProPrecision();
         $dto->diplome = $candidature->getDiplome();
-        $dto->titrepro = $candidature->getTitrepro();
+        $dto->diplomePrecision = $candidature->getDiplomePrecision();
         $dto->nomEntreprise = $candidature->getNomEntreprise();
         $dto->refentreprise = $candidature->getRefentreprise();
         $dto->lieuExercice = $candidature->getLieuExercice();

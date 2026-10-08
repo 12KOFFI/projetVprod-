@@ -98,6 +98,35 @@ class CentreMetierRepository extends ServiceEntityRepository
     }
 
     /**
+     * Offre complète de la session, pour la recherche publique de la page
+     * d'accueil (« Mon métier est-il concerné ? », « Trouver mon centre VAE »).
+     *
+     * Les certifications sont chargées sans condition : filtrer une collection
+     * jointe en fetch-join hydraterait une collection partielle. Les inactives
+     * sont écartées par App\Service\Referentiel\OffrePublique.
+     *
+     * @return CentreMetier[]
+     */
+    public function findOffrePublique(): array
+    {
+        return $this->createQueryBuilder('cm')
+            ->addSelect('m', 'f', 'c', 'l', 'cert')
+            ->join('cm.metier', 'm')
+            ->join('m.filiere', 'f')
+            ->join('cm.centre', 'c')
+            ->join('c.localite', 'l')
+            ->leftJoin('cm.certifications', 'cert')
+            ->andWhere('m.statut = :actif')
+            ->setParameter('actif', 'actif')
+            ->orderBy('f.libelle', 'ASC')
+            ->addOrderBy('m.libelle', 'ASC')
+            ->addOrderBy('l.libelle', 'ASC')
+            ->addOrderBy('c.nom', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Ligne d'offre existante pour un couple centre/métier : sert à faire
      * respecter l'unicité de R2.6 avant l'insertion, afin de rendre une erreur
      * métier plutôt qu'une violation de contrainte SQL.

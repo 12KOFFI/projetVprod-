@@ -1,0 +1,66 @@
+{# Fiche d'un candidat suivi par l'accompagnateur : dossier, pièces, livret de preuves. #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% set candidat = candidature.user %}
+
+{% block title %}{{ candidature.numero }} — Accompagnement{% endblock %}
+
+{% block body %}
+{{ ui.bandeau(candidat.nomComplet, 'Dossier ' ~ candidature.numero ~ ' · ' ~ (candidature.diplomedemande ?: '—'), 'user-graduate') }}
+
+<div class="mb-4">
+    <a href="{{ path('app_accompagnement_dashboard') }}" class="inline-flex min-h-[44px] items-center gap-2 text-sm font-medium text-indigo-700 hover:text-indigo-800">
+        <i class="fas fa-arrow-left text-xs" aria-hidden="true"></i>Mes candidats
+    </a>
+</div>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div class="space-y-6 lg:col-span-2">
+        {{ include('partials/_livret.html.twig') }}
+    </div>
+
+    <aside class="space-y-6">
+        <section class="bg-white rounded-lg border border-slate-200" aria-labelledby="candidat-titre">
+            <h2 id="candidat-titre" class="border-b border-slate-200 px-6 py-4 text-sm font-bold text-slate-800">Candidat</h2>
+            <dl class="divide-y divide-slate-100">
+                {% for libelle, valeur in {
+                    'Contact': candidat.contact ? candidat.contact|telephone : null,
+                    'E-mail': candidat.email,
+                    'Métier': candidature.metier ? candidature.metier.libelle : null,
+                    "Années d'expérience": candidature.nbAnneesExperience ~ ' an(s)',
+                    'Situation professionnelle': candidature.situationProLibelle,
+                    'Centre': candidature.centre ? candidature.centre.nom : null
+                } %}
+                    <div class="px-6 py-3">
+                        <dt class="text-sm text-slate-600">{{ libelle }}</dt>
+                        <dd class="mt-0.5 text-sm font-medium text-slate-900">{{ valeur ?: '—' }}</dd>
+                    </div>
+                {% endfor %}
+                <div class="px-6 py-3">
+                    <dt class="text-sm text-slate-600">Statut</dt>
+                    <dd class="mt-1">{{ include('partials/_statut_badge.html.twig', { statut: statut_candidature(candidature) }) }}</dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="bg-white rounded-lg border border-slate-200" aria-labelledby="pieces-titre">
+            <h2 id="pieces-titre" class="border-b border-slate-200 px-6 py-4 text-sm font-bold text-slate-800">Pièces du dossier</h2>
+            {% if pieces is not empty %}
+                <ul class="divide-y divide-slate-100">
+                    {% for champ, libelle in pieces %}
+                        <li>
+                            <a href="{{ path('app_piece', {id: candidature.id, champ: champ}) }}" target="_blank" rel="noopener"
+                               class="flex min-h-[44px] items-center gap-3 px-6 py-3 text-sm text-slate-800 hover:bg-slate-50">
+                                <i class="fas fa-paperclip text-xs text-indigo-600" aria-hidden="true"></i>{{ libelle }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="px-6 py-4 text-sm text-slate-600">Aucune pièce.</p>
+            {% endif %}
+        </section>
+    </aside>
+</div>
+{% endblock %}

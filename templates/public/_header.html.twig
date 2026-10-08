@@ -5,25 +5,42 @@
 
     <div class="bg-white/90 backdrop-blur-lg border-b border-slate-200">
         <div class="max-w-6xl mx-auto px-4 sm:px-6">
-            <div class="flex items-center justify-between h-[72px] gap-4">
+            <div class="flex items-center justify-between h-16 sm:h-[72px] gap-2 sm:gap-3 xl:gap-4">
 
-                {# Le logo reste visible sur téléphone (h-8) ; c'est le sous-titre
-                   institutionnel qui disparaît sous 768 px pour laisser la place. #}
-                <a href="{{ path('app_home') }}" class="flex min-w-0 items-center gap-2.5 sm:gap-3 rounded-lg" aria-label="VAE Côte d'Ivoire — accueil">
-                    <img src="{{ asset('image/logo.png') }}" alt="" class="h-8 sm:h-9 w-auto shrink-0" aria-hidden="true">
-                    <span class="min-w-0 leading-none">
-                        <span class="block text-sm sm:text-[0.95rem] font-extrabold tracking-tight text-slate-800 truncate">VAE Côte d'Ivoire</span>
-                        <span class="hidden md:block text-xs font-medium text-slate-500 mt-0.5 whitespace-nowrap">Validation des Acquis de l'Expérience</span>
+                {# Bloc d'identité : emblème METFPA + logo DAIP, un filet vertical, puis
+                   le nom du service. Le logo DAIP est un bandeau très large (150×43) :
+                   il est nettement réduit sur téléphone, sinon il ne reste rien pour le
+                   titre. Celui-ci ne comporte qu'une coupure possible (« Côte d'Ivoire »
+                   est insécable) : une seule ligne dès ~360 px, deux lignes en dessous. #}
+                <a href="{{ path('app_home') }}" class="flex min-w-0 items-center gap-2 sm:gap-3 rounded-lg" aria-label="Côte d'Ivoire VAE — accueil">
+                    <img src="{{ asset('image/metfpa.png') }}" alt="" class="h-7 sm:h-9 w-auto shrink-0" aria-hidden="true">
+                    <img src="{{ asset('image/logo.png') }}" alt="" class="h-5 sm:h-8 w-auto shrink-0" aria-hidden="true">
+                    <span class="w-px h-7 sm:h-9 bg-slate-200 shrink-0" aria-hidden="true"></span>
+                    <span class="min-w-0 overflow-hidden">
+                        <span class="block text-sm sm:text-[0.95rem] font-extrabold leading-tight tracking-tight text-slate-800">Côte&nbsp;d'Ivoire VAE</span>
+                        {# Dès 1024 px, la navigation (4 liens + 2 boutons) occupe la ligne :
+                           le sous-titre ne s'affiche que sur tablette, sinon il pousse le nom
+                           du service jusqu'à le tronquer. #}
+                        <span class="hidden md:block lg:hidden text-xs font-medium leading-tight text-slate-600 mt-1 whitespace-nowrap">Validation des Acquis de l'Expérience</span>
                     </span>
                 </a>
 
-                <nav class="hidden lg:flex items-center gap-1" aria-label="Navigation principale">
-                    <a href="{{ path('app_home') }}#session" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition-colors duration-200 whitespace-nowrap">La session</a>
-                    <a href="{{ path('app_session_deroulement') }}" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition-colors duration-200 whitespace-nowrap">Déroulement</a>
-                    {# Le pied de page (#contact) est inclus sur chaque page publique : ancre locale, sans rechargement. #}
-                         <a href="{{ path('app_home') }}#conditions-candidature" class="ml-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#ED8F33] hover:bg-[#ED8F33]/90 transition-colors duration-200 whitespace-nowrap">Vérifier les conditions</a>
-                    <a href="#contact" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition-colors duration-200 whitespace-nowrap">Contact</a>
-              
+                {# Ordre fixé par la DAIP, qui suit le parcours de l'accueil :
+                   Déroulement · Vérifier les conditions · Dossier de candidature ·
+                   Contact. Ancres absolues : elles fonctionnent depuis toutes les
+                   pages publiques ; le pied de page (#contact) est sur chacune. #}
+                {% set route = app.request.attributes.get('_route') %}
+                {% set liens = [
+                    { libelle: 'Déroulement', url: path('app_home') ~ '#deroulement', actif: route == 'app_session_deroulement' },
+                    { libelle: 'Vérifier les conditions', url: path('app_home') ~ '#conditions-candidature', actif: false },
+                    { libelle: 'Dossier de candidature', url: path('app_home') ~ '#dossier-candidature', actif: false },
+                    { libelle: 'Contact', url: '#contact', actif: false }
+                ] %}
+                <nav class="hidden lg:flex items-center gap-0.5 xl:gap-1" aria-label="Navigation principale">
+                    {% for lien in liens %}
+                        <a href="{{ lien.url }}" {% if lien.actif %}aria-current="page"{% endif %}
+                           class="px-1.5 xl:px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors duration-200 hover:text-indigo-700 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 {{ lien.actif ? 'text-indigo-700 bg-indigo-50 font-semibold' : 'text-slate-600' }}">{{ lien.libelle }}</a>
+                    {% endfor %}
                 </nav>
 
                 <div class="flex items-center gap-2 shrink-0 min-w-0">
@@ -40,7 +57,7 @@
                                     @click="espaceOuvert = !espaceOuvert"
                                     :aria-expanded="espaceOuvert ? 'true' : 'false'"
                                     aria-haspopup="true" aria-controls="menu-espace"
-                                    class="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white transition-colors duration-200 hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                                    class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-indigo-600 bg-white px-3 xl:px-4 text-sm font-semibold text-indigo-700 transition-colors duration-200 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
                                 <i class="fas fa-circle-user" aria-hidden="true"></i>
                                 Mon espace
                                 <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="espaceOuvert ? 'rotate-180' : ''" aria-hidden="true"></i>
@@ -95,24 +112,23 @@
          x-transition:leave="transition ease-in duration-150"
          x-transition:leave-start="opacity-100 translate-y-0"
          x-transition:leave-end="opacity-0 -translate-y-1"
-         class="lg:hidden bg-white border-b border-slate-200 shadow-lg max-h-[calc(100vh-72px)] overflow-y-auto">
+         class="lg:hidden bg-white border-b border-slate-200 shadow-lg max-h-[calc(100vh-4rem)] sm:max-h-[calc(100vh-72px)] overflow-y-auto">
         <nav class="max-w-6xl mx-auto px-4 py-4 flex flex-col gap-1" aria-label="Navigation mobile">
-            <a href="{{ path('app_home') }}#session" @click="menuOuvert = false" class="px-4 py-3 rounded-lg text-sm font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors duration-200">La session</a>
-            <a href="{{ path('app_session_deroulement') }}" @click="menuOuvert = false" class="px-4 py-3 rounded-lg text-sm font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors duration-200">Déroulement</a>
-            <a href="#contact" @click="menuOuvert = false" class="px-4 py-3 rounded-lg text-sm font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors duration-200">Contact</a>
+            {% for lien in liens %}
+                <a href="{{ lien.url }}" @click="menuOuvert = false" {% if lien.actif %}aria-current="page"{% endif %}
+                   class="px-4 py-3 rounded-lg text-base font-medium transition-colors duration-200 hover:bg-indigo-50 hover:text-indigo-700 {{ lien.actif ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-slate-700' }}">{{ lien.libelle }}</a>
+            {% endfor %}
 
             <div class="h-px bg-slate-200 my-3"></div>
 
-            <a href="{{ path('app_home') }}#conditions-candidature" @click="menuOuvert = false" class="px-4 py-3 rounded-lg bg-[#ED8F33] text-white text-sm font-semibold text-center hover:bg-[#ED8F33]/90 transition-colors duration-200">Vérifier les conditions</a>
-
             {% if app.user %}
-                <a href="{{ path('app_dashboard') }}" class="px-4 py-3 rounded-lg bg-indigo-600 text-white text-sm font-semibold text-center">Mon espace</a>
+                <a href="{{ path('app_dashboard') }}" class="px-4 py-3 rounded-lg bg-indigo-600 text-white text-base font-semibold text-center">Mon espace</a>
             {% else %}
                 <p class="px-4 pt-2 text-sm font-bold text-slate-800">Mon espace</p>
-                <a href="{{ path('app_login') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-100 text-slate-800 text-sm font-semibold hover:bg-indigo-50 transition-colors duration-200">
+                <a href="{{ path('app_login') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-100 text-slate-800 text-base font-semibold hover:bg-indigo-50 transition-colors duration-200">
                     <i class="fas fa-user text-indigo-700" aria-hidden="true"></i>Candidat
                 </a>
-                <a href="{{ path('app_login', {'profil': 'professionnel'}) }}" class="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-100 text-slate-800 text-sm font-semibold hover:bg-indigo-50 transition-colors duration-200">
+                <a href="{{ path('app_login', {'profil': 'professionnel'}) }}" class="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-100 text-slate-800 text-base font-semibold hover:bg-indigo-50 transition-colors duration-200">
                     <i class="fas fa-user-tie text-indigo-700" aria-hidden="true"></i>Professionnels de la VAE
                 </a>
             {% endif %}
@@ -121,4 +137,4 @@
 </header>
 
 {# Compense la hauteur de l'en-tête fixe. #}
-<div class="h-[72px]" aria-hidden="true"></div>
+<div class="h-16 sm:h-[72px]" aria-hidden="true"></div>

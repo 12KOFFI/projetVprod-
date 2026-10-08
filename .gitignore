@@ -13,6 +13,10 @@
 !/public/media/.gitkeep
 /public/image/partenaire/*
 !/public/image/partenaire/.gitkeep
+# Pieces justificatives : desormais hors de public/, servies par PieceController
+# apres controle des droits. Le dossier part vide, son contenu reste local.
+/stockage/pieces/*
+!/stockage/pieces/.gitkeep
 
 # vendor/ et var/ sont volontairement VERSIONNES (hebergement mutualise sans Composer/CLI).
 # Seul le contenu genere localement (cache compile, logs, sessions) reste ignore :

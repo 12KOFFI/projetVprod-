@@ -42,7 +42,7 @@
                                 <span class="text-xs text-slate-600 ml-1">dossier(s)</span>
                             </td>
                             <td class="px-6 py-4 text-xs text-slate-600 tabular-nums">
-                                {{ ligne.conseiller.contact ?: ligne.conseiller.email ?: '—' }}
+                                {{ ligne.conseiller.contact ? ligne.conseiller.contact|telephone : (ligne.conseiller.email ?: '—') }}
                             </td>
                         </tr>
                     {% endfor %}
@@ -61,7 +61,7 @@
                         <div class="min-w-0">
                             <p class="text-sm font-medium text-slate-800 truncate">{{ ligne.conseiller.nomComplet ?: '—' }}</p>
                             <p class="text-xs text-slate-600 mt-0.5 tabular-nums truncate">
-                                {{ ligne.conseiller.contact ?: ligne.conseiller.email ?: '—' }}
+                                {{ ligne.conseiller.contact ? ligne.conseiller.contact|telephone : (ligne.conseiller.email ?: '—') }}
                             </p>
                         </div>
                     </div>

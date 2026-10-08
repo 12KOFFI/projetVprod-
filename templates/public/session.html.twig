@@ -1,6 +1,6 @@
 {% extends 'public/base.html.twig' %}
 
-{% block title %}Déroulement de la session 2026 — VAE Côte d'Ivoire{% endblock %}
+{% block title %}Déroulement de la session 2026 — Côte d'Ivoire VAE{% endblock %}
 
 {% block meta %}
     <meta name="author" content="DAIP — Direction de l'Apprentissage et de l'Insertion Professionnelle">
@@ -36,6 +36,21 @@
                     Cette page détaille ce qui se passe à chaque étape et ce que
                     vous avez à faire.
                 </p>
+
+                {# La vérification des conditions reste l'étape préalable
+                   à toute préinscription : l'action est portée dès l'en-tête. #}
+                <div class="mt-6 sm:mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    <a href="{{ path('app_home') }}#conditions-candidature"
+                       class="inline-flex w-full sm:w-auto min-h-[52px] items-center justify-center gap-2 rounded-lg bg-primary-800 px-6 text-base font-bold text-white transition-colors duration-200 hover:bg-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800">
+                        Vérifier les conditions
+                        <i class="fas fa-arrow-right text-sm" aria-hidden="true"></i>
+                    </a>
+                    <a href="{{ path('app_home') }}"
+                       class="inline-flex w-full sm:w-auto min-h-[52px] items-center justify-center gap-2 rounded-lg border border-primary-500 bg-white px-6 text-base font-semibold text-primary-900 transition-colors duration-200 hover:border-primary-700 hover:bg-primary-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800">
+                        <i class="fas fa-arrow-left text-sm" aria-hidden="true"></i>
+                        Retour à l'accueil
+                    </a>
+                </div>
             </div>
 
             <div class="lg:col-span-5">
@@ -61,15 +76,18 @@
 <section class="py-10 sm:py-14 md:py-24 bg-white">
     <div class="max-w-6xl mx-auto px-4 sm:px-6">
 
+        {# Phase 1 : étapes d'inscription du communiqué de la session 2026 (25/09/2026). #}
         {% set phases = [
             {
                 titre: 'Accueil et inscription',
                 icone: 'fa-file-pen',
                 periode: 'Du 21 septembre au 17 octobre 2026',
                 activites: [
-                    "Préinscription en ligne sur cette plateforme.",
-                    "Enregistrement du dossier de candidature (pièces administratives et justificatifs de l'expérience professionnelle) dans l'un des 30 centres VAE.",
-                    "Paiement des frais de participation à la session VAE via Trésor Pay."
+                    "Préinscription en ligne (enregistrement des pièces administratives) sur cette plateforme.",
+                    "Inscription en ligne (enregistrement des pièces justificatives de l'expérience professionnelle) sur cette plateforme.",
+                    "Paiement via mobile money des frais d'inscription et d'analyse de l'éligibilité à la VAE.",
+                    "Impression de la fiche d'inscription.",
+                    "Pour ces étapes, vous pouvez vous faire aider dans un centre VAE."
                 ]
             },
             {
@@ -140,37 +158,5 @@
     </div>
 </section>
 
-
-{# ============================================================
-   Retour au parcours : la vérification des conditions reste
-   l'étape préalable à toute préinscription.
-   ============================================================ #}
-<section class="py-10 sm:py-14 md:py-20 bg-slate-50 border-t border-slate-200">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6">
-        <div class="grid gap-6 lg:grid-cols-12 lg:items-center lg:gap-10">
-            <div class="lg:col-span-7">
-                <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800 text-balance">
-                    Avant de vous préinscrire, vérifiez les conditions
-                </h2>
-                <p class="mt-3 text-base leading-[1.75] text-slate-600 max-w-[62ch]">
-                    Nationalité, âge, durée d'expérience professionnelle et frais
-                    de participation&nbsp;: assurez-vous de remplir les conditions,
-                    puis préparez les pièces de votre dossier.
-                </p>
-            </div>
-            <div class="lg:col-span-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap lg:justify-end">
-                <a href="{{ path('app_home') }}#conditions-candidature"
-                   class="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-lg bg-primary-800 px-6 text-base font-bold text-white transition-colors duration-200 hover:bg-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800">
-                    Vérifier les conditions
-                    <i class="fas fa-arrow-right text-sm" aria-hidden="true"></i>
-                </a>
-                <a href="{{ path('app_home') }}"
-                   class="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-6 text-base font-semibold text-slate-700 transition-colors duration-200 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800">
-                    Retour à l'accueil
-                </a>
-            </div>
-        </div>
-    </div>
-</section>
 
 {% endblock %}

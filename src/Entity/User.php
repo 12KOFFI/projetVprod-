@@ -38,9 +38,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 150, nullable: true)]
     private ?string $prenoms = null;
 
-    #[ORM\Column(length: 150, nullable: true)]
-    private ?string $nomJeuneFille = null;
-
     #[ORM\Column(length: 10, nullable: true)]
     private ?string $sexe = null;
 
@@ -186,17 +183,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPrenoms(?string $prenoms): self
     {
         $this->prenoms = $prenoms;
-        return $this;
-    }
-
-    public function getNomJeuneFille(): ?string
-    {
-        return $this->nomJeuneFille;
-    }
-
-    public function setNomJeuneFille(?string $nomJeuneFille): self
-    {
-        $this->nomJeuneFille = $nomJeuneFille;
         return $this;
     }
 

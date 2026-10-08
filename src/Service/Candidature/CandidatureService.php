@@ -6,6 +6,7 @@ use App\Dto\CandidatureDepotDto;
 use App\Entity\Candidature;
 use App\Entity\User;
 use App\Exception\DepotCandidatureException;
+use App\Referentiel\ProfilProfessionnel;
 use App\Repository\CandidatureRepository;
 use App\Repository\CentreMetierRepository;
 use App\Security\Role;
@@ -180,8 +181,9 @@ class CandidatureService
         $candidature->setMetier($dto->metier);
         $candidature->setNbAnneesExperience($annees);
         $candidature->setSituationPro($dto->situationPro);
+        $candidature->setSituationProPrecision($this->precision($dto->situationPro, $dto->situationProPrecision));
         $candidature->setDiplome($dto->diplome);
-        $candidature->setTitrepro($dto->titrepro);
+        $candidature->setDiplomePrecision($this->precision($dto->diplome, $dto->diplomePrecision));
         $candidature->setNomEntreprise($dto->nomEntreprise);
         $candidature->setRefentreprise($dto->refentreprise);
         $candidature->setLieuExercice($dto->lieuExercice);
@@ -190,16 +192,26 @@ class CandidatureService
         $candidature->setDirectionService($dto->directionService);
         $candidature->setContactemployeur($dto->contactemployeur);
         $candidature->setLangue($dto->langue);
-        $candidature->setPreciserlangue($dto->preciserlangue);
+        $candidature->setPreciserlangue($this->precision($dto->langue, $dto->preciserlangue));
 
-        // Le diplôme visé est choisi par le candidat, pas déduit de son
-        // expérience : celle-ci n'est qu'une indication affichée à titre de
-        // repère dans le formulaire.
+        // Le type du diplôme visé (CQP ou CAP) suit l'expérience ; le DTO l'a
+        // déjà vérifié.
         //
         // Le libellé de la certification est recopié plutôt que référencé : le
         // dossier doit garder trace du diplôme tel qu'il a été proposé le jour
         // du dépôt, même si le référentiel évolue ensuite.
         $candidature->setDiplomedemande($dto->certification?->getLibelle());
+    }
+
+    /**
+     * Une précision n'a de sens qu'avec le choix « Autre » : sinon elle est
+     * effacée, pour ne pas garder un texte resté dans un champ masqué.
+     */
+    private function precision(?string $choix, ?string $precision): ?string
+    {
+        $precision = trim((string) $precision);
+
+        return $choix === ProfilProfessionnel::AUTRE && $precision !== '' ? $precision : null;
     }
 
     /**
@@ -292,7 +304,7 @@ class CandidatureService
 
     private function estUnChampDocument(Candidature $candidature, string $champ): bool
     {
-        return in_array($champ, ['fphoto', 'fpiece', 'fextrait', 'fexperiencepro', 'fcmu'], true)
+        return array_key_exists($champ, CandidatureDepotDto::champsDocuments())
             && method_exists($candidature, 'set' . ucfirst($champ));
     }
 }

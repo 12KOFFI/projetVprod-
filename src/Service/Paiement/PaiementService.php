@@ -88,7 +88,11 @@ class PaiementService
             // Étude acceptée, dossier encore préinscrit : le paiement confirmé
             // le fera passer à INSCRIT (PaiementSubscriber).
             TypeFrais::DOSSIER => $this->resolver->estAccepteeEnAttentePaiement($candidature),
-            TypeFrais::ACCOMPAGNEMENT => $statut === StatutCandidature::ELIGIBLE,
+            // Accompagnement : l'accompagnateur doit avoir été choisi (il sera
+            // affecté au paiement) et ne pas l'être déjà.
+            TypeFrais::ACCOMPAGNEMENT => $statut === StatutCandidature::ELIGIBLE
+                && $candidature->getAccompagnateurSouhaite() !== null
+                && $candidature->getAccompagnateur() === null,
             TypeFrais::EXAMEN => $statut === StatutCandidature::ELIGIBLE,
         };
     }
@@ -159,8 +163,62 @@ class PaiementService
 
         $this->enregistrerTransaction($paiement, $reponse, $moyen);
         $this->appliquerReponse($paiement, $reponse);
+        $paiement->setUrlPasserelle($reponse->urlRedirection);
 
         return $paiement;
+    }
+
+    /**
+     * Adresse de la page de paiement du fournisseur, si le candidat doit y
+     * être envoyé. Elle n'est livrée que si elle est chiffrée (https) et
+     * hébergée chez le fournisseur configuré : une réponse falsifiée ou
+     * erronée ne peut pas transformer l'application en redirecteur ouvert.
+     */
+    public function urlPasserelle(Paiement $paiement): ?string
+    {
+        $url = $paiement->getUrlPasserelle();
+        $hote = $this->passerelle->hoteAutorise();
+
+        if ($url === null || $hote === null || !$paiement->getStatut()->estRejouable()) {
+            return null;
+        }
+
+        $parties = parse_url($url);
+        $hoteUrl = strtolower((string) ($parties['host'] ?? ''));
+        $hote = strtolower($hote);
+        $memeHote = $hoteUrl === $hote || str_ends_with($hoteUrl, '.' . $hote);
+
+        return ($parties['scheme'] ?? '') === 'https' && $memeHote ? $url : null;
+    }
+
+    /**
+     * Retrouve le règlement d'une notification authentifiée et le confirme
+     * auprès de la passerelle. Renvoie null pour une notification refusée.
+     */
+    /**
+     * @param array<string, string> $entetes en-têtes HTTP, noms en minuscules
+     */
+    public function traiterNotification(string $corps, array $entetes): ?Paiement
+    {
+        $reference = $this->passerelle->lireNotification($corps, $entetes);
+
+        if ($reference === null) {
+            $this->logger->warning('Notification de paiement refusée (signature invalide, absente ou expirée).');
+
+            return null;
+        }
+
+        $paiement = $this->paiementRepository->findOneBy(['referencePaiement' => $reference]);
+
+        if ($paiement === null) {
+            $this->logger->warning('Notification de paiement pour une référence inconnue.', ['reference' => $reference]);
+
+            return null;
+        }
+
+        // Le statut annoncé par la notification n'est pas cru : confirmer()
+        // interroge le fournisseur, et reste sans effet si c'est déjà réglé.
+        return $this->confirmer($paiement);
     }
 
     /**
@@ -285,7 +343,9 @@ class PaiementService
 
         return match ($type) {
             TypeFrais::DOSSIER => "Disponible dès que le conseiller VAE a accepté votre dossier.",
-            TypeFrais::ACCOMPAGNEMENT => 'Disponible après la décision d\'éligibilité du jury central.',
+            TypeFrais::ACCOMPAGNEMENT => $this->resolver->resolve($candidature) === StatutCandidature::ELIGIBLE
+                ? 'Facultatif : choisissez d\'abord votre accompagnateur (rubrique « Accompagnement »).'
+                : 'Disponible après la décision d\'éligibilité du jury central.',
             TypeFrais::EXAMEN => 'Disponible après la décision d\'éligibilité du jury central.',
         };
     }

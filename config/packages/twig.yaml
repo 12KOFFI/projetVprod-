@@ -3,7 +3,6 @@ twig:
     form_themes: ['form/erreurs.html.twig']
     globals:
         dir_image: '/public/image/'
-        dir_media: '/public/media/'
         webhost: 'https://localhost/daip/'
         # Pilote l'affichage du menu « Jury central ». La garde qui compte est
         # dans JuryController : ce drapeau n'évite qu'un menu menant à un 404.

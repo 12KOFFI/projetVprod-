@@ -65,6 +65,27 @@
         <span class="{{ nav_classes.active_indicator }}"></span>
         {% endif %}
     </a>
+
+    <a href="{{ path('app_candidat_accompagnement') }}"
+       class="{{ nav_classes.base_link }} {{ app.current_route starts with 'app_candidat_accompagnement' ? nav_classes.active_link : nav_classes.inactive_link }}">
+        <i class="fas fa-hands-helping w-5 text-lg"></i>
+        <span class="nav-text text-sm font-medium">Accompagnement</span>
+        {% if app.current_route starts with 'app_candidat_accompagnement' %}
+        <span class="{{ nav_classes.active_indicator }}"></span>
+        {% endif %}
+    </a>
+    {% endif %}
+
+    {% if is_granted('ROLE_ACCOMPAGNATEUR') and not est_admin %}
+    <!-- Espace accompagnateur (étape 5 : livret de preuves) -->
+    <a href="{{ path('app_accompagnement_dashboard') }}"
+       class="{{ nav_classes.base_link }} {{ app.current_route starts with 'app_accompagnement_' ? nav_classes.active_link : nav_classes.inactive_link }}">
+        <i class="fas fa-hands-helping w-5 text-lg"></i>
+        <span class="nav-text text-sm font-medium">Mes candidats</span>
+        {% if app.current_route starts with 'app_accompagnement_' %}
+        <span class="{{ nav_classes.active_indicator }}"></span>
+        {% endif %}
+    </a>
     {% endif %}
 
     {% if is_granted('ROLE_CONSEILLER') and not est_admin %}

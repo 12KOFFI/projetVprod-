@@ -112,7 +112,7 @@
                     <td class="px-5 py-4">
                         {% set fullName = candidature.user ? ((candidature.user.nom|default('') ~ ' ' ~ candidature.user.prenoms|default(''))|trim) : '' %}
                         <div class="text-sm font-semibold text-slate-800">{{ fullName ?: 'Utilisateur indisponible' }}</div>
-                        <div class="text-xs text-slate-400 mt-0.5">{{ candidature.user ? (candidature.user.contact|default('-')) : '-' }}</div>
+                        <div class="text-xs text-slate-400 mt-0.5">{{ candidature.user ? (candidature.user.contact ? candidature.user.contact|telephone : '-') : '-' }}</div>
                     </td>
                     {% endif %}
 

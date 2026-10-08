@@ -202,7 +202,6 @@ class AccueilController extends AbstractController
         $candidat = (new User())->setNationalite("COTE D'IVOIRE");
         $formCandidat = $this->createForm(UserType::class, $candidat, [
             'is_register' => true,
-            'mot_de_passe_obligatoire' => true,
         ]);
 
         // Le centre n'est pas un champ du formulaire en inscription assistée : il
@@ -339,7 +338,7 @@ class AccueilController extends AbstractController
     {
         $documents = [];
 
-        foreach (array_keys(CandidatureDepotDto::documentsObligatoires()) as $champ) {
+        foreach (array_keys(CandidatureDepotDto::champsDocuments()) as $champ) {
             if ($form->has($champ)) {
                 $documents[$champ] = $form->get($champ)->getData();
             }
@@ -363,7 +362,7 @@ class AccueilController extends AbstractController
     private function normaliserIdentifiants(User $candidat): void
     {
         $candidat->setEmail(strtolower(trim((string) $candidat->getEmail())) ?: null);
-        $candidat->setContact(preg_replace('/\D+/', '', (string) $candidat->getContact()) ?: null);
+        // Le numéro arrive déjà au format international (TelephoneType).
     }
 
     private function identifiantsDejaPris(User $candidat, FormInterface $form): bool

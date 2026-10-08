@@ -152,7 +152,7 @@ class ConseillerController extends AbstractController
                     $candidature,
                     $this->certifications->findOneByLibelle((string) $candidature->getDiplomedemande())
                 ),
-                $this->optionsFormulaire->pourModification($candidature, $request, centreImpose: true)
+                ['pieces_conseiller' => true] + $this->optionsFormulaire->pourModification($candidature, $request, centreImpose: true)
             )->createView();
             $formEtude = $this->createForm(EtudeType::class, EtudeDto::depuisCandidature($candidature))->createView();
         } elseif ($this->resolver->resolve($candidature) === StatutCandidature::INSCRIT) {
@@ -168,6 +168,7 @@ class ConseillerController extends AbstractController
             'form_etude' => $formEtude,
             'form_recevabilite' => $formRecevabilite,
             'documents_obligatoires' => CandidatureDepotDto::documentsObligatoires(),
+            'documents_conseiller' => CandidatureDepotDto::documentsConseiller(),
         ]);
     }
 
@@ -194,7 +195,7 @@ class ConseillerController extends AbstractController
             $candidature,
             $this->certifications->findOneByLibelle((string) $candidature->getDiplomedemande())
         );
-        $formCandidature = $this->createForm(CandidatureDepotType::class, $dtoCandidature, $this->optionsFormulaire->pourModification($candidature, $request, centreImpose: true));
+        $formCandidature = $this->createForm(CandidatureDepotType::class, $dtoCandidature, ['pieces_conseiller' => true] + $this->optionsFormulaire->pourModification($candidature, $request, centreImpose: true));
         $formCandidature->handleRequest($request);
 
         $dtoEtude = EtudeDto::depuisCandidature($candidature);
@@ -234,6 +235,7 @@ class ConseillerController extends AbstractController
             'form_etude' => $formEtude->createView(),
             'form_recevabilite' => null,
             'documents_obligatoires' => CandidatureDepotDto::documentsObligatoires(),
+            'documents_conseiller' => CandidatureDepotDto::documentsConseiller(),
         ]);
     }
 
@@ -269,6 +271,7 @@ class ConseillerController extends AbstractController
             'form_etude' => null,
             'form_recevabilite' => $form->createView(),
             'documents_obligatoires' => CandidatureDepotDto::documentsObligatoires(),
+            'documents_conseiller' => CandidatureDepotDto::documentsConseiller(),
         ]);
     }
 
@@ -311,7 +314,7 @@ class ConseillerController extends AbstractController
     {
         $documents = [];
 
-        foreach (array_keys(CandidatureDepotDto::documentsObligatoires()) as $champ) {
+        foreach (array_keys(CandidatureDepotDto::champsDocuments()) as $champ) {
             if ($form->has($champ)) {
                 $documents[$champ] = $form->get($champ)->getData();
             }
@@ -339,17 +342,11 @@ class ConseillerController extends AbstractController
      */
     private function documents(Candidature $candidature): array
     {
-        $libelles = [
-            'fextrait' => 'Extrait de naissance',
-            'fpiece' => "Pièce d'identité",
-            'fexperiencepro' => "Justificatif d'expérience professionnelle",
-            'fcmu' => 'Attestation CMU',
-            'fphoto' => "Photo d'identité",
-        ];
-
         $documents = [];
 
-        foreach ($libelles as $champ => $libelle) {
+        // Le conseiller voit aussi le justificatif d'expérience, qu'il est seul
+        // à joindre.
+        foreach (CandidatureDepotDto::champsDocuments() as $champ => $libelle) {
             $fichier = $candidature->{'get' . ucfirst($champ)}();
 
             if (!in_array($fichier, [null, ''], true)) {

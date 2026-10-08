@@ -2,6 +2,7 @@
 
 namespace App\Security;
 
+use App\Referentiel\Telephone;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -61,8 +62,10 @@ class AppAuthenticator extends AbstractLoginFormAuthenticator
                 $repository = $this->entityManager->getRepository(User::class);
                 $user = $repository->findOneBy(['email' => strtolower($identifier)]);
 
-                if (!$user) {
-                    $user = $repository->findOneBy(['contact' => preg_replace('/\D+/', '', $identifier)]);
+                // Numéro au format international ; tapé sans indicatif, il est ivoirien.
+                $telephone = Telephone::depuisIdentifiant($identifier);
+                if (!$user && $telephone !== null) {
+                    $user = $repository->findOneBy(['contact' => $telephone]);
                 }
 
                 if (!$user instanceof User) {

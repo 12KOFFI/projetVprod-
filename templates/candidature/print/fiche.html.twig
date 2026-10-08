@@ -179,7 +179,7 @@
                 <div class="row">
                     <div class="cell">
                         <span class="label">Contact :</span>
-                        <span class="result">{{ user ? user.contact : '' }}</span>
+                        <span class="result">{{ user and user.contact ? user.contact|telephone : '' }}</span>
                     </div>
                 </div>
                 <div class="row">

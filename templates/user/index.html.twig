@@ -83,7 +83,7 @@
                             {% endfor %}
                         </div>
                     </td>
-                    <td class="px-5 py-4 text-sm text-slate-500">{{ user.contact }}</td>
+                    <td class="px-5 py-4 text-sm text-slate-500">{{ user.contact ? user.contact|telephone : '' }}</td>
                     <td class="px-5 py-4">
                         <div class="flex items-center justify-end gap-1.5">
                             <a href="{{ path('app_user_edit', {'id': user.id}) }}"

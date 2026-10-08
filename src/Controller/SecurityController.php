@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Referentiel\Telephone;
 use App\Entity\User;
 use App\Form\UserType;
 use App\Security\AppAuthenticator;
@@ -53,17 +54,18 @@ class SecurityController extends AbstractController
         }
 
         $user = (new User())->setNationalite("COTE D'IVOIRE");
-        $form = $this->createForm(UserType::class, $user, ['is_register' => true]);
+        $form = $this->createForm(UserType::class, $user, ['is_register' => true, 'attestation' => true]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
             $email = strtolower(trim((string) $user->getEmail())) ?: null;
-            $contact = preg_replace('/\D+/', '', (string) $user->getContact()) ?: null;
-            $contact2 = preg_replace('/\D+/', '', (string) $user->getContact2()) ?: null;
+            // Numéros déjà au format international (TelephoneType).
+            $contact = $user->getContact();
+            $contact2 = $user->getContact2();
             $repository = $entityManager->getRepository(User::class);
 
             if ($contact === null) {
-                $form->get('contact')->addError(new FormError('Saisissez votre numéro de téléphone : 10 chiffres.'));
+                $form->get('contact')->addError(new FormError('Saisissez votre numéro de téléphone.'));
             } elseif ($contact2 !== null && $contact2 === $contact) {
                 $form->get('contact2')->addError(new FormError('Le 2e contact doit être différent du premier.'));
             } elseif (($email !== null && $repository->findOneBy(['email' => $email])) || ($contact !== null && $repository->findOneBy(['contact' => $contact]))) {
@@ -117,8 +119,9 @@ class SecurityController extends AbstractController
             $digits = preg_replace('/\D+/', '', (string) $request->request->get('last_four_digits'));
             $repository = $entityManager->getRepository(User::class);
             $user = $repository->findOneBy(['email' => strtolower($identifier)]);
-            if (!$user && $digits === (string) $request->request->get('last_four_digits')) {
-                $user = $repository->findOneBy(['contact' => preg_replace('/\D+/', '', $identifier)]);
+            $telephone = Telephone::depuisIdentifiant($identifier);
+            if (!$user && $telephone !== null && $digits === (string) $request->request->get('last_four_digits')) {
+                $user = $repository->findOneBy(['contact' => $telephone]);
             }
 
             $contact = $user?->getContact();

@@ -48,6 +48,10 @@ security:
     - { path: "^/mot-de-passe-oublie", roles: PUBLIC_ACCESS }
     - { path: "^/resultats", roles: PUBLIC_ACCESS }
     - { path: "^/deroulement-session-2026", roles: PUBLIC_ACCESS }
+    - { path: "^/metiers-et-centres", roles: PUBLIC_ACCESS }
+    # Notification du fournisseur de paiement (webhook) : sans session,
+    # authentifiée par signature HMAC dans NotificationPaiementController.
+    - { path: "^/paiement/notification$", roles: PUBLIC_ACCESS, methods: [POST] }
 
     # Écrans transverses. Les Indicateurs sont fermés au candidat (des
     # statistiques sur un unique dossier n'auraient pas de sens, son suivi
@@ -57,6 +61,9 @@ security:
     # contrôleur. ROLE_ADMIN, qui hérite de tous, reste admis par ROLE_CONSEILLER.
     - { path: "^/indicateurs", roles: [ROLE_CONSEILLER, ROLE_ACCOMPAGNATEUR] }
     - { path: "^/impressions", roles: ROLE_USER }
+    # Pièces justificatives : connexion exigée ; le droit fin est vérifié par
+    # CandidatureVoter dans PieceController.
+    - { path: "^/pieces", roles: ROLE_USER }
 
     - { path: "^/admin", roles: ROLE_ADMIN }
     - { path: "^/conseiller", roles: ROLE_CONSEILLER }

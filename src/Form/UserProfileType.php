@@ -3,6 +3,7 @@
 namespace App\Form;
 
 use App\Entity\User;
+use App\Form\Type\TelephoneType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
@@ -18,7 +19,6 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Validator\Constraints\Email;
 use Symfony\Component\Validator\Constraints\Length;
-use Symfony\Component\Validator\Constraints\Regex;
 
 /**
  * Modification par un utilisateur de ses propres informations personnelles
@@ -42,12 +42,6 @@ class UserProfileType extends AbstractType
         $builder
             ->add('nom', TextType::class, ['constraints' => [new Length(max: 150)]])
             ->add('prenoms', TextType::class, ['constraints' => [new Length(max: 150)]])
-            ->add('nomJeuneFille', TextType::class, [
-                'label' => 'Nom de jeune fille',
-                'required' => false,
-                'help' => 'Uniquement si différent du nom actuel.',
-                'constraints' => [new Length(max: 150)],
-            ])
             ->add('sexe', ChoiceType::class, [
                 'choices' => ['Féminin' => 'F', 'Masculin' => 'M'],
                 'placeholder' => 'Sélectionnez',
@@ -87,14 +81,12 @@ class UserProfileType extends AbstractType
                 'required' => false,
                 'constraints' => [new Length(max: 50)],
             ])
-            ->add('contact', TextType::class, [
-                'label' => 'Téléphone portable',
-                'constraints' => [new Regex('/^\d{10}$/', 'Le contact doit contenir exactement 10 chiffres.')],
+            ->add('contact', TelephoneType::class, [
+                'label' => 'Contact 1',
             ])
-            ->add('contact2', TextType::class, [
-                'label' => 'Téléphone fixe',
+            ->add('contact2', TelephoneType::class, [
+                'label' => 'Contact 2',
                 'required' => false,
-                'constraints' => [new Regex('/^\d{10}$/', 'Le téléphone fixe doit contenir exactement 10 chiffres.')],
             ])
             ->add('email', EmailType::class, [
                 'constraints' => [new Email(), new Length(max: 150)],

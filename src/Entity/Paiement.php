@@ -206,6 +206,16 @@ class Paiement
         return $this;
     }
 
+    /**
+     * Page de paiement du fournisseur pour la tentative en cours. Non
+     * persistée : elle ne sert qu'à rediriger le candidat juste après
+     * l'initiation (PaiementService::urlPasserelle()).
+     */
+    private ?string $urlPasserelle = null;
+
+    public function getUrlPasserelle(): ?string { return $this->urlPasserelle; }
+    public function setUrlPasserelle(?string $url): self { $this->urlPasserelle = $url; return $this; }
+
     public function getIdentifiantExterne(): ?string { return $this->identifiantExterne; }
     public function setIdentifiantExterne(?string $identifiant): self { $this->identifiantExterne = $identifiant; return $this; }
 

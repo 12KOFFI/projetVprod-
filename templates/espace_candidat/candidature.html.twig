@@ -2,7 +2,7 @@
 {% extends 'base_dashboard.html.twig' %}
 {% import 'partials/_ui.html.twig' as ui %}
 
-{% block title %}Ma candidature — VAE Côte d'Ivoire{% endblock %}
+{% block title %}Ma candidature — Côte d'Ivoire VAE{% endblock %}
 
 {% block body %}
 {{ ui.bandeau(
@@ -34,20 +34,20 @@
         </div>
         <dl class="grid grid-cols-1 gap-px bg-slate-100 sm:grid-cols-2">
             {% set lignes = {
-                'Centre': candidature.centre ? candidature.centre.nom : null,
-                'Métier': candidature.metier ? candidature.metier.libelle : null,
-                'Situation professionnelle': candidature.situationPro,
+                'Situation professionnelle': candidature.situationProLibelle,
                 "Années d'expérience": candidature.nbAnneesExperience ~ ' an(s)',
-                'Diplôme visé': candidature.diplomedemande,
-                'Diplôme académique obtenu(e)': candidature.diplome,
-                'Titre professionnel': candidature.titrepro,
+                'Diplôme académique obtenu(e)': candidature.diplomeLibelle,
                 "Entreprise ou organisme d'attache": candidature.nomEntreprise,
                 "Références de l'entreprise": candidature.refentreprise,
                 "Lieu d'exercice (Région, Département, Sous-préfecture)": candidature.lieuExercice,
+                'Direction ou service': candidature.directionService,
                 'Poste de travail': candidature.fonction,
                 'Référence du contrat de travail': candidature.refContrat,
-                "Contact de l'employeur": candidature.contactemployeur ? '+225 ' ~ candidature.contactemployeur : null,
-                "Langue d'évaluation": candidature.langue
+                "Contact de l'employeur": candidature.contactemployeur ? candidature.contactemployeur|telephone : null,
+                'Centre': candidature.centre ? candidature.centre.nom : null,
+                'Métier': candidature.metier ? candidature.metier.libelle : null,
+                'Diplôme visé': candidature.diplomedemande,
+                "Langue d'évaluation": candidature.langueLibelle
             } %}
             {% for libelle, valeur in lignes %}
                 <div class="bg-white px-6 py-4">
@@ -65,7 +65,7 @@
         {% if documents is not empty %}
             <div class="grid grid-cols-1 gap-3 p-6 sm:grid-cols-2">
                 {% for champ, document in documents %}
-                    <a href="{{ asset('media/' ~ candidature.numero ~ '/' ~ document.fichier) }}" target="_blank" rel="noopener"
+                    <a href="{{ path('app_piece', {id: candidature.id, champ: champ}) }}" target="_blank" rel="noopener"
                        class="flex items-center gap-3 rounded-lg border border-slate-200 p-4 transition duration-200 hover:border-indigo-400 hover:bg-indigo-50/30">
                         <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
                             <i class="fas fa-file-{{ document.fichier ends with '.pdf' ? 'pdf' : 'image' }} text-sm" aria-hidden="true"></i>

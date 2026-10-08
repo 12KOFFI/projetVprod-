@@ -20,13 +20,6 @@ class Constant
     public $situationmat = ['CELIBATAIRE' => 'CELIBATAIRE', 'UNION LIBRE' => 'UNION LIBRE', 'MARIE(E)' => 'MARIE(E)', 'VEUF(VE)' => 'VEUF(VE)'];
     
     public $document_labels = [
-        'fextrait' => [
-            'icon' => 'file-alt',
-            'text' => 'Extrait de naissance',
-            'formats' => 'JPG, PNG, PDF',
-            'accept' => 'image/jpeg,image/png,application/pdf',
-            'required' => true
-        ],
         'fpiece' => [
             'icon' => 'id-card',
             'text' => 'Pièce d\'identité',

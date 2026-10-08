@@ -12,42 +12,8 @@
 
 {% block body %}
 {% import _self as page %}
+{% import 'partials/_ui.html.twig' as ui %}
 
-{# Champ téléphone à la française : une seule boîte bordée, le drapeau et l'indicatif
-   fixes à gauche, le numéro à droite. L'indicatif n'est jamais posté ni enregistré :
-   la base garde les 10 chiffres du numéro (clé de connexion et de paiement). #}
-{% macro telephone(champ, libelle, aide, exemple, autocompletion, facultatif) %}
-    {% set erreur = champ.vars.errors|length > 0 %}
-    <div>
-        <label for="{{ champ.vars.id }}" class="mb-1 block text-sm font-medium text-slate-700">
-            {{ libelle }}{% if facultatif %} <span class="font-normal text-slate-600">(facultatif)</span>{% endif %}
-        </label>
-        <div data-telephone-boite class="flex min-h-[44px] rounded-lg border bg-white transition duration-150 motion-reduce:transition-none focus-within:ring-2 {{ erreur ? 'border-red-600 focus-within:border-red-600 focus-within:ring-red-600' : 'border-slate-500 focus-within:border-indigo-600 focus-within:ring-indigo-600' }}">
-            <span class="flex shrink-0 select-none items-center gap-2 rounded-l-[7px] border-r border-slate-300 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-800">
-                {{ include('partials/_drapeau_ci.html.twig') }}
-                +225<span class="sr-only"> (indicatif de la Côte d'Ivoire)</span>
-            </span>
-            {{ form_widget(champ, {
-                'attr': {
-                    'class': 'min-h-[44px] min-w-0 flex-1 rounded-r-lg border-0 bg-transparent px-3 py-2.5 text-base tabular-nums text-slate-900 caret-indigo-600 placeholder:text-slate-500 focus:outline-none focus:ring-0',
-                    'placeholder': exemple,
-                    'maxlength': '14',
-                    'inputmode': 'numeric',
-                    'autocomplete': autocompletion,
-                    'title': 'Le numéro doit contenir exactement 10 chiffres',
-                    'data-telephone-fr': '1',
-                    'data-sans-anneau': '1',
-                    'data-obligatoire': facultatif ? '0' : '1',
-                    'aria-describedby': champ.vars.id ~ '-aide',
-                    'aria-invalid': erreur ? 'true' : 'false'
-                }
-            }) }}
-        </div>
-        <p id="{{ champ.vars.id }}-aide" class="mt-1 text-sm text-slate-600">{{ aide }}</p>
-        <p id="{{ champ.vars.id }}-erreur" class="mt-1 hidden text-sm font-medium text-red-700" role="alert"></p>
-        {{ form_errors(champ) }}
-    </div>
-{% endmacro %}
 
 {# L'en-tête public fixe est déjà compensée par le correcteur de hauteur de
    public/base.html.twig (72 px) : inutile d'ajouter un padding-top ici, ce
@@ -75,8 +41,10 @@
             </div>
         </div>
 
-        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
-            <div class="relative bg-gradient-to-br from-primary-900 to-secondary-800 px-6 py-4">
+        {# Pas d'overflow-hidden : la liste des nationalités doit pouvoir dépasser
+           de la carte ; le bandeau arrondit lui-même ses coins. #}
+        <div class="bg-white rounded-lg border border-slate-200">
+            <div class="relative rounded-t-lg bg-gradient-to-br from-primary-900 to-secondary-800 px-6 py-4">
                 <h1 class="flex items-center text-xl font-semibold text-white">
                     Préinscription - Validation Des Acquis De L'Expérience (VAE)
                 </h1>
@@ -85,7 +53,12 @@
         
             <div class="p-8">
                 {{ form_start(form, {'attr': {'class': 'space-y-6', 'novalidate': 'novalidate', 'id': 'register-form'}}) }}
-        
+
+                {# Erreurs globales du formulaire (jeton de sécurité expiré…). #}
+                {% if form.vars.errors|length > 0 %}
+                    <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form_errors(form) }}</div>
+                {% endif %}
+
                 <!-- Champ caché pour la redirection -->
                 {% if redirect is defined and redirect %}
                     <input type="hidden" name="redirect" value="{{ redirect }}">
@@ -105,6 +78,7 @@
                                     'placeholder': 'Votre nom'
                                 }
                             }) }}
+                            {{ form_errors(form.nom) }}
                         </div>
                         
                         <!-- Prénoms -->
@@ -118,20 +92,7 @@
                                     'placeholder': 'Vos prénoms'
                                 }
                             }) }}
-                        </div>
-
-                        <!-- Nom de jeune fille (facultatif) -->
-                        <div class="md:col-span-2">
-                            <label for="{{ form.nomJeuneFille.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
-                                Nom de jeune fille <span class="font-normal text-slate-600">(facultatif)</span>
-                            </label>
-                            {{ form_widget(form.nomJeuneFille, {
-                                'attr': {
-                                    'class': input_class ~ ' text-uppercase',
-                                    'aria-describedby': form.nomJeuneFille.vars.id ~ '_aide'
-                                }
-                            }) }}
-                            <p id="{{ form.nomJeuneFille.vars.id }}_aide" class="mt-1.5 text-sm text-slate-600">Uniquement si différent de votre nom actuel.</p>
+                            {{ form_errors(form.prenoms) }}
                         </div>
 
                         <!-- Sexe -->
@@ -144,6 +105,7 @@
                                     'class': input_class
                                 }
                             }) }}
+                            {{ form_errors(form.sexe) }}
                         </div>
                         
                         <!-- Situation matrimoniale -->
@@ -156,6 +118,7 @@
                                     'class': input_class
                                 }
                             }) }}
+                            {{ form_errors(form.situationmat) }}
                         </div>
                     </div>
                 </div>
@@ -164,16 +127,35 @@
                 <div class="step hidden" id="step2">
                     <!-- Naissance et nationalité -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <!-- Date de naissance -->
+                        <!-- Date de naissance : saisie « jj/mm/aaaa », barres posées pendant
+                             la frappe ; le calendrier du téléphone reste disponible à droite. -->
+                        {% set date_erreur = form.datenaissance.vars.errors|length > 0 %}
                         <div class="md:col-span-1">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                            <label for="{{ form.datenaissance.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
                                 Date de naissance
                             </label>
-                            {{ form_widget(form.datenaissance, {
-                                'attr': {
-                                    'class': input_class
-                                }
-                            }) }}
+                            <div data-date-boite class="flex min-h-[44px] rounded-lg border bg-white transition duration-150 motion-reduce:transition-none focus-within:ring-2 {{ date_erreur ? 'border-red-600 focus-within:border-red-600 focus-within:ring-red-600' : 'border-slate-500 focus-within:border-indigo-600 focus-within:ring-indigo-600' }}">
+                                {{ form_widget(form.datenaissance, {
+                                    'attr': {
+                                        'class': 'min-h-[44px] min-w-0 flex-1 rounded-l-lg border-0 bg-transparent px-3 py-2.5 text-base tabular-nums text-slate-900 caret-indigo-600 placeholder:text-slate-500 focus:outline-none focus:ring-0',
+                                        'data-date-fr': '1',
+                                        'data-sans-anneau': '1',
+                                        'aria-describedby': form.datenaissance.vars.id ~ '-aide',
+                                        'aria-invalid': date_erreur ? 'true' : 'false'
+                                    }
+                                }) }}
+                                {# Le vrai sélecteur de date, invisible, recouvre le bouton :
+                                   un toucher ouvre le calendrier natif du téléphone. #}
+                                <span class="relative flex w-12 shrink-0 items-center justify-center rounded-r-[7px] border-l border-slate-300 bg-slate-50 text-slate-700 focus-within:bg-indigo-50 focus-within:text-indigo-700 hover:bg-slate-100">
+                                    <i class="fas fa-calendar-days" aria-hidden="true"></i>
+                                    <input type="date" data-calendrier max="{{ 'now'|date('Y-m-d') }}" min="1930-01-01"
+                                           aria-label="Choisir la date dans le calendrier"
+                                           class="absolute inset-0 h-full w-full cursor-pointer opacity-0" data-sans-anneau="1">
+                                </span>
+                            </div>
+                            <p id="{{ form.datenaissance.vars.id }}-aide" class="mt-1 text-sm text-slate-600">Tapez les chiffres, les barres s'ajoutent seules. Ex. : 15/03/1985</p>
+                            <p id="{{ form.datenaissance.vars.id }}-erreur" class="mt-1 hidden text-sm font-medium text-red-700" role="alert"></p>
+                            {{ form_errors(form.datenaissance) }}
                         </div>
                         
                         <!-- Lieu de naissance -->
@@ -187,22 +169,46 @@
                                     'placeholder': 'Ville de naissance'
                                 }
                             }) }}
+                            {{ form_errors(form.lieunaissance) }}
                         </div>
                         
-                        <!-- Nationalité -->
+                        <!-- Nationalité : liste déroulante avec recherche intégrée, comme
+                             e-justice.ci (Select2), écrite en Alpine + Tailwind. Sans JavaScript,
+                             la liste native reste affichée. La condition (nationalité ivoirienne)
+                             est vérifiée à la soumission. -->
+                        {% set nationalite = form.nationalite %}
+                        {% set nationalite_erreur = nationalite.vars.errors|length > 0 %}
                         <div class="md:col-span-1">
-                            <p id="nationalite-libelle" class="mb-1 text-sm font-medium text-slate-700">Nationalité</p>
-                            {# Valeur imposée côté serveur (champ désactivé dans UserType) : on affiche un
-                               bloc en lecture seule plutôt qu'une liste grisée qui ressemble à une panne. #}
-                            {% do form.nationalite.setRendered %}
-                            <div role="group" aria-labelledby="nationalite-libelle" aria-describedby="nationalite-aide"
-                                 class="flex min-h-[44px] items-center gap-3 rounded-lg border border-slate-300 bg-slate-50 px-3 text-base text-slate-900">
-                                {{ include('partials/_drapeau_ci.html.twig') }}
-                                <span class="flex-1">Ivoirienne <span class="text-slate-600">· Côte d'Ivoire</span></span>
-                                <i class="fas fa-lock text-sm text-slate-600" aria-hidden="true"></i>
-                                <span class="sr-only">(non modifiable)</span>
+                            <label id="nationalite-libelle" for="{{ nationalite.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">Nationalité</label>
+                            <div class="relative" x-data="listeDeroulante"
+                                 @click.outside="fermer(false)" @keydown.escape="if (ouverte) { $event.preventDefault(); fermer(true); }"
+                                 @focusout="quitter($event)">
+                                {{ form_widget(nationalite, {
+                                    'attr': {
+                                        'class': input_class,
+                                        'x-ref': 'natif',
+                                        'aria-describedby': 'nationalite-aide',
+                                        'aria-invalid': nationalite_erreur ? 'true' : 'false'
+                                    }
+                                }) }}
+                                <button type="button" x-cloak x-ref="bouton" @click="ouverte ? fermer(true) : ouvrir()"
+                                        @keydown.arrow-down.prevent="ouvrir()" @keydown.arrow-up.prevent="ouvrir()"
+                                        aria-haspopup="listbox" :aria-expanded="ouverte ? 'true' : 'false'"
+                                        aria-labelledby="nationalite-libelle nationalite-valeur" aria-describedby="nationalite-aide"
+                                        aria-invalid="{{ nationalite_erreur ? 'true' : 'false' }}"
+                                        class="flex min-h-[44px] w-full items-center gap-3 rounded-lg border bg-white px-3 text-left text-base text-slate-900 transition duration-150 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 {{ nationalite_erreur ? 'border-red-600' : 'border-slate-500' }}"
+                                        :class="ouverte ? 'border-indigo-600 ring-2 ring-indigo-600' : ''">
+                                    <span x-show="valeur === '{{ constant('App\\Entity\\User::NATIONALITE_IVOIRIENNE')|e('js') }}'" class="flex shrink-0">{{ include('partials/_drapeau_ci.html.twig') }}</span>
+                                    <span id="nationalite-valeur" class="min-w-0 flex-1 truncate" :class="valeur ? '' : 'text-slate-500'">
+                                        <span x-text="choisie ? choisie.principal : 'Sélectionnez votre nationalité'"></span>
+                                        <span x-show="choisie && choisie.secondaire" class="text-slate-600" x-text="choisie ? '· ' + choisie.secondaire : ''"></span>
+                                    </span>
+                                    <i class="fas fa-chevron-down shrink-0 text-sm text-slate-600 transition-transform duration-200 motion-reduce:transition-none" :class="ouverte ? 'rotate-180' : ''" aria-hidden="true"></i>
+                                </button>
+                                {{ include('partials/_liste_deroulante.html.twig', {libelle_liste: 'Nationalités', libelle_recherche: 'Rechercher une nationalité'}) }}
                             </div>
                             <p id="nationalite-aide" class="mt-1 text-sm text-slate-600">Condition de candidature : être de nationalité ivoirienne.</p>
+                            {{ form_errors(nationalite) }}
                         </div>
                         
                     </div>
@@ -223,6 +229,7 @@
                                     'placeholder': 'Votre ville, par exemple Bouaké'
                                 }
                             }) }}
+                            {{ form_errors(form.residence) }}
                         </div>
 
                         <!-- Boîte postale -->
@@ -236,14 +243,15 @@
                                     'placeholder': 'Par exemple 01 BP 1234 Abidjan 01'
                                 }
                             }) }}
+                            {{ form_errors(form.boitePostale) }}
                         </div>
 
                         <div class="md:col-span-1">
-                            {{ page.telephone(form.contact, 'Téléphone portable', "Votre numéro, sans l'indicatif", '07 08 09 10 11', 'tel-national', false) }}
+                            {{ ui.champ_telephone(form.contact, '', "Votre numéro principal : choisissez l'indicatif, puis tapez le numéro.", false, '07 08 09 10 11', 'tel-national') }}
                         </div>
 
                         <div class="md:col-span-1">
-                            {{ page.telephone(form.contact2, 'Téléphone fixe', 'Un numéro de fixe où vous joindre', '27 22 00 00 00', 'off', true) }}
+                            {{ ui.champ_telephone(form.contact2, '', 'Un autre numéro où vous joindre.', true, '05 06 07 08 09', 'off') }}
                         </div>
                     </div>
                 </div>
@@ -263,7 +271,7 @@
                                     'placeholder': 'exemple@email.com'
                                 }
                             }) }}
-                            <div id="email-error" class="text-sm text-red-500 mt-1 hidden"></div>
+                            {{ form_errors(form.email) }}
                         </div>
                         
                         <!-- Mot de passe et confirmation -->
@@ -312,15 +320,21 @@
                         </div>
                     </div>
                 
-                    <!-- Case à cocher -->
-                    <div class="p-4 bg-slate-50 rounded-lg">
+                    {# Erreurs du mot de passe (vide, trop court, confirmation différente) :
+                       le RepeatedType les rattache à son premier champ (error_mapping). #}
+                    {{ form_errors(form.password) }}
+                    {{ form_errors(form.password.first) }}
+                    <p id="mot-de-passe-erreur" class="mt-1.5 hidden text-sm font-medium text-red-700" role="alert"></p>
+
+                    <div class="mt-6 p-4 bg-slate-50 rounded-lg">
                         <div class="flex items-start">
-                            <input type="checkbox" id="accept" class="mt-1 mr-3">
-                            <label for="accept" class="text-sm text-slate-600">
-                                J'accepte que les informations fournies soient utilisées dans le cadre de ma candidature 
-                                et j'atteste sur l'honneur leur exactitude.
+                            {{ form_widget(form.attestation, {attr: {class: 'mt-1 mr-3 h-4 w-4 shrink-0 accent-indigo-600'}}) }}
+                            <label for="{{ form.attestation.vars.id }}" class="text-sm text-slate-600">
+                                {{ form.attestation.vars.label }}
                             </label>
                         </div>
+                        {{ form_errors(form.attestation) }}
+                        <p id="attestation-erreur" class="mt-1.5 hidden text-sm font-medium text-red-700" role="alert"></p>
                     </div>
                 </div>
         
@@ -378,8 +392,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const progressBar = document.getElementById('progress-bar');
     const progressPercent = document.getElementById('progress-percent');
     const spinner = document.getElementById('spinner');
-    const emailInput = document.getElementById('{{ form.email.vars.id }}');
-    const emailError = document.getElementById('email-error');
     
     const stepNames = ['Identité', 'Naissance', 'Contact', 'Connexion'];
     let currentStep = 0;
@@ -413,14 +425,29 @@ document.addEventListener('DOMContentLoaded', function() {
         progressPercent.textContent = `${Math.round(progress)}%`;
     }
 
-    // Contrôle des numéros : 10 chiffres exactement, message clair sous le champ.
+    // Contrôle des numéros selon l'indicatif choisi (même règle que le serveur,
+    // App\\Referentiel\\Telephone) : +225, exactement 10 chiffres ; ailleurs, 6 à 13
+    // chiffres sans le 0 composé dans le pays (conservé en Italie).
+    function paysDe(champ) {
+        var liste = champ.closest('[data-telephone-boite]').querySelector('select');
+        return liste ? liste.value : 'CI';
+    }
+    function cleTelephone(champ) {
+        var chiffres = champ.value.replace(/\D/g, ''), pays = paysDe(champ);
+        if (pays !== 'CI' && pays !== 'IT') { chiffres = chiffres.replace(/^0/, ''); }
+        return chiffres === '' ? '' : pays + ':' + chiffres;
+    }
     function messageTelephone(champ) {
-        var chiffres = champ.value.replace(/\D/g, '');
-        if (chiffres.length === 0) {
-            return champ.dataset.obligatoire === '1' ? 'Saisissez votre numéro de téléphone : 10 chiffres.' : '';
+        var cle = cleTelephone(champ), pays = paysDe(champ);
+        if (cle === '') {
+            return champ.dataset.obligatoire === '1' ? 'Saisissez votre numéro de téléphone.' : '';
         }
-        if (chiffres.length !== 10) {
-            return 'Ce numéro a ' + chiffres.length + ' chiffre' + (chiffres.length > 1 ? 's' : '') + ' : il en faut exactement 10.';
+        var n = cle.split(':')[1].length;
+        if (pays === 'CI' && n !== 10) {
+            return 'Un numéro ivoirien compte exactement 10 chiffres (ici ' + n + ').';
+        }
+        if (pays !== 'CI' && (n < 6 || n > 13)) {
+            return "Le numéro doit compter entre 6 et 13 chiffres, sans l'indicatif.";
         }
         return '';
     }
@@ -440,8 +467,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var premier = null;
         champs.forEach(function (champ) {
             var message = messageTelephone(champ);
-            if (!message && champ !== champs[0] && champ.value.replace(/\D/g, '') !== '' &&
-                champ.value.replace(/\D/g, '') === champs[0].value.replace(/\D/g, '')) {
+            if (!message && champ !== champs[0] && cleTelephone(champ) !== '' &&
+                cleTelephone(champ) === cleTelephone(champs[0])) {
                 message = 'Le 2ᵉ contact doit être différent du premier.';
             }
             afficherErreurTelephone(champ, message);
@@ -450,7 +477,66 @@ document.addEventListener('DOMContentLoaded', function() {
         return premier;
     }
 
+    // Date de naissance « jj/mm/aaaa » : même logique qu'e-justice.ci (barres
+    // ajoutées pendant la frappe, date réelle, pas dans le futur).
+    var champDate = document.querySelector('[data-date-fr]');
+    var calendrier = document.querySelector('[data-calendrier]');
+
+    function messageDate(champ) {
+        var v = champ.value.trim();
+        if (v === '') { return ''; }
+        var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v);
+        if (!m) { return 'Saisissez la date complète : jj/mm/aaaa, par exemple 15/03/1985.'; }
+        var j = +m[1], mo = +m[2], a = +m[3];
+        var d = new Date(a, mo - 1, j);
+        if (d.getFullYear() !== a || d.getMonth() !== mo - 1 || d.getDate() !== j) { return "Cette date n'existe pas : vérifiez le jour et le mois."; }
+        if (d > new Date()) { return 'La date de naissance ne peut pas être dans le futur.'; }
+        if (a < 1930) { return "Vérifiez l'année de naissance."; }
+        return '';
+    }
+
+    function afficherErreurDate(message) {
+        var zone = document.getElementById(champDate.id + '-erreur');
+        var boite = champDate.closest('[data-date-boite]');
+        zone.textContent = message;
+        zone.classList.toggle('hidden', !message);
+        champDate.setAttribute('aria-invalid', message ? 'true' : 'false');
+        boite.classList.toggle('border-red-600', !!message);
+        boite.classList.toggle('border-slate-500', !message);
+    }
+
+    function formaterDate(champ) {
+        var c = champ.value.replace(/\D/g, '').slice(0, 8);
+        champ.value = c.length > 4 ? c.slice(0, 2) + '/' + c.slice(2, 4) + '/' + c.slice(4)
+            : c.length > 2 ? c.slice(0, 2) + '/' + c.slice(2) : c;
+    }
+
+    if (champDate) {
+        champDate.addEventListener('input', function () {
+            formaterDate(champDate);
+            if (champDate.value.length === 10 || champDate.getAttribute('aria-invalid') === 'true') { afficherErreurDate(messageDate(champDate)); }
+        });
+        champDate.addEventListener('blur', function () { afficherErreurDate(messageDate(champDate)); });
+    }
+    if (champDate && calendrier) {
+        // Ouvre le calendrier sur la date déjà saisie ; reporte le choix en jj/mm/aaaa.
+        calendrier.addEventListener('click', function () {
+            var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(champDate.value);
+            calendrier.value = m ? m[3] + '-' + m[2] + '-' + m[1] : '';
+            if (typeof calendrier.showPicker === 'function') { try { calendrier.showPicker(); } catch (e) {} }
+        });
+        calendrier.addEventListener('change', function () {
+            var p = calendrier.value.split('-');
+            if (p.length === 3) { champDate.value = p[2] + '/' + p[1] + '/' + p[0]; afficherErreurDate(messageDate(champDate)); }
+        });
+    }
+
     function validateStep(step) {
+        if (champDate && steps[step].contains(champDate)) {
+            var messageD = messageDate(champDate);
+            afficherErreurDate(messageD);
+            if (messageD) { champDate.focus(); return false; }
+        }
         if (!steps[step].querySelector('[data-telephone-fr]')) { return true; }
         var invalide = validerTelephones();
         if (invalide) { invalide.focus(); return false; }
@@ -475,28 +561,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Vérification email unique
-    if (emailInput) {
-        emailInput.addEventListener('blur', function() {
-            const email = this.value;
-            if (email && email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-                fetch('/user/email/' + encodeURIComponent(email))
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.exists) {
-                            emailError.textContent = 'Cet email est déjà utilisé. Veuillez vous connecter ou utiliser une autre adresse.';
-                            emailError.classList.remove('hidden');
-                            emailInput.classList.add('border-red-500', 'focus:ring-red-500');
-                        } else {
-                            emailError.classList.add('hidden');
-                            emailInput.classList.remove('border-red-500', 'focus:ring-red-500');
-                        }
-                    })
-                    .catch(error => console.error('Erreur:', error));
-            }
-        });
-    }
-
     // Animation du spinner au submit
     form.addEventListener('submit', function(e) {
         // Vérification finale avant soumission : on ramène l'utilisateur à l'étape des numéros.
@@ -506,6 +570,23 @@ document.addEventListener('DOMContentLoaded', function() {
             currentStep = Array.from(steps).indexOf(invalide.closest('.step'));
             updateSteps();
             invalide.focus();
+            return;
+        }
+        // Mot de passe et attestation : même règle que le serveur (UserType).
+        var mdp = document.getElementById('{{ form.password.first.vars.id }}');
+        var confirmation = document.getElementById('{{ form.password.second.vars.id }}');
+        var attestation = document.getElementById('{{ form.attestation.vars.id }}');
+        var messageMdp = mdp.value.length < 8 ? 'Choisissez un mot de passe de 8 caractères au moins.'
+            : (mdp.value !== confirmation.value ? 'Les mots de passe ne correspondent pas.' : '');
+        var zoneMdp = document.getElementById('mot-de-passe-erreur');
+        var zoneAttestation = document.getElementById('attestation-erreur');
+        zoneMdp.textContent = messageMdp;
+        zoneMdp.classList.toggle('hidden', !messageMdp);
+        zoneAttestation.textContent = attestation.checked ? '' : "Cochez la case pour attester sur l'honneur l'exactitude de vos informations.";
+        zoneAttestation.classList.toggle('hidden', attestation.checked);
+        if (messageMdp || !attestation.checked) {
+            e.preventDefault();
+            (messageMdp ? mdp : attestation).focus();
             return;
         }
         
@@ -524,17 +605,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Numéros affichés par paires (07 08 09 10 11) ; le serveur retire les espaces.
-    function formaterTelephone(champ) {
-        var chiffres = champ.value.replace(/\D/g, '');
-        // Numéro collé avec l'indicatif (+225 07 ...) : l'indicatif est déjà affiché.
-        if (chiffres.length > 10 && chiffres.indexOf('225') === 0) { chiffres = chiffres.slice(3); }
-        champ.value = chiffres.slice(0, 10).replace(/(\d{2})(?=\d)/g, '$1 ');
-    }
+    // La mise en forme pendant la frappe est faite par le champ partagé
+    // (ui.champ_telephone, formaterNumero) ; ici, seulement le contrôle.
     document.querySelectorAll('[data-telephone-fr]').forEach(function (champ) {
-        formaterTelephone(champ);
         champ.addEventListener('input', function () {
-            formaterTelephone(champ);
             if (champ.getAttribute('aria-invalid') === 'true') { afficherErreurTelephone(champ, messageTelephone(champ)); }
         });
         champ.addEventListener('blur', function () {
@@ -543,7 +617,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Après une erreur renvoyée par le serveur, on rouvre l'étape qui la porte.
-    var enErreur = document.querySelector('.step [aria-invalid="true"]');
+    var enErreur = document.querySelector('.step [aria-invalid="true"], .step ul [role="alert"]');
     if (enErreur) { currentStep = Array.from(steps).indexOf(enErreur.closest('.step')); }
 
     // Initialisation

@@ -1,0 +1,162 @@
+{#
+  Sections du formulaire de dépôt (CandidatureDepotType), communes aux quatre
+  écrans qui le servent : espace candidat, inscription assistée, modification
+  par l'accueil, étude par le conseiller. Ordre : expérience professionnelle,
+  entreprise ou atelier, centre et métier visé, pièces justificatives.
+
+  Le formulaire doit être enveloppé par le composant Alpine depotCandidature()
+  (assets/app.js) : cascade centre → métier → diplôme, filtre CQP / CAP selon
+  l'expérience, champs « Autre ». Sans JavaScript, tout reste affiché et le
+  serveur contrôle les mêmes règles.
+#}
+
+{# 1. Expérience professionnelle : années, repère du diplôme accessible, situation, diplôme obtenu. #}
+{% macro experience(form) %}
+{% import 'partials/_ui.html.twig' as ui %}
+{% set annees_cqp = constant('App\\Referentiel\\ProfilProfessionnel::ANNEES_CQP') %}
+{% set annees_cap = constant('App\\Referentiel\\ProfilProfessionnel::ANNEES_CAP') %}
+<div class="bg-white rounded-lg border border-slate-200 p-6">
+    {{ ui.section('Expérience professionnelle', 'Vos années de métier déterminent le diplôme que vous pouvez viser', 'briefcase', 'amber') }}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {{ ui.champ(form.nbAnneesExperience, '', {
+            'data-depot': 'annees',
+            'data-annees-cqp': annees_cqp,
+            'data-annees-cap': annees_cap,
+            'data-message-min': "La VAE demande au moins " ~ annees_cqp ~ " ans d'expérience dans le métier.",
+            'aria-describedby': 'repere-diplome-message',
+            '@input': 'annees = $event.target.value; afficherCertifications()'
+        }, annees_cqp ~ ' ans minimum.') }}
+
+        {# Repère : le diplôme accessible s'allume pendant la saisie des années. #}
+        <div>
+            <p class="mb-1.5 block text-sm font-medium text-slate-700">Diplôme accessible</p>
+            <div class="grid grid-cols-2 gap-3">
+                {% for type, duree in {CQP: 'de ' ~ annees_cqp ~ ' à ' ~ (annees_cap - 1) ~ ' ans', CAP: annees_cap ~ ' ans et plus'} %}
+                    <div class="flex min-h-[44px] items-center justify-between gap-2 rounded-lg border px-3 py-2 transition-colors duration-150 motion-reduce:transition-none"
+                         :class="typeAccessible() === '{{ type }}' ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200 bg-white'">
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-slate-900">{{ type }}</p>
+                            <p class="text-sm text-slate-600 tabular-nums">{{ duree }}</p>
+                        </div>
+                        <i class="fas fa-circle-check shrink-0 text-indigo-600" x-show="typeAccessible() === '{{ type }}'" x-cloak aria-hidden="true"></i>
+                    </div>
+                {% endfor %}
+            </div>
+            <p id="repere-diplome-message" class="mt-1.5 text-sm" aria-live="polite"
+               :class="anneesInsuffisantes() ? 'text-red-700' : 'text-slate-600'"
+               x-text="messageRepere()"></p>
+        </div>
+
+        {{ _self.choix_avec_autre(form.situationPro, form.situationProPrecision) }}
+        {{ _self.choix_avec_autre(form.diplome, form.diplomePrecision) }}
+    </div>
+</div>
+{% endmacro %}
+
+{# 2. Entreprise ou atelier : facultatif. #}
+{% macro entreprise(form, sous_titre = 'Facultatif — à renseigner si vous exercez actuellement') %}
+{% import 'partials/_ui.html.twig' as ui %}
+<div class="bg-white rounded-lg border border-slate-200 p-6">
+    {{ ui.section('Entreprise ou atelier', sous_titre, 'building', 'orange') }}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {{ ui.champ(form.nomEntreprise) }}
+        {{ ui.champ(form.refentreprise) }}
+        {{ ui.champ(form.lieuExercice) }}
+        {{ ui.champ(form.directionService) }}
+        {{ ui.champ(form.fonction) }}
+        {{ ui.champ(form.refContrat) }}
+        {{ ui.champ_telephone(form.contactemployeur) }}
+    </div>
+</div>
+{% endmacro %}
+
+{#
+  3. Centre de dépôt et métier de certification visé.
+  centre_fixe : nom du centre quand il est imposé (inscription assistée,
+  modification) ; le champ « centre » n'existe alors pas dans le formulaire.
+#}
+{% macro formation(form, candidature = null, centre_fixe = null, sous_titre = null) %}
+{% import 'partials/_ui.html.twig' as ui %}
+<div class="bg-white rounded-lg border border-slate-200 p-6">
+    {{ ui.section('Centre de dépôt et métier de certification visé', sous_titre, 'graduation-cap', 'indigo') }}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {% if form.centre is defined %}
+            {{ ui.champ_liste_recherche(form.centre, '', 'Centres', 'Rechercher un centre ou une ville', null, null, {
+                'data-depot': 'centre',
+                '@change': 'chargerMetiers()'
+            }) }}
+        {% else %}
+            <div>
+                <p class="mb-1.5 block text-sm font-medium text-slate-700">Centre de dépôt</p>
+                <div class="flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
+                    <i class="fas fa-lock text-xs text-slate-500" aria-hidden="true"></i>{{ centre_fixe ?: '—' }}
+                </div>
+            </div>
+        {% endif %}
+
+        {{ ui.champ(form.metier, '', {'data-depot': 'metier', '@change': 'chargerCertifications()'},
+            '<span x-show="chargement" x-cloak><i class="fas fa-circle-notch fa-spin mr-1" aria-hidden="true"></i>Chargement des métiers du centre…</span>'
+                ~ (candidature ? ui.choix_initial(form.metier, candidature.metier ? candidature.metier.libelle : null, 'un métier') : '')) }}
+
+        {{ ui.champ(form.certification, '', {
+                'data-depot': 'certification',
+                'data-centre': form.vars.data.centre ? form.vars.data.centre.id : ''
+            },
+            '<span x-show="chargementCertifications" x-cloak><i class="fas fa-circle-notch fa-spin mr-1" aria-hidden="true"></i>Chargement des diplômes du centre…</span>'
+                ~ '<span x-show="!chargementCertifications" x-text="messageCertification()"></span>'
+                ~ (candidature ? ui.choix_initial(form.certification, candidature.diplomedemande, 'un diplôme') : '')) }}
+
+        {{ _self.choix_avec_autre(form.langue, form.preciserlangue) }}
+    </div>
+</div>
+{% endmacro %}
+
+{#
+  4. Pièces justificatives. pieces_conseiller : pièces que seul le conseiller
+  VAE joint (justificatif d'expérience), facultatives et absentes des écrans
+  du candidat et de l'agent d'accueil.
+#}
+{% macro pieces(form, documents_obligatoires, candidature = null, pieces_conseiller = {}) %}
+{% import 'partials/_ui.html.twig' as ui %}
+<div class="bg-white rounded-lg border border-slate-200 p-6">
+    {{ ui.section('Pièces justificatives', 'JPG, PNG ou PDF — 2 Mo maximum par pièce', 'paperclip', 'purple') }}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% for champ, libelle in documents_obligatoires %}
+            {% if form[champ] is defined %}
+                {{ ui.document(form[champ], libelle, true, candidature ? attribute(candidature, champ) : null) }}
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    {% set conseiller = pieces_conseiller|filter((libelle, champ) => form[champ] is defined) %}
+    {% if conseiller is not empty %}
+        <div class="mt-6 border-t border-slate-200 pt-5">
+            <h3 class="text-sm font-semibold text-slate-900">Réservé au conseiller VAE (soumettez le justificatif d'expérience Vae)</h3>
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for champ, libelle in conseiller %}
+                    {{ ui.document(form[champ], libelle, false, candidature ? attribute(candidature, champ) : null) }}
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{#
+  Liste fermée avec précision « Autre » : le champ texte n'apparaît, et n'est
+  obligatoire, que si « Autre » est choisi. Le serveur applique la même règle
+  (contraintes When du DTO) et réaffiche le champ quand « Autre » est posté.
+#}
+{% macro choix_avec_autre(choix, precision) %}
+{% import 'partials/_ui.html.twig' as ui %}
+<div x-data="{ autre: {{ choix.vars.value == 'AUTRE' ? 'true' : 'false' }} }">
+    {{ ui.champ(choix, '', {'@change': "autre = $event.target.value === 'AUTRE'; if (autre) { $nextTick(() => $refs.precision.focus()) }"}) }}
+    <div class="mt-3" x-show="autre" {{ choix.vars.value != 'AUTRE' ? 'x-cloak' }}>
+        {{ ui.champ(precision, '', {'x-ref': 'precision', ':required': 'autre'}) }}
+    </div>
+</div>
+{% endmacro %}

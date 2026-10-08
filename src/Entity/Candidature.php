@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Enum\StatutEtude;
 use App\Enum\StatutRecevabilite;
+use App\Referentiel\ProfilProfessionnel;
 use App\Repository\CandidatureRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -34,12 +35,21 @@ class Candidature
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $diplomedemande = null;
 
-    /** Diplôme académique déjà obtenu (CEPE, BEPC, BAC…). */
+    /** Diplôme académique déjà obtenu (codes de ProfilProfessionnel::DIPLOMES). */
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $diplome = null;
 
+    /** Diplôme saisi en clair quand $diplome vaut AUTRE. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $diplomePrecision = null;
+
+    /** Codes de ProfilProfessionnel::SITUATIONS. */
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $situationPro = null;
+
+    /** Situation saisie en clair quand $situationPro vaut AUTRE. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $situationProPrecision = null;
 
     #[ORM\Column(options: ['default' => 0])]
     private ?int $nbAnneesExperience = 0;
@@ -63,9 +73,6 @@ class Candidature
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $refContrat = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $titrepro = null;
-
     #[ORM\Column(length: 22, nullable: true)]
     private ?string $contactemployeur = null;
 
@@ -86,9 +93,6 @@ class Candidature
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $fpiece = null;
-
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $fextrait = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $fexperiencepro = null;
@@ -163,6 +167,15 @@ class Candidature
     private ?User $accompagnateur = null;
 
     /**
+     * Accompagnateur choisi par le candidat, en attente du paiement des frais
+     * d'accompagnement ; il devient $accompagnateur une fois le règlement
+     * confirmé (PaiementSubscriber).
+     */
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'accompagnateur_souhaite_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
+    private ?User $accompagnateurSouhaite = null;
+
+    /**
      * Règlements du candidat. Le statut global n'est stocké nulle part : il se
      * calcule à partir des décisions et du règlement des frais de dossier
      * (App\Service\Candidature\CandidatureStatusResolver).
@@ -198,8 +211,28 @@ class Candidature
     public function setDiplomedemande(?string $diplomedemande): self { $this->diplomedemande = $diplomedemande; return $this; }
     public function getDiplome(): ?string { return $this->diplome; }
     public function setDiplome(?string $diplome): self { $this->diplome = $diplome; return $this; }
+    public function getDiplomePrecision(): ?string { return $this->diplomePrecision; }
+    public function setDiplomePrecision(?string $diplomePrecision): self { $this->diplomePrecision = $diplomePrecision; return $this; }
     public function getSituationPro(): ?string { return $this->situationPro; }
     public function setSituationPro(?string $situationPro): self { $this->situationPro = $situationPro; return $this; }
+    public function getSituationProPrecision(): ?string { return $this->situationProPrecision; }
+    public function setSituationProPrecision(?string $situationProPrecision): self { $this->situationProPrecision = $situationProPrecision; return $this; }
+
+    /** Libellés d'affichage (« Artisan », « Autre : maçon-carreleur »…). */
+    public function getSituationProLibelle(): ?string
+    {
+        return ProfilProfessionnel::libelle(ProfilProfessionnel::SITUATIONS, $this->situationPro, $this->situationProPrecision);
+    }
+
+    public function getDiplomeLibelle(): ?string
+    {
+        return ProfilProfessionnel::libelle(ProfilProfessionnel::DIPLOMES, $this->diplome, $this->diplomePrecision);
+    }
+
+    public function getLangueLibelle(): ?string
+    {
+        return ProfilProfessionnel::libelle(ProfilProfessionnel::LANGUES, $this->langue, $this->preciserlangue);
+    }
     public function getNbAnneesExperience(): ?int { return $this->nbAnneesExperience; }
     public function setNbAnneesExperience(int $nbAnneesExperience): self { $this->nbAnneesExperience = $nbAnneesExperience; return $this; }
     public function getNomEntreprise(): ?string { return $this->nomEntreprise; }
@@ -214,8 +247,6 @@ class Candidature
     public function setFonction(?string $fonction): self { $this->fonction = $fonction; return $this; }
     public function getRefContrat(): ?string { return $this->refContrat; }
     public function setRefContrat(?string $refContrat): self { $this->refContrat = $refContrat; return $this; }
-    public function getTitrepro(): ?string { return $this->titrepro; }
-    public function setTitrepro(?string $titrepro): self { $this->titrepro = $titrepro; return $this; }
     public function getContactemployeur(): ?string { return $this->contactemployeur; }
     public function setContactemployeur(?string $contactemployeur): self { $this->contactemployeur = $contactemployeur; return $this; }
     public function getApprentirecute(): ?int { return $this->apprentirecute; }
@@ -230,8 +261,6 @@ class Candidature
     public function setFphoto(?string $fphoto): self { $this->fphoto = $fphoto; return $this; }
     public function getFpiece(): ?string { return $this->fpiece; }
     public function setFpiece(?string $fpiece): self { $this->fpiece = $fpiece; return $this; }
-    public function getFextrait(): ?string { return $this->fextrait; }
-    public function setFextrait(?string $fextrait): self { $this->fextrait = $fextrait; return $this; }
     public function getFexperiencepro(): ?string { return $this->fexperiencepro; }
     public function setFexperiencepro(?string $fexperiencepro): self { $this->fexperiencepro = $fexperiencepro; return $this; }
     public function getFcmu(): ?string { return $this->fcmu; }
@@ -273,6 +302,8 @@ class Candidature
     public function setConseiller(?User $conseiller): self { $this->conseiller = $conseiller; return $this; }
     public function getAccompagnateur(): ?User { return $this->accompagnateur; }
     public function setAccompagnateur(?User $accompagnateur): self { $this->accompagnateur = $accompagnateur; return $this; }
+    public function getAccompagnateurSouhaite(): ?User { return $this->accompagnateurSouhaite; }
+    public function setAccompagnateurSouhaite(?User $accompagnateur): self { $this->accompagnateurSouhaite = $accompagnateur; return $this; }
 
     public function getEtuDate(): ?\DateTimeInterface { return $this->etuDate; }
     public function setEtuDate(?\DateTimeInterface $date): self { $this->etuDate = $date; return $this; }

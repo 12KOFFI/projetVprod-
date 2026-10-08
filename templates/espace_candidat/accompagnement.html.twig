@@ -1,0 +1,94 @@
+{# Accompagnement côté candidat : choix de l'accompagnateur, paiement, livret de preuves. #}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% set accompagnateur = candidature.accompagnateur %}
+{% set souhaite = candidature.accompagnateurSouhaite %}
+
+{% block title %}Accompagnement — Côte d'Ivoire VAE{% endblock %}
+
+{% block body %}
+{{ ui.bandeau('Accompagnement', 'Facultatif — un accompagnateur de votre métier vous aide à préparer votre livret de preuves.', 'hands-helping') }}
+
+{% if accompagnateur %}
+    {# ===== Affecté : coordonnées + livret ===== #}
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div class="lg:col-span-2">
+            {{ include('partials/_livret.html.twig') }}
+        </div>
+        <aside>
+            <section class="bg-white rounded-lg border border-slate-200 p-6" aria-labelledby="accompagnateur-titre">
+                <h2 id="accompagnateur-titre" class="text-sm font-bold text-slate-800">Votre accompagnateur</h2>
+                <p class="mt-3 text-base font-semibold text-slate-900">{{ accompagnateur.nomComplet }}</p>
+                {% if accompagnateur.contact %}
+                    <a href="tel:{{ accompagnateur.contact }}" class="mt-2 flex min-h-[44px] items-center gap-2 text-sm font-medium text-indigo-700">
+                        <i class="fas fa-phone text-xs" aria-hidden="true"></i>{{ accompagnateur.contact|telephone }}
+                    </a>
+                {% endif %}
+                {% if accompagnateur.email %}
+                    <a href="mailto:{{ accompagnateur.email }}" class="flex min-h-[44px] items-center gap-2 break-all text-sm font-medium text-indigo-700">
+                        <i class="fas fa-envelope text-xs" aria-hidden="true"></i>{{ accompagnateur.email }}
+                    </a>
+                {% endif %}
+            </section>
+        </aside>
+    </div>
+
+{% elseif souhaite and not peut_choisir %}
+    {{ ui.etat_vide('hourglass-half', 'Affectation en cours', 'Votre règlement est enregistré : votre accompagnateur apparaîtra ici dès sa confirmation.') }}
+
+{% elseif peut_choisir %}
+    {# ===== Éligible : choix, puis paiement ===== #}
+    {% if souhaite %}
+        <div class="mb-6 flex flex-col gap-4 rounded-lg border border-indigo-200 bg-indigo-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-sm text-indigo-900">
+                Vous avez choisi <strong>{{ souhaite.nomComplet }}</strong>. Il suivra votre dossier dès le règlement des frais d'accompagnement.
+            </p>
+            <a href="{{ path('app_candidat_paiement_payer', {type: 'accompagnement'}) }}"
+               class="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-medium text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                <i class="fas fa-credit-card text-xs" aria-hidden="true"></i>Régler les frais d'accompagnement
+            </a>
+        </div>
+    {% endif %}
+
+    <section class="bg-white rounded-lg border border-slate-200 overflow-hidden" aria-labelledby="choix-titre">
+        <div class="border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-5">
+            <h2 id="choix-titre" class="text-sm font-bold text-slate-800">{{ souhaite ? 'Changer d\'accompagnateur' : 'Choisir mon accompagnateur' }}</h2>
+            <p class="mt-0.5 text-sm text-slate-600">
+                Accompagnateurs de votre métier ({{ candidature.metier ? candidature.metier.libelle : '—' }}) dans votre centre, les moins sollicités d'abord.
+            </p>
+        </div>
+        {% if disponibles is not empty %}
+            <ul class="divide-y divide-slate-100">
+                {% for ligne in disponibles %}
+                    {% set a = ligne.accompagnateur %}
+                    <li class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                        <div>
+                            <p class="font-medium text-slate-900">{{ a.nomComplet }}</p>
+                            <p class="text-sm text-slate-600 tabular-nums">Suit actuellement {{ ligne.charge }} candidat{{ ligne.charge > 1 ? 's' }}</p>
+                        </div>
+                        {% if souhaite and souhaite.id == a.id %}
+                            <span class="inline-flex items-center gap-1.5 text-sm font-medium text-green-700"><i class="fas fa-circle-check" aria-hidden="true"></i>Votre choix</span>
+                        {% else %}
+                            <form method="post" action="{{ path('app_candidat_accompagnement_choisir') }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('choisir_accompagnateur') }}">
+                                <input type="hidden" name="accompagnateur" value="{{ a.id }}">
+                                <button type="submit" class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-indigo-600 px-4 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600">
+                                    Choisir cet accompagnateur
+                                </button>
+                            </form>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            {{ ui.etat_vide('user-slash', 'Aucun accompagnateur disponible', 'Aucun accompagnateur ne suit encore votre métier dans votre centre. Renseignez-vous auprès de votre conseiller VAE.') }}
+        {% endif %}
+    </section>
+
+{% else %}
+    <section class="bg-white rounded-lg border border-slate-200">
+        {{ ui.etat_vide('lock', 'Pas encore disponible', 'L\'accompagnement s\'ouvre après la décision d\'éligibilité du jury central. Vous pourrez alors choisir un accompagnateur de votre métier.') }}
+    </section>
+{% endif %}
+{% endblock %}

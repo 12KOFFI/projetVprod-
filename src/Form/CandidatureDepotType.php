@@ -6,6 +6,8 @@ use App\Dto\CandidatureDepotDto;
 use App\Entity\Centre;
 use App\Entity\Certification;
 use App\Entity\Metier;
+use App\Form\Type\TelephoneType;
+use App\Referentiel\ProfilProfessionnel;
 use App\Repository\CentreRepository;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
@@ -14,8 +16,6 @@ use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
-use Symfony\Component\Form\FormEvent;
-use Symfony\Component\Form\FormEvents;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints\File;
 
@@ -42,11 +42,16 @@ class CandidatureDepotType extends AbstractType
         if ($centreImpose === null) {
             $builder->add('centre', EntityType::class, [
                 'class' => Centre::class,
-                'choice_label' => 'nom',
+                // « Nom · Ville » : la liste avec recherche affiche la ville en
+                // second et la trouve à la frappe.
+                'choice_label' => static fn (Centre $centre) => $centre->getNom()
+                    . ($centre->getLocalite() ? ' · ' . $centre->getLocalite()->getLibelle() : ''),
                 'label' => 'Centre de dépôt',
                 'placeholder' => 'Sélectionnez un centre',
                 'query_builder' => static fn (CentreRepository $repository) => $repository
                     ->createQueryBuilder('c')
+                    ->addSelect('l')
+                    ->leftJoin('c.localite', 'l')
                     ->orderBy('c.nom', 'ASC'),
             ]);
         }
@@ -59,17 +64,20 @@ class CandidatureDepotType extends AbstractType
                 'placeholder' => 'Sélectionnez d\'abord un centre',
                 'choices' => $options['metiers_disponibles'],
             ])
+            // Le minimum (5 ans) est bloqué à la saisie comme au serveur.
             ->add('nbAnneesExperience', IntegerType::class, [
                 'label' => "Années d'expérience dans le métier",
-                'attr' => ['min' => 0, 'max' => 60],
+                'attr' => ['min' => ProfilProfessionnel::ANNEES_CQP, 'max' => 60, 'inputmode' => 'numeric'],
             ])
             // La liste dépend du couple (centre, métier) : elle est donc vide au
             // premier affichage et peuplée en JavaScript après le choix du
             // métier, comme l'est déjà le champ « Métier visé » après le centre.
-            // Le serveur revérifie le choix (contrainte CertificationOfferte).
+            // data-type sert au filtre CQP / CAP selon l'expérience. Le serveur
+            // revérifie le choix (CertificationOfferte, et le DTO pour le type).
             ->add('certification', EntityType::class, [
                 'class' => Certification::class,
                 'choice_label' => 'libelle',
+                'choice_attr' => static fn (Certification $certification) => ['data-type' => $certification->getType()],
                 'label' => 'Diplôme de certification visé',
                 'placeholder' => 'Sélectionnez d\'abord un métier',
                 'choices' => $options['certifications_disponibles'],
@@ -77,30 +85,25 @@ class CandidatureDepotType extends AbstractType
             ->add('situationPro', ChoiceType::class, [
                 'label' => 'Situation professionnelle',
                 'placeholder' => 'Sélectionnez',
-                'choices' => [
-                    'Artisan à son compte' => 'ARTISAN A SON COMPTE',
-                    'Salarié d\'une entreprise' => 'SALARIE',
-                    'Apprenti' => 'APPRENTI',
-                    'Aide familial' => 'AIDE FAMILIAL',
-                    'Sans emploi' => 'SANS EMPLOI',
-                ],
+                'choices' => ProfilProfessionnel::choix(ProfilProfessionnel::SITUATIONS),
+            ])
+            // Les précisions « Autre » ne s'affichent qu'avec ce choix ; elles
+            // sont alors obligatoires (contraintes When du DTO).
+            ->add('situationProPrecision', TextType::class, [
+                'label' => 'Précisez la situation',
+                'required' => false,
+                'attr' => ['maxlength' => 255, 'placeholder' => 'Ex. : apprenti, aide familial…'],
             ])
             ->add('diplome', ChoiceType::class, [
                 'label' => 'Diplôme académique obtenu(e)',
                 'placeholder' => 'Aucun',
                 'required' => false,
-                'choices' => [
-                    'CEPE' => 'CEPE',
-                    'BEPC' => 'BEPC',
-                    'BAC' => 'BAC',
-                    'Supérieur au BAC' => 'SUPERIEUR',
-                    'Autre' => 'AUTRE',
-                ],
+                'choices' => ProfilProfessionnel::choix(ProfilProfessionnel::DIPLOMES),
             ])
-            ->add('titrepro', TextType::class, [
-                'label' => 'Titre professionnel',
+            ->add('diplomePrecision', TextType::class, [
+                'label' => 'Précisez le diplôme',
                 'required' => false,
-                'help' => 'Intitulé sous lequel vous exercez, par exemple « maître boulanger ».',
+                'attr' => ['maxlength' => 255, 'placeholder' => 'Ex. : CAP d\'un autre métier, BT…'],
             ])
             ->add('nomEntreprise', TextType::class, [
                 'label' => 'Entreprise, organisme ou administration d\'attache',
@@ -129,7 +132,7 @@ class CandidatureDepotType extends AbstractType
                 'label' => 'Direction ou service',
                 'required' => false,
             ])
-            ->add('contactemployeur', TextType::class, [
+            ->add('contactemployeur', TelephoneType::class, [
                 'label' => 'Contact de l\'employeur',
                 'required' => false,
             ])
@@ -137,18 +140,21 @@ class CandidatureDepotType extends AbstractType
                 'label' => 'Langue d\'évaluation',
                 'placeholder' => 'Sélectionnez',
                 'required' => false,
-                'choices' => [
-                    'Français' => 'FRANCAIS',
-                    'Langue locale' => 'LANGUE LOCALE',
-                    'Autre' => 'AUTRE',
-                ],
+                'choices' => ProfilProfessionnel::choix(ProfilProfessionnel::LANGUES),
             ])
             ->add('preciserlangue', TextType::class, [
                 'label' => 'Préciser la langue',
                 'required' => false,
+                'attr' => ['maxlength' => 100],
             ]);
 
-        foreach ($this->champsDocuments() as $champ => $libelle) {
+        // Le justificatif d'expérience n'existe dans le formulaire que pour le
+        // conseiller VAE : le candidat et l'agent d'accueil ne peuvent ni le
+        // voir ni le poster.
+        $documents = CandidatureDepotDto::documentsObligatoires()
+            + ($options['pieces_conseiller'] ? CandidatureDepotDto::documentsConseiller() : []);
+
+        foreach ($documents as $champ => $libelle) {
             $builder->add($champ, FileType::class, [
                 'label' => $libelle,
                 'mapped' => false,
@@ -164,25 +170,6 @@ class CandidatureDepotType extends AbstractType
             ]);
         }
 
-        // Un numéro de téléphone saisi avec des espaces ou des tirets
-        // ("07 01 02 03 04") est un contact valide : on le nettoie avant la
-        // validation plutôt que de rejeter une saisie humaine raisonnable.
-        $builder->addEventListener(FormEvents::PRE_SUBMIT, function (FormEvent $event): void {
-            $donnees = $event->getData();
-
-            if (is_array($donnees) && is_string($donnees['contactemployeur'] ?? null)) {
-                $donnees['contactemployeur'] = preg_replace('/[^\d]/', '', $donnees['contactemployeur']);
-                $event->setData($donnees);
-            }
-        });
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function champsDocuments(): array
-    {
-        return CandidatureDepotDto::documentsObligatoires();
     }
 
     public function configureOptions(OptionsResolver $resolver): void
@@ -193,10 +180,13 @@ class CandidatureDepotType extends AbstractType
             'centre_impose' => null,
             'metiers_disponibles' => [],
             'certifications_disponibles' => [],
+            'pieces_conseiller' => false,
             'post_max_size_message' => 'Le poids total des pièces jointes dépasse la limite autorisée par le serveur ({{ max }}). Réduisez la taille de vos fichiers ou envoyez-les en plusieurs fois.',
         ]);
 
         $resolver->setAllowedTypes('centre_impose', ['null', Centre::class]);
         $resolver->setAllowedTypes('metiers_disponibles', 'array');
-        $resolver->setAllowedTypes('certifications_disponibles', 'array');    }
+        $resolver->setAllowedTypes('certifications_disponibles', 'array');
+        $resolver->setAllowedTypes('pieces_conseiller', 'bool');
+    }
 }

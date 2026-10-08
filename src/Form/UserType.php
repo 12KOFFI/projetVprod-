@@ -5,11 +5,14 @@ namespace App\Form;
 use App\Entity\Centre;
 use App\Entity\Metier;
 use App\Entity\User;
+use App\Form\Type\TelephoneType;
+use App\Referentiel\Nationalites;
 use App\Repository\CentreRepository;
 use App\Repository\MetierRepository;
 use App\Security\Role;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
@@ -22,9 +25,11 @@ use Symfony\Component\Form\FormEvents;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints\Choice;
 use Symfony\Component\Validator\Constraints\Email;
+use Symfony\Component\Validator\Constraints\EqualTo;
+use Symfony\Component\Validator\Constraints\IsTrue;
 use Symfony\Component\Validator\Constraints\Length;
+use Symfony\Component\Validator\Constraints\LessThanOrEqual;
 use Symfony\Component\Validator\Constraints\NotBlank;
-use Symfony\Component\Validator\Constraints\Regex;
 
 class UserType extends AbstractType
 {
@@ -37,11 +42,6 @@ class UserType extends AbstractType
             ->add('prenoms', TextType::class, [
                 'label' => 'Prénoms',
                 'required' => !$isRegister,
-                'constraints' => [new Length(max: 150)],
-            ])
-            ->add('nomJeuneFille', TextType::class, [
-                'label' => 'Nom de jeune fille',
-                'required' => false,
                 'constraints' => [new Length(max: 150)],
             ])
             ->add('sexe', ChoiceType::class, [
@@ -60,24 +60,54 @@ class UserType extends AbstractType
                 'placeholder' => 'Sélectionnez',
                 'required' => false,
             ])
-            ->add('datenaissance', DateType::class, [
-                'label' => 'Date de naissance',
-                'widget' => 'single_text',
-                'input' => 'datetime',
-                'required' => !$isRegister,
-            ])
+            ->add('datenaissance', DateType::class, $isRegister
+                ? [
+                    // Inscription : un simple champ texte « jj/mm/aaaa » (les barres
+                    // sont posées pendant la frappe), le calendrier restant en option.
+                    'label' => 'Date de naissance',
+                    'widget' => 'single_text',
+                    'input' => 'datetime',
+                    'html5' => false,
+                    'format' => 'dd/MM/yyyy',
+                    'required' => false,
+                    'invalid_message' => 'Saisissez une date valide au format jj/mm/aaaa, par exemple 15/03/1985.',
+                    'attr' => ['placeholder' => 'jj/mm/aaaa', 'inputmode' => 'numeric', 'maxlength' => 10, 'autocomplete' => 'bday'],
+                    'constraints' => [new LessThanOrEqual(value: 'today', message: 'La date de naissance ne peut pas être dans le futur.')],
+                ]
+                : [
+                    'label' => 'Date de naissance',
+                    'widget' => 'single_text',
+                    'input' => 'datetime',
+                    'required' => true,
+                ])
             ->add('lieunaissance', TextType::class, [
                 'label' => 'Lieu de naissance',
                 'required' => !$isRegister,
                 'constraints' => [new Length(max: 150)],
             ])
-            ->add('nationalite', ChoiceType::class, [
-                'label' => 'Nationalité',
-                'choices' => [User::NATIONALITE_IVOIRIENNE => User::NATIONALITE_IVOIRIENNE],
-                'placeholder' => false,
-                'required' => false,
-                'disabled' => true,
-            ])
+            ->add('nationalite', ChoiceType::class, $isRegister
+                ? [
+                    // Inscription : toutes les nationalités sont proposées ; la
+                    // condition de candidature est appliquée à la soumission.
+                    'label' => 'Nationalité',
+                    'choices' => Nationalites::choix(),
+                    'placeholder' => 'Sélectionnez votre nationalité',
+                    'required' => true,
+                    'constraints' => [
+                        new NotBlank(message: 'Sélectionnez votre nationalité.'),
+                        new EqualTo(
+                            value: User::NATIONALITE_IVOIRIENNE,
+                            message: 'La VAE est réservée aux personnes de nationalité ivoirienne : votre préinscription ne peut pas être enregistrée.',
+                        ),
+                    ],
+                ]
+                : [
+                    'label' => 'Nationalité',
+                    'choices' => [User::NATIONALITE_IVOIRIENNE => User::NATIONALITE_IVOIRIENNE],
+                    'placeholder' => false,
+                    'required' => false,
+                    'disabled' => true,
+                ])
             ->add('residence', TextType::class, [
                 'label' => 'Ville de résidence',
                 'required' => !$isRegister,
@@ -88,10 +118,9 @@ class UserType extends AbstractType
                 'required' => false,
                 'constraints' => [new Length(max: 50)],
             ])
-            ->add('contact', TextType::class, [
-                'label' => 'Téléphone portable',
+            ->add('contact', TelephoneType::class, [
+                'label' => $isRegister ? 'Contact 1' : 'Téléphone portable',
                 'required' => !$isRegister,
-                'constraints' => [new Regex('/^\d{10}$/', 'Le contact doit contenir exactement 10 chiffres.')],
             ])
             ->add('email', EmailType::class, [
                 'required' => !$isRegister,
@@ -99,9 +128,10 @@ class UserType extends AbstractType
             ])
         ;
 
-        // La nationalité est imposée (condition de candidature) : le champ est
-        // désactivé, donc Symfony ne la lit pas de la requête. On la pose ici pour
-        // qu'un compte sans valeur (création, ancien compte) ne reste pas vide.
+        // Hors inscription, la nationalité est imposée et le champ désactivé : Symfony
+        // ne la lit pas de la requête. On la pose ici pour qu'un compte sans valeur
+        // (création, ancien compte) ne reste pas vide. À l'inscription, elle est
+        // présélectionnée sur « Ivoirienne » et vérifiée à la soumission.
         $builder->addEventListener(FormEvents::PRE_SET_DATA, static function (FormEvent $evenement): void {
             $utilisateur = $evenement->getData();
 
@@ -113,25 +143,11 @@ class UserType extends AbstractType
         // Limité à l'inscription : les autres écrans n'affichent pas ce champ, et
         // un champ absent de la requête remettrait contact2 à null à l'enregistrement.
         if ($isRegister) {
-            $builder->add('contact2', TextType::class, [
-                'label' => 'Téléphone fixe',
+            // Indicatif au choix ; le numéro est enregistré au format international.
+            $builder->add('contact2', TelephoneType::class, [
+                'label' => 'Contact 2',
                 'required' => false,
-                'constraints' => [new Regex('/^\d{10}$/', 'Le téléphone fixe doit contenir exactement 10 chiffres.')],
             ]);
-
-            // Le gabarit affiche les numéros par paires (07 08 09 10 11) : on retire
-            // les espaces avant validation pour que la règle des 10 chiffres s'applique.
-            $builder->addEventListener(FormEvents::PRE_SUBMIT, static function (FormEvent $evenement): void {
-                $donnees = $evenement->getData();
-
-                foreach (['contact', 'contact2'] as $champ) {
-                    if (is_array($donnees) && isset($donnees[$champ]) && is_string($donnees[$champ])) {
-                        $donnees[$champ] = preg_replace('/[\s.\-]+/', '', $donnees[$champ]);
-                    }
-                }
-
-                $evenement->setData($donnees);
-            });
         }
 
         // Création d'un compte du personnel par l'administrateur : le mot de passe
@@ -144,25 +160,34 @@ class UserType extends AbstractType
             return;
         }
 
-        // En inscription assistée, l'agent d'accueil choisit le mot de passe avec
-        // le candidat : il est alors obligatoire, même en mode inscription.
-        $motDePasseObligatoire = !$isRegister || $options['mot_de_passe_obligatoire'];
-
+        // Inscription publique comme assistée : un compte n'est jamais créé sans
+        // mot de passe (8 caractères minimum).
         $builder->add('password', RepeatedType::class, [
             'type' => PasswordType::class,
             'mapped' => false,
-            'required' => $motDePasseObligatoire,
-            'options' => $motDePasseObligatoire ? ['attr' => ['minlength' => 8, 'autocomplete' => 'new-password']] : [],
+            'required' => true,
+            'options' => ['attr' => ['minlength' => 8, 'autocomplete' => 'new-password']],
             'first_options' => ['label' => 'Mot de passe'],
             'second_options' => ['label' => 'Confirmation du mot de passe'],
-            'constraints' => $motDePasseObligatoire
-                ? [
-                    new NotBlank(message: 'Le mot de passe est obligatoire.'),
-                    new Length(min: 8, max: 4096, minMessage: 'Le mot de passe doit contenir au moins {{ limit }} caractères.'),
-                ]
-                : [],
+            'constraints' => [
+                new NotBlank(message: 'Le mot de passe est obligatoire.'),
+                new Length(min: 8, max: 4096, minMessage: 'Le mot de passe doit contenir au moins {{ limit }} caractères.'),
+            ],
             'invalid_message' => 'Les mots de passe ne correspondent pas.',
         ]);
+
+        // Attestation sur l'honneur du candidat qui s'inscrit lui-même : la case
+        // doit être cochée, à l'écran comme au serveur.
+        if ($options['attestation']) {
+            $builder->add('attestation', CheckboxType::class, [
+                'mapped' => false,
+                'required' => true,
+                'label' => "J'accepte que les informations fournies soient utilisées dans le cadre de ma candidature et j'atteste sur l'honneur leur exactitude.",
+                'constraints' => [
+                    new IsTrue(message: "Cochez la case pour attester sur l'honneur l'exactitude de vos informations."),
+                ],
+            ]);
+        }
     }
 
     /**
@@ -245,8 +270,8 @@ class UserType extends AbstractType
             'is_register' => false,
             'is_edit' => false,
             'is_admin_creation' => false,
-            'mot_de_passe_obligatoire' => false,
+            'attestation' => false,
         ]);
-        $resolver->setAllowedTypes('mot_de_passe_obligatoire', 'bool');
+        $resolver->setAllowedTypes('attestation', 'bool');
     }
 }

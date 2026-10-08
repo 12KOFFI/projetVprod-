@@ -791,4 +791,25 @@ class CandidatureRepository extends ServiceEntityRepository
             ->getQuery()
             ->getSingleScalarResult();
     }
+
+    /**
+     * Candidats suivis par un accompagnateur (affectés après paiement des
+     * frais d'accompagnement), par ordre alphabétique.
+     *
+     * @return Candidature[]
+     */
+    public function findAccompagnesPar(User $accompagnateur): array
+    {
+        return $this->createQueryBuilder('c')
+            ->addSelect('u', 'm', 'ce')
+            ->join('c.user', 'u')
+            ->leftJoin('c.metier', 'm')
+            ->leftJoin('c.centre', 'ce')
+            ->andWhere('c.accompagnateur = :accompagnateur')
+            ->setParameter('accompagnateur', $accompagnateur)
+            ->orderBy('u.nom', 'ASC')
+            ->addOrderBy('u.prenoms', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

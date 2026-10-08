@@ -3,6 +3,8 @@
 namespace App\Validator;
 
 use App\Dto\CandidatureDepotDto;
+use App\Entity\Certification;
+use App\Referentiel\ProfilProfessionnel;
 use App\Repository\CertificationRepository;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
@@ -43,6 +45,24 @@ class CertificationOfferteValidator extends ConstraintValidator
 
         if (!in_array($value->certification, $offertes, true)) {
             $this->context->buildViolation($constraint->messageNonOfferte)
+                ->atPath('certification')
+                ->addViolation();
+
+            return;
+        }
+
+        // CQP de 5 à 6 ans, CAP à partir de 7 ans — ou CQP si le centre ne
+        // prépare aucun CAP pour ce métier. En dessous de 5 ans, le champ des
+        // années porte déjà l'erreur.
+        $attendu = ProfilProfessionnel::typeRetenu(
+            $value->nbAnneesExperience,
+            array_map(static fn (Certification $certification) => $certification->getType(), $offertes)
+        );
+
+        if ($attendu !== null && $value->certification->getType() !== $attendu) {
+            $this->context->buildViolation($constraint->messageType)
+                ->setParameter('{{ annees }}', (string) $value->nbAnneesExperience)
+                ->setParameter('{{ type }}', $attendu)
                 ->atPath('certification')
                 ->addViolation();
         }

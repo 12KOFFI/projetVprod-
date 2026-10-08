@@ -1,6 +1,6 @@
 {% extends 'public/base.html.twig' %}
 
-{% block title %}VAE Côte d'Ivoire — Session 2026 de certification des compétences{% endblock %}
+{% block title %}Côte d'Ivoire VAE — Session 2026 de certification des compétences{% endblock %}
 
 {% block meta %}
     <meta name="author" content="DAIP — Direction de l'Apprentissage et de l'Insertion Professionnelle">
@@ -8,248 +8,373 @@
     <meta name="keywords" content="VAE, Côte d'Ivoire, DAIP, session 2026, validation des acquis, CQP, CAP, artisan, certification">
 {% endblock %}
 
-{% block body %}
-{% import _self as page %}
+{# ============================================================
+   L'accueil est un parcours en quatre étapes, à suivre dans l'ordre
+   sans l'aide d'un agent : 1. voir le déroulement, 2. vérifier les
+   conditions, 3. réunir le dossier de candidature, 4. commencer la
+   préinscription (ou se faire accompagner).
+   ============================================================ #}
 
-{# Bouton vers un document officiel de la session. Tant que le document n'est pas
-   déposé dans public/document/, le bouton reste visible mais inactif plutôt
-   que de mener à une erreur 404. #}
-{% macro document(doc, titre, detail) %}
-    {% set extension = doc.chemin|split('.')|last|upper %}
-    {% if doc.disponible %}
-        <a href="{{ asset(doc.chemin) }}" download
-           class="group flex flex-wrap items-center gap-x-4 gap-y-3 min-h-[64px] rounded-lg border border-slate-300 bg-white px-4 py-4 text-left transition-colors duration-200 hover:border-indigo-600 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:px-5">
-            <span class="shrink-0 w-11 h-11 rounded-md bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 group-hover:bg-white" aria-hidden="true">
-                <i class="fas {{ extension == 'DOCX' ? 'fa-file-word' : 'fa-file-pdf' }} text-lg"></i>
-            </span>
-            <span class="min-w-0 flex-1 basis-40">
-                <span class="block text-base font-bold text-slate-800">{{ titre }}</span>
-                <span class="block mt-0.5 text-sm text-slate-600">{{ detail }} · {{ extension }}</span>
-            </span>
-            <span class="inline-flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-md bg-indigo-600 px-3 text-sm font-semibold text-white group-hover:bg-indigo-700 sm:w-auto">
-                <i class="fas fa-download" aria-hidden="true"></i>Télécharger
-            </span>
-            <span class="sr-only">(télécharge le document {{ extension }})</span>
-        </a>
+{# En-tête d'étape : la pastille numérotée porte l'ordre du parcours. #}
+{% macro etape(numero, titre, id) %}
+    <div class="flex items-center gap-3 sm:gap-4">
+        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-700 text-lg font-bold text-white tabular-nums sm:h-12 sm:w-12 sm:text-xl" aria-hidden="true">{{ numero }}</span>
+        <h2 {% if id %}id="{{ id }}"{% endif %} class="scroll-mt-24 text-2xl font-bold tracking-tight text-slate-800 text-balance md:text-3xl">
+            <span class="sr-only">Étape {{ numero }}&nbsp;: </span>{{ titre }}
+        </h2>
+    </div>
+{% endmacro %}
+
+{# Lien de fin d'étape vers la suivante. #}
+{% macro etape_suivante(libelle, ancre, marge) %}
+    <a href="#{{ ancre }}"
+       class="{{ marge|default('mt-8') }} inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg border border-primary-300 bg-white px-5 py-2 text-center text-base font-semibold text-primary-800 transition-colors duration-200 motion-reduce:transition-none hover:border-primary-500 hover:bg-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700 sm:w-auto">
+        {{ libelle }}
+        <i class="fas fa-arrow-down text-sm" aria-hidden="true"></i>
+    </a>
+{% endmacro %}
+
+{# Pictogrammes du parcours VAE : grille 64×64, un seul trait, sans remplissage.
+   pathLength="1" permet de les « dessiner » en animant stroke-dashoffset. #}
+{% macro picto(numero) %}
+    {% if numero == 1 %}
+        <rect x="14" y="8" width="30" height="44" rx="3" pathLength="1"/>
+        <path d="M20 18h18M20 26h18M20 34h10" pathLength="1"/>
+        <path d="M38 55l14-14 5 5-14 14h-5z" pathLength="1"/>
+    {% elseif numero == 2 %}
+        <path d="M32 12v40M22 54h20M14 18h36" pathLength="1"/>
+        <circle cx="32" cy="10" r="2" pathLength="1"/>
+        <path d="M14 18L7 34M14 18l7 16M7 34a7 4 0 0 0 14 0" pathLength="1"/>
+        <path d="M50 18l-7 16M50 18l7 16M43 34a7 4 0 0 0 14 0" pathLength="1"/>
+    {% elseif numero == 3 %}
+        <circle cx="20" cy="24" r="6" pathLength="1"/>
+        <path d="M8 52v-4a12 12 0 0 1 24 0v4" pathLength="1"/>
+        <circle cx="42" cy="30" r="5" pathLength="1"/>
+        <path d="M32 52v-3a10 10 0 0 1 20 0v3" pathLength="1"/>
+        <path d="M46 4h12a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-6l-4 4v-4h-2a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z" pathLength="1"/>
+    {% elseif numero == 4 %}
+        <rect x="14" y="10" width="36" height="46" rx="3" pathLength="1"/>
+        <path d="M24 10V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2" pathLength="1"/>
+        <path d="M21 26l3 3 5-6M33 26h10M21 40l3 3 5-6M33 40h10" pathLength="1"/>
     {% else %}
-        <div aria-disabled="true"
-             class="flex items-center gap-4 rounded-lg border border-slate-200 bg-white px-4 py-4 text-left sm:px-5">
-            <span class="shrink-0 w-11 h-11 rounded-md bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500" aria-hidden="true">
-                <i class="fas {{ extension == 'DOCX' ? 'fa-file-word' : 'fa-file-pdf' }} text-lg"></i>
-            </span>
-            <span class="min-w-0 flex-1">
-                <span class="block text-base font-bold text-slate-800">{{ titre }}</span>
-                <span class="block mt-0.5 text-sm text-slate-600">{{ detail }} · document {{ extension }} bientôt disponible</span>
-            </span>
-        </div>
+        <rect x="6" y="10" width="38" height="28" rx="2" pathLength="1"/>
+        <path d="M14 20h22M14 28h14" pathLength="1"/>
+        <g class="text-[#ED8F33]">
+            <circle cx="48" cy="44" r="8" pathLength="1"/>
+            <path d="M44 51l-3 9 7-3 7 3-3-9" pathLength="1"/>
+        </g>
     {% endif %}
 {% endmacro %}
 
+{# Visage d'un personnage du parcours, recadré sur la tête, pour les pastilles. #}
+{% macro visage(chemin, cadrage) %}
+    <img src="{{ asset(chemin) }}" alt="" width="44" height="44" loading="lazy" decoding="async" aria-hidden="true"
+         class="h-full w-full scale-[1.9] object-cover object-top {{ cadrage|default('origin-[50%_22%]') }}">
+{% endmacro %}
+
+{% block body %}
+{% import _self as page %}
+
+{% set parcours = [
+    { libelle: 'Accueil et inscription', cadrage: 'origin-[68%_22%]' },
+    { libelle: 'Recevabilité des dossiers et éligibilité', cadrage: 'origin-[32%_18%]' },
+    { libelle: 'Accompagnement des candidats', cadrage: 'origin-[30%_22%]' },
+    { libelle: 'Épreuves de certification', cadrage: 'origin-[33%_20%]' },
+    { libelle: 'Diplôme CQP / CAP', cadrage: 'origin-[60%_42%]' }
+] %}
+
+{% set etapes_page = [
+    { libelle: 'Voir le déroulement', ancre: 'deroulement' },
+    { libelle: 'Conditions de candidature', ancre: 'conditions-candidature' },
+    { libelle: 'Dossier de candidature', ancre: 'dossier-candidature' },
+    { libelle: 'Commencer ma préinscription', ancre: 'preinscription' }
+] %}
+
 {# ============================================================
-   1. Annonce de la session
+   En-tête : annonce de la session et parcours en 4 étapes.
+   Sur téléphone : titre → texte et dates → animation → étapes.
    ============================================================ #}
 <section id="session" class="bg-primary-50 border-b border-primary-200 scroll-mt-24">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10 md:py-16 grid gap-8 lg:gap-14 lg:grid-cols-12 lg:items-center">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10 md:py-16 grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-12 lg:gap-x-14 lg:gap-y-7">
 
-        <div class="lg:col-span-7">
+        <div class="lg:col-span-7 lg:self-end">
             <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-primary-900 leading-[1.1] text-balance">
-                Faites reconnaître votre métier par un diplôme officiel
+                Votre expérience professionnelle vaut un diplôme
             </h1>
-
             <p class="mt-4 sm:mt-5 text-base sm:text-lg leading-relaxed text-slate-700 max-w-[52ch]">
-                Avec la VAE, faites valider votre expérience pour obtenir un
-                Certificat de Qualification Professionnelle (CQP) ou un
-                Certificat d'Aptitude Professionnelle (CAP).
+               Avec la VAE, faites reconnaître vos compétences par un Certificat de Qualification Professionnelle (CQP) ou un Certificat d’Aptitude Professionnelle (CAP).
             </p>
-
-            <div class="mt-7 flex items-start gap-4 rounded-lg border border-primary-200 bg-white p-4 sm:p-5">
-                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary-100 text-primary-800" aria-hidden="true">
-                    <i class="fas fa-calendar-days text-lg"></i>
-                </span>
-                <p class="text-base text-slate-700">
-                    Accueil et inscription
-                    <strong class="block text-lg font-bold text-primary-900 tabular-nums">du 21 septembre au 17 octobre 2026</strong>
-                </p>
-            </div>
-
-            <div class="mt-6 sm:mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-                <a href="#conditions-candidature"
-                   class="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-lg bg-primary-800 px-7 text-base font-bold text-white transition-colors duration-200 hover:bg-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800 sm:w-auto">
-                    Vérifier les conditions
-                    <i class="fas fa-arrow-down text-sm" aria-hidden="true"></i>
-                </a>
-                <a href="{{ path('app_session_deroulement') }}"
-                   class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-2 text-base font-semibold text-primary-800 underline underline-offset-4 hover:text-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800">
-                    Voir le déroulement
-                </a>
-            </div>
-
-            {# Sur téléphone, les trois chiffres passent en lignes : en colonnes,
-               les libellés se cassent mot à mot sous 360 px. #}
-            <dl class="mt-8 sm:mt-9 max-w-lg border-t border-primary-200 pt-2 sm:pt-6 flex flex-col divide-y divide-primary-200 sm:grid sm:grid-cols-3 sm:gap-4 sm:divide-y-0">
-                <div class="flex flex-row-reverse items-baseline justify-between gap-3 py-2.5 sm:flex-col-reverse sm:items-start sm:justify-end sm:gap-1 sm:py-0">
-                    <dt class="text-sm text-slate-700">travailleurs et artisans</dt>
-                    <dd class="text-2xl font-extrabold text-primary-900 tabular-nums">1&nbsp;500</dd>
-                </div>
-                <div class="flex flex-row-reverse items-baseline justify-between gap-3 py-2.5 sm:flex-col-reverse sm:items-start sm:justify-end sm:gap-1 sm:py-0">
-                    <dt class="text-sm text-slate-700">métiers concernés</dt>
-                    <dd class="text-2xl font-extrabold text-primary-900 tabular-nums">30</dd>
-                </div>
-                <div class="flex flex-row-reverse items-baseline justify-between gap-3 py-2.5 sm:flex-col-reverse sm:items-start sm:justify-end sm:gap-1 sm:py-0">
-                    <dt class="text-sm text-slate-700">centres VAE</dt>
-                    <dd class="text-2xl font-extrabold text-primary-900 tabular-nums">30</dd>
-                </div>
-            </dl>
+            <p class="mt-5 inline-flex items-start gap-3 rounded-lg border border-primary-200 bg-white px-4 py-3 text-base text-slate-700">
+                <i class="fas fa-calendar-days mt-1 text-primary-700" aria-hidden="true"></i>
+                <span>Accueil et inscription <strong class="font-bold text-primary-900 tabular-nums">du 21 septembre au 17 octobre 2026</strong></span>
+            </p>
         </div>
 
-        {# Carrousel de photos de métiers : défilement automatique, avec pause (WCAG 2.2.2),
-           flèches, points, et arrêt si l'utilisateur préfère réduire les animations. #}
-        {% set diapositives = [
-            { fichier: 'carrousel/couturier-atelier.jpg', metier: 'Couture', position: 'object-[center_25%]' },
-            { fichier: 'carrousel/menuisier.jpg', metier: 'Menuiserie', position: 'object-[center_30%]' },
-            { fichier: 'carrousel/soudeur.jpg', metier: 'Soudure', position: 'object-[70%_center]' }
-        ] %}
-        <div class="order-first lg:order-none lg:col-span-5" id="carrousel"
-             role="region" aria-roledescription="carrousel" aria-label="Des artisans à leur métier">
-            <div class="relative aspect-[4/3] overflow-hidden rounded-lg border border-primary-200 bg-primary-100 lg:aspect-auto lg:h-[30rem]" id="carrousel-diapositives" aria-live="off">
-                {% for d in diapositives %}
-                    <figure data-diapositive role="group" aria-roledescription="diapositive" aria-label="{{ loop.index }} sur {{ diapositives|length }}"
-                            class="absolute inset-0 m-0 transition-opacity duration-700 motion-reduce:transition-none {{ loop.first ? 'opacity-100' : 'opacity-0' }}"
-                            {% if not loop.first %}aria-hidden="true"{% endif %}>
-                        <img src="{{ asset('image/' ~ d.fichier) }}" alt="" width="1000" height="750"
-                             {% if loop.first %}fetchpriority="high"{% else %}loading="lazy"{% endif %}
-                             class="h-full w-full object-cover {{ d.position }} transition-transform duration-[1600ms] ease-out motion-reduce:transition-none {{ loop.first ? 'scale-100' : 'scale-110' }}">
-                        <figcaption class="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-primary-900 transition duration-500 delay-300 ease-out motion-reduce:transition-none {{ loop.first ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0' }}">
-                            <i class="fas fa-screwdriver-wrench text-primary-700" aria-hidden="true"></i>{{ d.metier }}
-                        </figcaption>
-                    </figure>
-                {% endfor %}
-            </div>
+        {# Le parcours VAE en motion design, en 5 « phases » (la page, elle, a
+           4 « étapes » : deux numérotations distinctes, deux mots distincts).
+           Sans JavaScript, la liste statique des phases reste affichée ; avec,
+           elle devient la version lue par les lecteurs d'écran. #}
+        <div class="lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1 lg:self-center">
+            <div x-data="parcoursVae"
+                 @mouseenter="survol = true; planifier()" @mouseleave="survol = false; planifier()"
+                 @focusin="focus = $event.target.matches(':focus-visible'); planifier()" @focusout="focus = false; planifier()"
+                 role="group" aria-label="Le parcours VAE en 5 phases"
+                 class="relative flex flex-col rounded-lg border border-primary-200 bg-white p-4 sm:p-6 lg:h-[32rem]">
 
-            <div class="mt-3 flex items-center justify-between gap-3">
-                <div class="flex items-center gap-1" role="group" aria-label="Choisir une photo">
-                    {% for d in diapositives %}
-                        <button type="button" data-point aria-label="Photo {{ loop.index }} : {{ d.metier }}" {% if loop.first %}aria-current="true"{% endif %}
-                                class="group flex h-11 w-8 items-center justify-center rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-800">
-                            <span class="h-2.5 w-2.5 rounded-full {{ loop.first ? 'bg-primary-800' : 'bg-primary-300' }} transition-colors duration-200 group-hover:bg-primary-600" data-pastille></span>
-                        </button>
+                <ol :class="anime ? 'sr-only' : ''" class="space-y-3">
+                    {% for e in parcours %}
+                        <li class="flex items-center gap-3">
+                            <span class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary-200 bg-primary-50 text-primary-700" aria-hidden="true">
+                                {% if avatars %}
+                                    {{ page.visage(avatars[loop.index0], e.cadrage ?? null) }}
+                                {% else %}
+                                    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 [&_*]:[vector-effect:non-scaling-stroke]">{{ page.picto(loop.index) }}</svg>
+                                {% endif %}
+                            </span>
+                            <span class="text-base font-semibold text-primary-900">
+                                {{ e.libelle }}
+                            </span>
+                        </li>
                     {% endfor %}
-                </div>
-                <div class="flex items-center gap-1">
-                    <button type="button" data-precedent aria-label="Photo précédente"
-                            class="flex h-11 w-11 items-center justify-center rounded-md border border-primary-200 bg-white text-primary-800 transition-colors duration-200 hover:bg-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800">
-                        <i class="fas fa-chevron-left" aria-hidden="true"></i>
+                </ol>
+
+                <div x-cloak class="flex flex-1 flex-col">
+                    <button type="button" @click="basculer()"
+                            :aria-label="enPause ? 'Reprendre l\'animation' : 'Mettre l\'animation en pause'"
+                            class="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-md border border-primary-200 bg-white text-primary-800 transition-colors duration-200 hover:bg-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700">
+                        <i class="fas" :class="enPause ? 'fa-play' : 'fa-pause'" aria-hidden="true"></i>
                     </button>
-                    <button type="button" data-pause aria-label="Mettre le défilement en pause"
-                            class="flex h-11 w-11 items-center justify-center rounded-md border border-primary-200 bg-white text-primary-800 transition-colors duration-200 hover:bg-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800">
-                        <i class="fas fa-pause" aria-hidden="true" data-pause-icone></i>
-                    </button>
-                    <button type="button" data-suivant aria-label="Photo suivante"
-                            class="flex h-11 w-11 items-center justify-center rounded-md border border-primary-200 bg-white text-primary-800 transition-colors duration-200 hover:bg-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800">
-                        <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                    </button>
+
+                    <div aria-hidden="true" class="relative {{ avatars ? 'h-[19rem] sm:h-[22rem]' : 'h-56 sm:h-60' }} lg:h-auto lg:flex-1">
+                        {% for e in parcours %}
+                            {% set i = loop.index0 %}
+                            <div class="absolute inset-0 flex flex-col items-center justify-center px-6 text-center transition-opacity motion-reduce:transition-none"
+                                 :class="estActive({{ i }}) ? 'opacity-100 duration-300' : 'opacity-0 duration-200'">
+                                {% if avatars %}
+                                    {# Personnage dans un hexagone : la tête dépasse du haut,
+                                       le buste est coupé par les deux pans du bas. #}
+                                    <div class="relative h-52 w-52 sm:h-64 sm:w-64 lg:h-72 lg:w-72">
+                                        <div class="absolute inset-x-0 bottom-0 h-[82%] transition-transform duration-500 ease-out motion-reduce:transition-none [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)] {{ loop.last ? 'bg-[#ED8F33]/25' : (loop.index is odd ? 'bg-primary-100' : 'bg-primary-200') }}"
+                                             :class="estActive({{ i }}) ? 'scale-100' : 'scale-90'"></div>
+                                        <img src="{{ asset(avatars[i]) }}" alt="" width="512" height="512" loading="lazy" decoding="async"
+                                             class="absolute inset-0 h-full w-full object-contain object-bottom transition duration-700 ease-out motion-reduce:transition-none [clip-path:polygon(0_0,100%_0,100%_79.5%,50%_100%,0_79.5%)]"
+                                             :class="estActive({{ i }}) ? 'translate-y-0 opacity-100 delay-100' : 'translate-y-4 opacity-0'">
+                                    </div>
+                                {% else %}
+                                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                     class="h-24 w-24 text-primary-700 lg:h-32 lg:w-32 [&_*]:[stroke-dasharray:1] [&_*]:transition-[stroke-dashoffset] [&_*]:duration-700 [&_*]:ease-out motion-reduce:[&_*]:transition-none"
+                                     :class="estActive({{ i }}) ? '[&_*]:[stroke-dashoffset:0]' : '[&_*]:[stroke-dashoffset:1]'">{{ page.picto(loop.index) }}</svg>
+                                {% endif %}
+                                <div class="mt-4 transition duration-[400ms] ease-out motion-reduce:transition-none"
+                                     :class="estActive({{ i }}) ? 'opacity-100 translate-y-0 delay-150' : 'opacity-0 translate-y-2'">
+                                    <p class="text-lg font-bold leading-snug text-primary-900 text-balance sm:text-xl">{{ e.libelle }}</p>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    {# Rail de progression : un point par phase, chacun est un bouton
+                       (zone tactile de 44 px autour d'un point de 12 à 16 px). #}
+                    <div class="relative mt-4">
+                        <span class="absolute left-[22px] right-[22px] top-1/2 h-0.5 -translate-y-1/2 bg-primary-100" aria-hidden="true"></span>
+                        <span class="absolute left-[22px] right-[22px] top-1/2 h-0.5 -translate-y-1/2 origin-left bg-primary-700 transition-transform ease-out motion-reduce:transition-none"
+                              :class="[echelles[active], active === 0 ? 'duration-0' : 'duration-[600ms]']" aria-hidden="true"></span>
+                        <ol class="relative flex items-center justify-between">
+                            {% for e in parcours %}
+                                {% set i = loop.index0 %}
+                                <li>
+                                    <button type="button" @click="aller({{ i }})"
+                                            :aria-current="active === {{ i }} ? 'step' : false"
+                                            aria-label="Phase {{ loop.index }} : {{ e.libelle }}"
+                                            class="group flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700">
+                                        <span class="block rounded-full transition-all duration-300 ease-out motion-reduce:transition-none" :class="classePoint({{ i }})" aria-hidden="true"></span>
+                                    </button>
+                                </li>
+                            {% endfor %}
+                        </ol>
+                    </div>
                 </div>
             </div>
+        </div>
+
+        <div class="lg:col-span-7 lg:self-start">
+            {# Les trois étapes de cette page, à suivre dans l'ordre. #}
+            <nav aria-label="Les étapes de votre démarche">
+                <ol class="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-primary-200 bg-primary-100 sm:grid-cols-2">
+                    {% for e in etapes_page %}
+                        <li class="bg-white">
+                            <a href="#{{ e.ancre }}"
+                               class="group flex h-full min-h-[56px] items-center gap-3 px-4 py-3 transition-colors duration-200 motion-reduce:transition-none hover:bg-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-700">
+                                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-700 text-sm font-bold text-white tabular-nums" aria-hidden="true">{{ loop.index }}</span>
+                                <span class="min-w-0 flex-1 text-base font-semibold leading-snug text-primary-900"><span class="sr-only">Étape {{ loop.index }}&nbsp;: </span>{{ e.libelle }}</span>
+                                <i class="fas fa-arrow-down text-sm text-primary-700 transition-transform duration-200 motion-reduce:transition-none group-hover:translate-y-0.5 lg:hidden" aria-hidden="true"></i>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ol>
+            </nav>
+
         </div>
     </div>
 </section>
 
 
 {# ============================================================
-   2. Conditions et dossier de candidature
+   ÉTAPE 1 — Voir le déroulement.
+   Les quatre phases sont montrées par l'animation de l'en-tête ; l'étape
+   garde l'accès au déroulement détaillé (app_session_deroulement).
+   L'ancre #deroulement est conservée : des liens externes la visent.
    ============================================================ #}
-<section id="conditions" class="py-10 sm:py-14 md:py-24 bg-slate-50 border-b border-slate-200 scroll-mt-24">
+<section id="deroulement" class="py-10 sm:py-12 md:py-14 bg-white scroll-mt-24">
     <div class="max-w-6xl mx-auto px-4 sm:px-6">
+        {{ page.etape(1, 'Voir le déroulement') }}
 
-        <div class="grid lg:grid-cols-12 gap-6 items-start">
+        <div class="mt-6 flex flex-col gap-6 lg:flex-row lg:items-center lg:gap-8">
+        <a href="{{ path('app_session_deroulement') }}"
+           class="group flex flex-1 flex-col items-start gap-4 rounded-lg border border-slate-200 bg-white p-5 transition-colors duration-200 motion-reduce:transition-none hover:border-indigo-600 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:flex-row sm:gap-5 sm:p-6">
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-indigo-100 bg-indigo-50 text-indigo-700 transition-colors duration-200 motion-reduce:transition-none group-hover:bg-white" aria-hidden="true">
+                <i class="fas fa-list-check text-lg"></i>
+            </span>
+            <div class="min-w-0">
+                <h3 class="text-xl font-bold tracking-tight text-slate-800 text-balance">
+                    Tout savoir sur le déroulement de la session VAE 2026
+                </h3>
+                <p class="mt-2.5 text-base leading-relaxed text-slate-600 max-w-[60ch]">
+                    Quatre phases, de l'inscription aux épreuves de certification&nbsp;:
+                    ce qui se passe à chaque étape, à quelle date, et ce que vous avez à faire.
+                </p>
+                <p class="mt-3 inline-flex min-h-[44px] items-center gap-2 text-base font-bold text-indigo-700">
+                    Voir le déroulement détaillé
+                    <i class="fas fa-arrow-right text-sm transition-transform duration-200 motion-reduce:transition-none group-hover:translate-x-1" aria-hidden="true"></i>
+                </p>
+            </div>
+        </a>
 
-            {# Conditions + frais #}
-            <div class="lg:col-span-7 rounded-lg bg-white border border-slate-200">
-                <div class="p-5 sm:p-6 md:p-8">
-                    <h3 id="conditions-candidature" class="scroll-mt-24 flex items-center gap-3 text-xl font-bold text-slate-800"><i class="fas fa-clipboard-check text-indigo-700" aria-hidden="true"></i>Conditions de candidature</h3>
+        {{ page.etape_suivante('Étape suivante : les conditions', 'conditions-candidature', 'lg:shrink-0') }}
+        </div>
+    </div>
+</section>
 
-                    <ul class="mt-6 space-y-5">
-                        <li class="flex gap-4">
-                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700" aria-hidden="true"><i class="fas fa-flag"></i></span>
-                            <span class="text-base text-slate-700 pt-1.5">Être de nationalité ivoirienne</span>
-                        </li>
-                        <li class="flex gap-4">
-                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700" aria-hidden="true"><i class="fas fa-cake-candles"></i></span>
-                            <span class="text-base text-slate-700 pt-1.5">Être âgé de <strong class="font-semibold text-slate-800 tabular">21 ans</strong> au moins</span>
-                        </li>
-                        <li class="flex gap-4">
-                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700" aria-hidden="true"><i class="fas fa-briefcase"></i></span>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-base text-slate-700 pt-1.5">
-                                    Justifier d'une expérience professionnelle en lien direct
-                                    avec le métier visé, d'une durée minimale de&nbsp;:
-                                </p>
-                                <table class="mt-3 w-full max-w-sm text-left border border-slate-200 rounded-md overflow-hidden">
-                                    <caption class="sr-only">Durée d'expérience minimale selon le diplôme visé</caption>
-                                    <thead class="bg-slate-50">
-                                        <tr>
-                                            <th scope="col" class="px-4 py-2 text-sm font-semibold text-slate-600">Diplôme visé</th>
-                                            <th scope="col" class="px-4 py-2 text-sm font-semibold text-slate-600">Expérience minimale</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-200">
-                                        <tr>
-                                            <th scope="row" class="px-4 py-2.5 text-base font-bold text-slate-800">CQP</th>
-                                            <td class="px-4 py-2.5 text-base text-slate-700 tabular">5 ans</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="px-4 py-2.5 text-base font-bold text-slate-800">CAP</th>
-                                            <td class="px-4 py-2.5 text-base text-slate-700 tabular">7 ans</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </li>
-                        <li class="flex gap-4">
-                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700" aria-hidden="true"><i class="fas fa-money-bill-wave"></i></span>
-                            <span class="text-base text-slate-700 pt-1.5">Avoir réglé les frais de participation à la session VAE</span>
-                        </li>
-                    </ul>
-                </div>
 
-                {# Frais de participation — séparés pour que le montant se lise d'un coup d'œil. #}
-                <div class="border-t border-slate-200 p-5 sm:p-6 md:p-8">
-                    <h3 class="flex items-center gap-3 text-xl font-bold text-slate-800"><i class="fas fa-coins text-indigo-700" aria-hidden="true"></i>Frais de participation</h3>
+{# ============================================================
+   ÉTAPE 2 — Conditions de candidature.
+   Ordre des questions de l'artisan : puis-je candidater ? mon métier
+   et mon centre ? combien, et quelles pièces apporter ?
+   ============================================================ #}
+<section class="py-10 sm:py-14 md:py-20 bg-slate-50 border-y border-slate-200">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+        {{ page.etape(2, 'Conditions de candidature', 'conditions-candidature') }}
 
-                    <dl class="mt-5 grid sm:grid-cols-2 gap-3">
-                        <div class="rounded-md border border-slate-200 px-5 py-4">
-                            <dt class="flex items-center gap-2 text-sm font-medium text-slate-600"><i class="fas fa-building text-indigo-700" aria-hidden="true"></i>Secteur formel</dt>
-                            <dd class="mt-1 text-2xl font-extrabold text-slate-800 tabular whitespace-nowrap">120&nbsp;000&nbsp;FCFA</dd>
+        {# 2.1 — Les quatre conditions, en tuiles. #}
+        <ul class="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <li class="flex gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:p-5">
+                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700" aria-hidden="true"><i class="fas fa-flag"></i></span>
+                <span class="text-base text-slate-700 pt-2.5">Être de nationalité ivoirienne</span>
+            </li>
+            <li class="flex gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:p-5">
+                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700" aria-hidden="true"><i class="fas fa-cake-candles"></i></span>
+                <span class="text-base text-slate-700 pt-2.5">Être âgé de <strong class="font-semibold text-slate-800 tabular-nums">21 ans</strong> au moins</span>
+            </li>
+            <li class="flex gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:p-5">
+                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700" aria-hidden="true"><i class="fas fa-briefcase"></i></span>
+                <div class="min-w-0 flex-1">
+                    <p class="text-base text-slate-700 pt-2.5">
+                        Justifier d'une expérience professionnelle en lien direct
+                        avec le métier visé, d'une durée minimale de&nbsp;:
+                    </p>
+                    <p class="sr-only">Durée d'expérience minimale selon le diplôme visé</p>
+                    <dl class="mt-3 grid max-w-xs grid-cols-2 gap-2">
+                        <div class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
+                            <dt class="text-sm font-bold text-slate-600">CQP</dt>
+                            <dd class="text-2xl font-extrabold text-slate-800 tabular-nums whitespace-nowrap">5 ans</dd>
                         </div>
-                        <div class="rounded-md border border-slate-200 px-5 py-4">
-                            <dt class="flex items-center gap-2 text-sm font-medium text-slate-600"><i class="fas fa-store text-indigo-700" aria-hidden="true"></i>Secteur informel</dt>
-                            <dd class="mt-1 text-2xl font-extrabold text-slate-800 tabular whitespace-nowrap">75&nbsp;000&nbsp;FCFA</dd>
+                        <div class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
+                            <dt class="text-sm font-bold text-slate-600">CAP</dt>
+                            <dd class="text-2xl font-extrabold text-slate-800 tabular-nums whitespace-nowrap">7 ans</dd>
                         </div>
                     </dl>
-
-                    <p class="mt-4 text-sm leading-relaxed text-slate-600 max-w-[68ch]">
+                </div>
+            </li>
+            {# La condition porte aussi les montants : un seul endroit pour les frais. #}
+            <li class="flex gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:p-5">
+                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700" aria-hidden="true"><i class="fas fa-money-bill-wave"></i></span>
+                <div class="min-w-0 flex-1">
+                    <p class="text-base text-slate-700 pt-2.5">Avoir réglé les frais de participation à la session VAE</p>
+                    <dl class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
+                        <div class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
+                            <dt class="flex items-center gap-2 text-sm font-bold text-slate-600"><i class="fas fa-building text-indigo-700" aria-hidden="true"></i>Secteur formel</dt>
+                            <dd class="text-xl font-extrabold text-slate-800 tabular-nums whitespace-nowrap sm:text-2xl">120&nbsp;000&nbsp;FCFA</dd>
+                        </div>
+                        <div class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
+                            <dt class="flex items-center gap-2 text-sm font-bold text-slate-600"><i class="fas fa-store text-indigo-700" aria-hidden="true"></i>Secteur informel</dt>
+                            <dd class="text-xl font-extrabold text-slate-800 tabular-nums whitespace-nowrap sm:text-2xl">75&nbsp;000&nbsp;FCFA</dd>
+                        </div>
+                    </dl>
+                    <p class="mt-3 text-sm leading-relaxed text-slate-600">
                         Ces frais couvrent l'inscription et l'analyse de l'éligibilité,
                         l'accompagnement et les droits d'examen de certification.
                     </p>
                 </div>
-            </div>
+            </li>
+        </ul>
 
-            {# Pièces du dossier #}
-            <div id="preparer-dossier" class="lg:col-span-5 rounded-lg bg-white border border-slate-200 p-5 sm:p-6 md:p-8">
+        {# 2.2 — Métier et centre : deux grandes entrées vers la page dédiée
+           (app_metiers_centres), où tous les métiers et tous les centres sont
+           affichés et se filtrent pendant la frappe. #}
+        <div class="mt-10">
+            <h3 class="flex items-center gap-3 text-xl font-bold text-slate-800"><i class="fas fa-magnifying-glass text-indigo-700" aria-hidden="true"></i>Vérifiez votre métier et votre centre VAE</h3>
+
+            {% set acces = [
+                { url: path('app_metiers_centres') ~ '#metiers', icone: 'fa-screwdriver-wrench', titre: 'Voir tous les métiers VAE', detail: 'Mon métier est-il concerné ? Consultez la liste des métiers de la session 2026.' },
+                { url: path('app_metiers_centres') ~ '#centres', icone: 'fa-location-dot', titre: 'Trouver mon centre VAE', detail: 'Trouvez le centre VAE de votre ville et les métiers qu’il propose.' }
+            ] %}
+            <ul class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+                {% for a in acces %}
+                    <li>
+                        <a href="{{ a.url }}"
+                           class="group flex h-full min-h-[96px] items-center gap-4 rounded-lg border-2 border-primary-200 bg-white p-5 transition-colors duration-200 motion-reduce:transition-none hover:border-primary-700 hover:bg-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700 sm:p-6">
+                            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary-700 text-xl text-white" aria-hidden="true">
+                                <i class="fas {{ a.icone }}"></i>
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-lg font-bold leading-snug text-primary-900 text-balance">{{ a.titre }}</span>
+                                <span class="mt-1 block text-sm leading-relaxed text-slate-600">{{ a.detail }}</span>
+                            </span>
+                            <i class="fas fa-arrow-right shrink-0 text-lg text-primary-700 transition-transform duration-200 motion-reduce:transition-none group-hover:translate-x-1" aria-hidden="true"></i>
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        {{ page.etape_suivante('Étape suivante : le dossier de candidature', 'dossier-candidature') }}
+    </div>
+</section>
+
+
+{# ============================================================
+   ÉTAPE 3 — Dossier de candidature : les pièces à réunir avant de se
+   préinscrire, à présenter ensuite au centre VAE.
+   ============================================================ #}
+<section class="py-10 sm:py-14 md:py-20 bg-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+        {{ page.etape(3, 'Dossier de candidature', 'dossier-candidature') }}
+
+        <div class="mt-6">
+            <div id="preparer-dossier" class="rounded-lg bg-white border border-slate-200 p-5 sm:p-6 md:p-8">
                 <h3 class="flex items-center gap-3 text-xl font-bold text-slate-800"><i class="fas fa-folder-open text-indigo-700" aria-hidden="true"></i>Ce que vous devez préparer</h3>
                 <p class="mt-2 text-sm text-slate-600">Ces pièces sont à présenter dans votre centre VAE.</p>
 
+                {# Pièces du communiqué de la session 2026 (25/09/2026). #}
                 {% set pieces = [
-                  
-                    { quantite: '1 copie', libelle: "Extrait de naissance ou jugement supplétif", icon: 'fa-file-signature' },
-                    { quantite: '1 copie', libelle: "Pièce d'identité", icon: 'fa-id-card' },
-                    { quantite: '1 copie', libelle: "Carte CMU", icon: 'fa-address-card' },
-                    { quantite: '1 photos', libelle: "Photos d'identité couleur (même tirage)", icon: 'fa-image' }
+                    { quantite: '1 photocopie', libelle: "Pièce d'identité", icon: 'fa-id-card', note: "Sur présentation de l'original" },
+                    { quantite: '1 photocopie', libelle: "Carte CMU", icon: 'fa-address-card' },
+                    { quantite: '1 photo', libelle: "Photo d'identité couleur", icon: 'fa-image' }
                 ] %}
 
-                <ul class="mt-6 divide-y divide-slate-100">
+                <ul class="mt-6 grid grid-cols-1 md:grid-cols-2 md:gap-x-8">
                     {% for piece in pieces %}
-                        <li class="flex items-start justify-between gap-3 py-3.5">
+                        <li class="flex items-start justify-between gap-3 border-t border-slate-100 py-3.5">
                             <div class="flex items-start gap-3 min-w-0">
                                 <div class="w-10 h-10 rounded-md bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0">
                                     <i class="fas {{ piece.icon }} text-base" aria-hidden="true"></i>
@@ -257,8 +382,8 @@
                                 <div>
                                     <span class="text-sm sm:text-base font-medium text-slate-800 block">{{ piece.libelle }}</span>
                                     {% if piece.note is defined %}
-                                        <span class="inline-flex items-center gap-1 text-xs text-amber-700 font-medium mt-0.5">
-                                            <i class="fas fa-circle-info text-[10px]" aria-hidden="true"></i>
+                                        <span class="mt-0.5 inline-flex items-center gap-1.5 text-sm text-slate-600">
+                                            <i class="fas fa-circle-info text-xs text-primary-700" aria-hidden="true"></i>
                                             {{ piece.note }}
                                         </span>
                                     {% endif %}
@@ -273,185 +398,71 @@
             </div>
         </div>
 
-        <div class="mt-10 border-t border-slate-300 pt-8">
-            <div class="max-w-2xl">
-                <h3 class="flex items-center gap-3 text-xl font-bold text-slate-800"><i class="fas fa-magnifying-glass text-indigo-700" aria-hidden="true"></i>Vérifiez votre métier et votre centre VAE</h3>
-                <p class="mt-2 text-base leading-relaxed text-slate-600">
-                    Ce document liste les centres VAE et, pour chacun, les métiers (CQP et CAP) qu'il propose. Trouvez votre métier pour connaître le centre où vous préinscrire.
-                </p>
-            </div>
-            <div class="mt-5 max-w-2xl">
-                {{ page.document(documents.liste, 'Centres VAE et métiers par centre', '30 centres VAE et leurs métiers, CQP et CAP') }}
-            </div>
-        </div>
 
-        <div id="preinscription" class="mt-10 border-t border-slate-300 pt-8 md:flex md:items-center md:justify-between md:gap-8">
-            <div class="max-w-2xl">
-                <h3 class="flex items-center gap-3 text-2xl font-bold text-slate-800"><i class="fas fa-circle-check text-indigo-700" aria-hidden="true"></i>Vous remplissez les conditions ?</h3>
-                <p class="mt-2 text-base leading-relaxed text-slate-600">
-                    Vous pouvez maintenant commencer votre préinscription en ligne. Vous présenterez ensuite les pièces de votre dossier dans votre centre VAE.
-                </p>
-            </div>
-            <a href="{{ path('app_register') }}"
-               class="mt-5 md:mt-0 inline-flex w-full md:w-auto items-center justify-center gap-2 min-h-[52px] px-7 py-3.5 rounded-lg bg-indigo-600 text-white text-base font-bold hover:bg-indigo-700 transition-colors duration-200 whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
-                Commencer ma préinscription
-                <i class="fas fa-arrow-right text-sm" aria-hidden="true"></i>
-            </a>
-        </div>
+        {{ page.etape_suivante('Étape suivante : ma préinscription', 'preinscription') }}
     </div>
 </section>
 
 
 {# ============================================================
-   3. Carte informative : le déroulement détaillé vit désormais sur sa
-   propre page (app_session_deroulement). L'accueil n'en garde qu'une
-   porte d'entrée, pour ne pas concurrencer la vérification des
-   conditions de candidature, qui reste l'objectif de cette page.
-   L'ancre #deroulement est conservée : des liens externes la visent.
+   ÉTAPE 4 — Commencer ma préinscription, ou se faire accompagner.
    ============================================================ #}
-<section id="deroulement" class="py-10 sm:py-14 md:py-24 bg-white scroll-mt-24">
+<section id="preinscription" class="py-10 sm:py-14 md:py-20 bg-slate-50 border-t border-slate-200 scroll-mt-24">
     <div class="max-w-6xl mx-auto px-4 sm:px-6">
+        {{ page.etape(4, 'Commencer ma préinscription') }}
 
-        {% set apercu_phases = [
-            'Accueil et inscription',
-            'Recevabilité des dossiers et éligibilité',
-            'Accompagnement des candidats',
-            'Épreuves de certification'
-        ] %}
+        <div class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
 
-        <a href="{{ path('app_session_deroulement') }}"
-           class="group block rounded-lg border border-slate-200 bg-white p-5 sm:p-6 md:p-8 transition-colors duration-200 motion-reduce:transition-none hover:border-indigo-600 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
-            <div class="grid gap-6 lg:grid-cols-12 lg:gap-10">
-
-                <div class="lg:col-span-7">
-                    {# Icône au-dessus du titre sur téléphone : à côté, elle décalait
-                       titre et texte d'un cran par rapport à la liste des phases. #}
-                    <div class="flex flex-col items-start gap-3 sm:flex-row sm:gap-4">
-                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-indigo-100 bg-indigo-50 text-indigo-700 transition-colors duration-200 motion-reduce:transition-none group-hover:bg-white" aria-hidden="true">
-                            <i class="fas fa-list-check text-lg"></i>
+            {# Seul bloc sombre de la page : l'action de préinscription se repère
+               d'un coup d'œil. Fond primary-700 : l'orange s'en détache à 3,2:1.
+               Bouton à l'orange du logo, libellé blanc (choix de la DAIP ;
+               2,4:1 sur #ED8F33 — un texte primary-950 donnerait 5,5:1). #}
+            <div class="lg:col-span-7 flex flex-col overflow-hidden rounded-lg bg-primary-700">
+                <div class="flex flex-1 flex-col gap-6 px-5 py-7 sm:px-8 sm:py-9 md:flex-row md:items-center md:justify-between md:gap-10 lg:flex-col lg:items-start lg:justify-center lg:gap-7 lg:px-10">
+                    <div class="flex min-w-0 items-start gap-4">
+                        <span class="hidden h-12 w-12 shrink-0 items-center justify-center rounded-md bg-white/10 text-xl text-[#ED8F33] sm:flex" aria-hidden="true">
+                            <i class="fas fa-circle-check"></i>
                         </span>
                         <div class="min-w-0">
-                            <h2 class="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-slate-800 text-balance">
-                                Tout savoir sur le déroulement de la session VAE 2026
-                            </h2>
-                            <p class="mt-2.5 text-base leading-relaxed text-slate-600 max-w-[60ch]">
-                                Quatre phases, de l'inscription aux épreuves de certification&nbsp;:
-                                ce qui se passe à chaque étape, à quelle date, et ce que vous avez à faire.
+                            <h3 class="text-2xl sm:text-[1.75rem] font-bold tracking-tight leading-tight text-white text-balance">
+                                Remplissez-vous les conditions&nbsp;?
+                            </h3>
+                            <p class="mt-2 text-base sm:text-lg leading-relaxed text-primary-100 max-w-[52ch]">
+                                Si oui, commencez votre préinscription en ligne.
                             </p>
                         </div>
                     </div>
+                    <a href="{{ path('app_register') }}"
+                       class="group inline-flex min-h-[56px] w-full shrink-0 items-center justify-center gap-2.5 rounded-lg bg-[#ED8F33] px-5 py-3 text-center text-base leading-snug sm:px-7 sm:text-lg font-bold text-white transition-colors duration-200 motion-reduce:transition-none hover:bg-[#F2A254] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white md:w-auto">
+                        Commencer ma préinscription
+                        <i class="fas fa-arrow-right text-sm transition-transform duration-200 motion-reduce:transition-none group-hover:translate-x-1" aria-hidden="true"></i>
+                    </a>
                 </div>
-
-                <div class="lg:col-span-5">
-                    <ol class="grid gap-2.5 sm:grid-cols-2 sm:gap-x-6 lg:grid-cols-1">
-                        {% for phase in apercu_phases %}
-                            <li class="flex items-center gap-3">
-                                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-indigo-200 bg-white text-xs font-bold text-indigo-700 tabular-nums">{{ loop.index }}</span>
-                                <span class="text-sm font-medium text-slate-700">{{ phase }}</span>
-                            </li>
-                        {% endfor %}
-                    </ol>
-                </div>
+                <div class="h-1 bg-[#ED8F33]" aria-hidden="true"></div>
             </div>
 
-            <p class="mt-6 inline-flex min-h-[44px] items-center gap-2 text-base font-bold text-indigo-700">
-                Voir le déroulement détaillé
-                <i class="fas fa-arrow-right text-sm transition-transform duration-200 motion-reduce:transition-none group-hover:translate-x-1" aria-hidden="true"></i>
-            </p>
-        </a>
-    </div>
-</section>
-
-
-{# ============================================================
-   4. Aide à l'inscription
-   ============================================================ #}
-<section class="py-10 sm:py-14 md:py-20 bg-slate-50 border-t border-slate-200">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6">
-        <div class="grid lg:grid-cols-12 gap-8 items-center">
-            <div class="lg:col-span-7">
-                <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800 text-balance">
-                    Besoin d'aide pour votre préinscription ?
-                </h2>
-                <p class="mt-4 text-base leading-[1.75] text-slate-600 max-w-[62ch]">
+            {# L'alternative pour qui n'est pas à l'aise avec internet. #}
+            <div class="lg:col-span-5 rounded-lg border border-slate-200 bg-white p-5 sm:p-6">
+                <h3 class="flex items-center gap-3 text-xl font-bold text-slate-800">
+                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary-50 text-primary-700" aria-hidden="true"><i class="fas fa-handshake-angle"></i></span>
+                    Je préfère être accompagné
+                </h3>
+                <p class="mt-3 text-base leading-relaxed text-slate-600">
                     Vous n'êtes pas à l'aise avec les démarches en ligne&nbsp;? Rendez-vous directement dans un centre VAE&nbsp;: un agent d'accueil vous aidera à vous préinscrire et à préparer votre dossier.
                 </p>
-            </div>
-            <div class="lg:col-span-5 flex justify-center lg:justify-end">
-                <div class="flex h-40 w-40 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 sm:h-48 sm:w-48">
-                    <img src="{{ asset('image/assistance.svg') }}" alt="" aria-hidden="true" class="h-20 w-24 sm:h-24 sm:w-28">
+                <div class="mt-5 flex flex-col gap-3">
+                    <a href="{{ path('app_metiers_centres') }}#centres"
+                       class="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-primary-700 px-5 text-base font-bold text-white transition-colors duration-200 motion-reduce:transition-none hover:bg-primary-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700">
+                        <i class="fas fa-location-dot" aria-hidden="true"></i>
+                        Trouver mon centre VAE
+                    </a>
                 </div>
             </div>
         </div>
-    </div>
-</section>
 
-
-{# ============================================================
-   5. Qui êtes-vous ? — entrées de connexion par profil.
-   En bas de page, volontairement : l'accueil oriente d'abord vers la
-   vérification des conditions de candidature. Les deux cartes
-   réutilisent la logique d'authentification existante — même route
-   app_login, seul le paramètre `profil` change, comme dans le menu
-   « Mon espace » de l'en-tête.
-   ============================================================ #}
-<section id="qui-etes-vous" class="py-10 sm:py-14 md:py-24 bg-white border-t border-slate-200 scroll-mt-24">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6">
-
-        <div class="max-w-2xl">
-            <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800 text-balance">
-                Qui êtes-vous&nbsp;?
-            </h2>
-            <p class="mt-3 text-base leading-[1.75] text-slate-600">
-                Vous avez déjà un compte&nbsp;? Rejoignez l'espace qui correspond à votre rôle.
-            </p>
-        </div>
-
-        {% set profils = [
-            {
-                titre: 'Candidat',
-                icone: 'fa-user',
-                accroche: "Transformez votre expérience professionnelle en diplôme reconnu.",
-                detail: "Suivez l'avancement de votre dossier, réglez vos frais et consultez vos résultats.",
-                action: 'Accéder à mon espace candidat',
-                url: path('app_login')
-            },
-            {
-                titre: 'Professionnels de la VAE',
-                icone: 'fa-user-tie',
-                accroche: "Accompagnez les candidats et instruisez les dossiers de votre centre.",
-                detail: "Conseillers VAE, accompagnateurs, agents d'accueil et administrateurs.",
-                action: 'Accéder à mon espace professionnel',
-                url: path('app_login', {'profil': 'professionnel'})
-            }
-        ] %}
-
-        <div class="mt-8 grid gap-4 sm:grid-cols-2 sm:gap-5">
-            {% for profil in profils %}
-                <a href="{{ profil.url }}"
-                   class="group flex flex-col rounded-lg border border-slate-200 bg-white p-5 sm:p-6 transition-colors duration-200 motion-reduce:transition-none hover:border-indigo-600 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
-                    <span class="flex h-14 w-14 items-center justify-center rounded-md border border-indigo-100 bg-indigo-50 text-2xl text-indigo-700 transition-colors duration-200 motion-reduce:transition-none group-hover:bg-white" aria-hidden="true">
-                        <i class="fas {{ profil.icone }}"></i>
-                    </span>
-
-                    <h3 class="mt-4 text-xl font-bold text-slate-800">{{ profil.titre }}</h3>
-                    <p class="mt-2 text-base leading-relaxed text-slate-700">{{ profil.accroche }}</p>
-                    <p class="mt-1.5 text-sm leading-relaxed text-slate-600">{{ profil.detail }}</p>
-
-                    <span class="mt-5 inline-flex min-h-[44px] items-center gap-2 text-base font-bold text-indigo-700">
-                        {{ profil.action }}
-                        <i class="fas fa-arrow-right text-sm transition-transform duration-200 motion-reduce:transition-none group-hover:translate-x-1" aria-hidden="true"></i>
-                    </span>
-                </a>
-            {% endfor %}
-        </div>
-
-        <p class="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-slate-700">
-            <i class="fas fa-circle-info text-[#ED8F33]" aria-hidden="true"></i>
-            Vous n'avez pas encore de compte&nbsp;?
-            <a href="#conditions-candidature" class="inline-flex min-h-[32px] items-center font-semibold text-indigo-700 underline underline-offset-4 hover:text-indigo-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
-                Vérifiez d'abord les conditions de candidature
-            </a>
+        <p class="mt-6 text-base text-slate-700">
+            Déjà préinscrit&nbsp;?
+            <a href="{{ path('app_login') }}" class="inline-flex min-h-[44px] items-center font-semibold text-indigo-700 underline underline-offset-4 hover:text-indigo-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Accéder à mon espace candidat</a>
         </p>
     </div>
 </section>
@@ -461,69 +472,64 @@
 {% block javascripts %}
 {{ parent() }}
 <script>
-(function () {
-    var racine = document.getElementById('carrousel');
-    if (!racine) { return; }
-    var diapos = racine.querySelectorAll('[data-diapositive]');
-    var points = racine.querySelectorAll('[data-point]');
-    var zone = document.getElementById('carrousel-diapositives');
-    var boutonPause = racine.querySelector('[data-pause]');
-    var iconePause = racine.querySelector('[data-pause-icone]');
-    var courant = 0, minuteur = null, enPause = false, survol = false;
-    var reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Composants Alpine de l'accueil. app.js est chargé en « defer » : ce script
+// s'exécute avant, et s'enregistre donc à temps sur alpine:init.
+document.addEventListener('alpine:init', function () {
 
-    function afficher(n) {
-        courant = (n + diapos.length) % diapos.length;
-        diapos.forEach(function (d, i) {
-            var actif = i === courant;
-            d.classList.toggle('opacity-100', actif);
-            d.classList.toggle('opacity-0', !actif);
-            var img = d.querySelector('img');
-            var legende = d.querySelector('figcaption');
-            img.classList.toggle('scale-100', actif);
-            img.classList.toggle('scale-110', !actif);
-            legende.classList.toggle('translate-y-0', actif);
-            legende.classList.toggle('opacity-100', actif);
-            legende.classList.toggle('translate-y-4', !actif);
-            legende.classList.toggle('opacity-0', !actif);
-            if (actif) { d.removeAttribute('aria-hidden'); } else { d.setAttribute('aria-hidden', 'true'); }
-        });
-        points.forEach(function (p, i) {
-            var actif = i === courant;
-            var pastille = p.querySelector('[data-pastille]');
-            pastille.classList.toggle('bg-primary-800', actif);
-            pastille.classList.toggle('bg-primary-300', !actif);
-            if (actif) { p.setAttribute('aria-current', 'true'); } else { p.removeAttribute('aria-current'); }
-        });
-    }
+    // Parcours VAE animé : 3,5 s par étape, 5 s sur le diplôme, puis retour
+    // au début. Pause au survol, au focus clavier, onglet caché ou mouvement réduit.
+    window.Alpine.data('parcoursVae', function () {
+        return {
+            active: 0,
+            total: 5,
+            demarre: false,
+            anime: false,
+            enPause: false,
+            survol: false,
+            focus: false,
+            minuteur: null,
+            premier: true,
+            echelles: ['scale-x-0', 'scale-x-[0.25]', 'scale-x-50', 'scale-x-75', 'scale-x-100'],
 
-    function arreter() { if (minuteur) { clearInterval(minuteur); minuteur = null; } }
-    function demarrer() {
-        arreter();
-        if (enPause || survol || document.hidden) { return; }
-        minuteur = setInterval(function () { afficher(courant + 1); }, 3000);
-    }
-    function majPause() {
-        iconePause.classList.toggle('fa-pause', !enPause);
-        iconePause.classList.toggle('fa-play', enPause);
-        boutonPause.setAttribute('aria-label', enPause ? 'Reprendre le défilement' : 'Mettre le défilement en pause');
-        zone.setAttribute('aria-live', enPause ? 'polite' : 'off');
-    }
-
-    racine.querySelector('[data-precedent]').addEventListener('click', function () { afficher(courant - 1); demarrer(); });
-    racine.querySelector('[data-suivant]').addEventListener('click', function () { afficher(courant + 1); demarrer(); });
-    points.forEach(function (p, i) { p.addEventListener('click', function () { afficher(i); demarrer(); }); });
-    boutonPause.addEventListener('click', function () { enPause = !enPause; majPause(); demarrer(); });
-    racine.addEventListener('mouseenter', function () { survol = true; arreter(); });
-    racine.addEventListener('mouseleave', function () { survol = false; demarrer(); });
-    racine.addEventListener('focusin', arreter);
-    racine.addEventListener('focusout', demarrer);
-    document.addEventListener('visibilitychange', demarrer);
-
-    // Pas de défilement automatique si l'utilisateur préfère réduire les animations.
-    enPause = reduit;
-    majPause();
-    demarrer();
-})();
+            init: function () {
+                var soi = this;
+                this.anime = true;
+                this.enPause = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                document.addEventListener('visibilitychange', function () { soi.planifier(); });
+                // Deux images plus tard, pour que la première étape se dessine.
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(function () { soi.demarre = true; soi.planifier(); });
+                });
+            },
+            estActive: function (i) { return this.demarre && this.active === i; },
+            planifier: function () {
+                var soi = this;
+                clearTimeout(this.minuteur);
+                if (this.enPause || this.survol || this.focus || document.hidden) { return; }
+                // Le premier passage attend un peu plus : on lit d'abord le titre.
+                var duree = (this.active === this.total - 1 ? 5000 : 3500) + (this.premier ? 1500 : 0);
+                this.minuteur = setTimeout(function () {
+                    soi.premier = false;
+                    soi.active = (soi.active + 1) % soi.total;
+                    soi.planifier();
+                }, duree);
+            },
+            aller: function (i) { this.active = i; this.planifier(); },
+            // « Lecture » relance tout de suite, même si la souris survole encore.
+            basculer: function () {
+                this.enPause = !this.enPause;
+                if (!this.enPause) { this.survol = false; this.focus = false; }
+                this.planifier();
+            },
+            // Point actif plus grand et cerclé ; phases passées pleines ; phases
+            // à venir en anneau primary-500 (4,3:1 sur blanc, lisible).
+            classePoint: function (i) {
+                if (i === this.active) { return 'h-4 w-4 bg-primary-700 ring-4 ring-primary-100'; }
+                if (i < this.active) { return 'h-3 w-3 bg-primary-500 group-hover:bg-primary-700'; }
+                return 'h-3 w-3 border-2 border-primary-500 bg-white group-hover:bg-primary-100';
+            }
+        };
+    });
+});
 </script>
 {% endblock %}

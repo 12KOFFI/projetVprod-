@@ -1,0 +1,40 @@
+{#
+  Panneau d'une liste déroulante avec recherche (composant Alpine
+  « listeDeroulante », assets/composants/liste-deroulante.js) : champ de
+  recherche puis liste des options. À inclure dans l'élément x-data, qui doit
+  être positionné (relative).
+
+  Variables : libelle_liste (nom de la liste pour les lecteurs d'écran),
+  libelle_recherche (étiquette du champ de recherche).
+#}
+<div x-cloak x-show="ouverte" x-transition.opacity.duration.150ms
+     class="absolute inset-x-0 top-full z-30 mt-1 overflow-hidden rounded-lg border border-slate-300 bg-white shadow-lg">
+    <div class="border-b border-slate-200 p-2">
+        <label :for="prefixe + '-recherche'" class="sr-only">{{ libelle_recherche }}</label>
+        <div class="relative">
+            <i class="fas fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500" aria-hidden="true"></i>
+            <input type="search" :id="prefixe + '-recherche'" x-ref="recherche" x-model="q" @input="actif = 0"
+                   @keydown.arrow-down.prevent="deplacer(1)" @keydown.arrow-up.prevent="deplacer(-1)"
+                   @keydown.enter.prevent="choisirActif()"
+                   role="combobox" aria-autocomplete="list" aria-expanded="true" :aria-controls="prefixe + '-liste'"
+                   :aria-activedescendant="filtrees[actif] ? idOption(actif) : null"
+                   autocomplete="off" data-sans-anneau="1" placeholder="Tapez pour rechercher…"
+                   class="min-h-[44px] w-full rounded-md border border-slate-400 bg-white pl-9 pr-3 text-base text-slate-900 placeholder:text-slate-500 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600">
+        </div>
+    </div>
+    <ul :id="prefixe + '-liste'" x-ref="liste" role="listbox" tabindex="-1" aria-label="{{ libelle_liste }}"
+        class="overflow-y-auto overscroll-contain py-1" :style="'max-height: ' + hauteurListe + 'px'">
+        <template x-for="(option, rang) in filtrees" :key="option.valeur">
+            <li :id="idOption(rang)" role="option" :aria-selected="option.valeur === valeur ? 'true' : 'false'"
+                @click="choisir(option)" @mousemove="actif = rang"
+                class="flex min-h-[44px] cursor-pointer items-center gap-2 px-3 text-base"
+                :class="rang === actif ? 'bg-indigo-50' : ''">
+                <span class="font-medium text-slate-900" x-text="option.principal"></span>
+                <span class="tabular-nums text-slate-600" x-show="option.secondaire"
+                      x-text="option.secondaire.charAt(0) === '+' ? option.secondaire : '· ' + option.secondaire"></span>
+                <i class="fas fa-check ml-auto text-indigo-700" x-show="option.valeur === valeur" aria-hidden="true"></i>
+            </li>
+        </template>
+        <li x-show="filtrees.length === 0" class="px-3 py-3 text-sm text-slate-600">Aucun résultat.</li>
+    </ul>
+</div>

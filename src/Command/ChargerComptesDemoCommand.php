@@ -141,7 +141,8 @@ class ChargerComptesDemoCommand extends Command
     private function contactLibre(): string
     {
         do {
-            $contact = '07' . str_pad((string) random_int(0, 99999999), 8, '0', \STR_PAD_LEFT);
+            // Format international (App\Referentiel\Telephone) : +225 puis 10 chiffres.
+            $contact = '+22507' . str_pad((string) random_int(0, 99999999), 8, '0', \STR_PAD_LEFT);
         } while ($this->userRepository->findOneBy(['contact' => $contact]) !== null);
 
         return $contact;

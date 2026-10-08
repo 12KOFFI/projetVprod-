@@ -1,6 +1,7 @@
 {# Écran E4.3/E4.4 : consultation d'un dossier — édition tant qu'il est préinscrit. #}
 {% extends 'base_dashboard.html.twig' %}
 {% import 'partials/_ui.html.twig' as ui %}
+{% import 'candidature/_depot.html.twig' as depot %}
 
 {# Barre Précédent / Continuer (ou Enregistrer sur la dernière étape) du wizard
    à 4 étapes ci-dessous. Un seul <form>, un seul submit final : ces boutons ne
@@ -200,7 +201,7 @@
                    rejette la soumission par une exception convertie en flash plutôt qu'en
                    erreur de champ) : l'étape 4 s'ouvre alors directement sur le problème. #}
                 <div x-data="{ etape: {{ app.flashes('error')|length > 0 ? 4 : 1 }} }">
-                    {% set etapes = ['Formation et expérience', 'Entreprise', 'Pièces justificatives', 'Étude et décision'] %}
+                    {% set etapes = ['Expérience et entreprise', 'Centre et métier visé', 'Pièces justificatives', 'Étude et décision'] %}
                     <div class="mb-6 flex items-center gap-2 sm:gap-3" role="group" aria-label="Étapes">
                         {% for libelle in etapes %}
                             {% set n = loop.index %}
@@ -217,78 +218,20 @@
                     <p class="mb-6 text-sm font-medium text-slate-900 sm:hidden" x-text="{{ etapes|json_encode }}[etape - 1]"></p>
 
                 <div id="etape-1" class="space-y-6" x-show="etape === 1" x-cloak>
-                {# ===== Formation visée ===== #}
-                <div class="bg-white rounded-lg border border-slate-200 p-6">
-                    {{ ui.section('Formation visée', 'Centre de dépôt et métier de certification', 'graduation-cap', 'indigo') }}
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div>
-                            <p class="block text-xs font-semibold text-slate-600 mb-1.5">Centre de dépôt</p>
-                            <div class="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-600">
-                                <i class="fas fa-lock text-xs mr-1.5 opacity-60" aria-hidden="true"></i>{{ candidature.centre ? candidature.centre.nom : '—' }}
-                            </div>
-                        </div>
-                        {{ ui.champ(form_candidature.metier, '', {'x-ref': 'metier', '@change': 'chargerCertifications()'},
-                            ui.choix_initial(form_candidature.metier, candidature.metier ? candidature.metier.libelle : null, 'un métier')) }}
-                    </div>
-                </div>
-
-                {# ===== Expérience professionnelle ===== #}
-                <div class="bg-white rounded-lg border border-slate-200 p-6">
-                    {{ ui.section('Expérience professionnelle', 'Elle aide à choisir le diplôme visé', 'briefcase', 'amber') }}
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        {{ ui.champ(form_candidature.nbAnneesExperience) }}
-            {{ ui.champ(
-                form_candidature.certification,
-                '',
-                {'x-ref': 'certification', 'data-centre': form_candidature.vars.data.centre ? form_candidature.vars.data.centre.id : ''},
-                '<span x-show="chargementCertifications"><i class="fas fa-circle-notch fa-spin mr-1"></i>Chargement des diplômes du centre…</span>'
-                    ~ ui.choix_initial(form_candidature.certification, candidature.diplomedemande, 'un diplôme')
-            ) }}
-                        {{ ui.champ(form_candidature.situationPro) }}
-                        {{ ui.champ(form_candidature.diplome) }}
-                        {{ ui.champ(form_candidature.titrepro) }}
-                    </div>
-                </div>
+                {{ depot.experience(form_candidature) }}
+                {{ depot.entreprise(form_candidature, 'Facultatif') }}
 
                 {{ page.barre_navigation(1, 4) }}
                 </div>
 
                 <div id="etape-2" class="space-y-6" x-show="etape === 2" x-cloak>
-                {# ===== Entreprise ===== #}
-                <div class="bg-white rounded-lg border border-slate-200 p-6">
-                    {{ ui.section('Entreprise ou atelier', 'Facultatif', 'building', 'orange') }}
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        {{ ui.champ(form_candidature.nomEntreprise) }}
-                        {{ ui.champ(form_candidature.refentreprise) }}
-                        {{ ui.champ(form_candidature.lieuExercice) }}
-                        {{ ui.champ(form_candidature.directionService) }}
-                        {{ ui.champ(form_candidature.fonction) }}
-                        {{ ui.champ(form_candidature.refContrat) }}
-                        {{ ui.champ_telephone(form_candidature.contactemployeur) }}
-                        {{ ui.champ(form_candidature.langue) }}
-                        {{ ui.champ(form_candidature.preciserlangue) }}
-                    </div>
-                </div>
+                {{ depot.formation(form_candidature, candidature, candidature.centre ? candidature.centre.nom : null) }}
 
                 {{ page.barre_navigation(2, 4) }}
                 </div>
 
                 <div id="etape-3" class="space-y-6" x-show="etape === 3" x-cloak>
-                {# ===== Pièces justificatives ===== #}
-                <div class="bg-white rounded-lg border border-slate-200 p-6">
-                    {{ ui.section('Pièces justificatives', 'JPG, PNG ou PDF — 2 Mo maximum par pièce', 'paperclip', 'purple') }}
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {% for champ, libelle in documents_obligatoires %}
-                            {% if form_candidature[champ] is defined %}
-                                {{ ui.document(form_candidature[champ], libelle, true, attribute(candidature, champ)) }}
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-                </div>
+                {{ depot.pieces(form_candidature, documents_obligatoires, candidature, documents_conseiller) }}
 
                 {{ page.barre_navigation(3, 4) }}
                 </div>
@@ -331,18 +274,18 @@
 
                 <dl class="grid grid-cols-1 sm:grid-cols-2 gap-px bg-slate-100">
                     {% set lignes = {
-                        'Situation professionnelle': candidature.situationPro,
+                        'Situation professionnelle': candidature.situationProLibelle,
                         "Années d'expérience": candidature.nbAnneesExperience ~ ' an(s)',
-                        'Diplôme visé': candidature.diplomedemande,
-                        'Diplôme académique obtenu(e)': candidature.diplome,
-                        'Titre professionnel': candidature.titrepro,
+                        'Diplôme académique obtenu(e)': candidature.diplomeLibelle,
                         "Entreprise ou organisme d'attache": candidature.nomEntreprise,
                         "Références de l'entreprise": candidature.refentreprise,
                         "Lieu d'exercice (Région, Département, Sous-préfecture)": candidature.lieuExercice,
+                        'Direction ou service': candidature.directionService,
                         'Poste de travail': candidature.fonction,
                         'Référence du contrat de travail': candidature.refContrat,
-                        "Contact de l'employeur": candidature.contactemployeur,
-                        "Langue d'évaluation": candidature.langue
+                        "Contact de l'employeur": candidature.contactemployeur ? candidature.contactemployeur|telephone : null,
+                        'Diplôme visé': candidature.diplomedemande,
+                        "Langue d'évaluation": candidature.langueLibelle
                     } %}
 
                     {% for libelle, valeur in lignes %}
@@ -363,7 +306,7 @@
                 {% if documents is not empty %}
                     <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {% for champ, document in documents %}
-                            <a href="{{ asset('media/' ~ candidature.numero ~ '/' ~ document.fichier) }}" target="_blank" rel="noopener"
+                            <a href="{{ path('app_piece', {id: candidature.id, champ: champ}) }}" target="_blank" rel="noopener"
                                class="flex items-center gap-3 p-4 rounded-lg border border-slate-200
                                       hover:border-indigo-400 hover:bg-indigo-50/30 transition-all duration-200">
                                 <div class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0">
@@ -392,7 +335,7 @@
             <dl class="divide-y divide-slate-100">
                 {% set identite = {
                     'Nom complet': candidat ? candidat.nomComplet : null,
-                    'Contact': candidat ? candidat.contact : null,
+                    'Contact': candidat and candidat.contact ? candidat.contact|telephone : null,
                     'Adresse e-mail': candidat ? candidat.email : null,
                     'Date de naissance': candidat and candidat.datenaissance ? candidat.datenaissance|date('d/m/Y') : null,
                     'Lieu de naissance': candidat ? candidat.lieunaissance : null,

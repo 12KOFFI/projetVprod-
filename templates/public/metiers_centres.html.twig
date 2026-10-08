@@ -1,0 +1,364 @@
+{% extends 'public/base.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Métiers et centres VAE — Côte d'Ivoire VAE{% endblock %}
+
+{% block meta %}
+    <meta name="author" content="DAIP — Direction de l'Apprentissage et de l'Insertion Professionnelle">
+    <meta name="description" content="Session 2026 de la VAE : vérifiez si votre métier est concerné et trouvez le centre VAE de votre ville.">
+    <meta name="keywords" content="VAE, Côte d'Ivoire, DAIP, session 2026, métiers, centres VAE, CQP, CAP">
+{% endblock %}
+
+{# Retour au parcours de l'accueil : revenir aux conditions, ou passer à
+   l'étape suivante (le dossier de candidature). #}
+{% macro reprendre_parcours() %}
+    <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <a href="{{ path('app_home') }}#dossier-candidature"
+           class="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-lg bg-primary-800 px-6 py-2 text-center text-base font-bold text-white transition-colors duration-200 motion-reduce:transition-none hover:bg-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800 sm:w-auto">
+            Étape suivante : le dossier de candidature
+            <i class="fas fa-arrow-right text-sm" aria-hidden="true"></i>
+        </a>
+        <a href="{{ path('app_home') }}#conditions-candidature"
+           class="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-lg border border-primary-500 bg-white px-6 text-base font-semibold text-primary-900 transition-colors duration-200 motion-reduce:transition-none hover:border-primary-700 hover:bg-primary-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800 sm:w-auto">
+            <i class="fas fa-arrow-left text-sm" aria-hidden="true"></i>
+            Retour aux conditions
+        </a>
+    </div>
+{% endmacro %}
+
+{# En-tête d'un panneau de liste : icône, titre, consigne. #}
+{% macro entete_liste(icone, titre, consigne) %}
+    <div class="flex items-start gap-3 border-b border-slate-200 px-4 py-4 sm:px-5">
+        <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary-50 text-lg text-primary-700" aria-hidden="true"><i class="fas {{ icone }}"></i></span>
+        <div class="min-w-0">
+            <h2 class="text-xl font-bold tracking-tight text-slate-800 sm:text-2xl">{{ titre }}</h2>
+            <p class="mt-0.5 text-sm text-slate-600">{{ consigne }}</p>
+        </div>
+    </div>
+{% endmacro %}
+
+{% block body %}
+{% import _self as page %}
+
+{# ============================================================
+   En-tête de page
+   ============================================================ #}
+<section class="bg-primary-50 border-b border-primary-200">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+
+        <nav aria-label="Fil d'Ariane" class="mb-6">
+            <ol class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-primary-800">
+                <li>
+                    <a href="{{ path('app_home') }}" class="inline-flex min-h-[32px] items-center font-medium underline underline-offset-4 hover:text-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800">Accueil</a>
+                </li>
+                <li aria-hidden="true"><i class="fas fa-chevron-right text-[0.625rem]"></i></li>
+                <li>
+                    <a href="{{ path('app_home') }}#conditions-candidature" class="inline-flex min-h-[32px] items-center font-medium underline underline-offset-4 hover:text-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800">Conditions de candidature</a>
+                </li>
+                <li aria-hidden="true"><i class="fas fa-chevron-right text-[0.625rem]"></i></li>
+                <li aria-current="page" class="font-semibold text-primary-900">Métiers et centres VAE</li>
+            </ol>
+        </nav>
+
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-primary-900 leading-[1.1] text-balance">
+            Métiers et centres VAE
+        </h1>
+        <p class="mt-4 text-base sm:text-lg leading-relaxed text-slate-700 max-w-[58ch]">
+            Vérifiez que votre métier fait partie de la session 2026, puis trouvez
+            le centre VAE où présenter votre dossier.
+        </p>
+
+        <div class="mt-6 sm:mt-8">
+            {{ page.reprendre_parcours() }}
+        </div>
+    </div>
+</section>
+
+
+{# ============================================================
+   Les métiers, puis les centres, l'un sous l'autre ; une seule recherche
+   filtre les deux listes, chacune paginée par 10 (comme daip.ci).
+   - Avec JavaScript : filtre pendant la frappe et pagination sur place
+     (filtreOffre + ui.pagination_alpine).
+   - Sans JavaScript : ?q= pour la recherche, ?pm= / ?pc= pour les pages
+     (ui.pagination_pages, le composant des listes du projet).
+   La classe « hidden » posée par le serveur est ensuite gérée par Alpine.
+   ============================================================ #}
+{% set filtre = saisie is not empty %}
+{% set rien_trouve = filtre and metiersTrouves is empty and centresTrouves is empty %}
+{% set base = filtre ? {q: saisie} : {} %}
+{% set total_metiers = filtre ? metiersTrouves|length : offre.nombreMetiers %}
+{% set total_centres = filtre ? centresTrouves|length : offre.nombreCentres %}
+<section id="resultats" class="bg-slate-50 scroll-mt-24" x-data="filtreOffre"
+         data-saisie="{{ saisie }}" data-page-metier="{{ pagesMetiers.page }}" data-page-centre="{{ pagesCentres.page }}"
+         data-par-page-metier="{{ parPage.metier }}" data-par-page-centre="{{ parPage.centre }}">
+
+    {# Recherche collée sous l'en-tête pendant le défilement des listes. #}
+    <div class="sticky top-16 z-20 border-b border-slate-200 bg-white sm:top-[72px]">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+            <form method="get" action="{{ path('app_metiers_centres') }}#resultats" role="search" @submit.prevent>
+                <label for="recherche" class="block text-base font-bold text-slate-800">Tapez votre métier, votre ville ou le nom d'un centre</label>
+                <p id="recherche-aide" class="mt-0.5 hidden text-sm text-slate-600 sm:block">Ex. : couture, menuiserie, Bouaké</p>
+                <div class="mt-2 flex gap-2">
+                    <div class="relative min-w-0 flex-1">
+                        <i class="fas fa-magnifying-glass pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true"></i>
+                        <input type="search" id="recherche" name="q" value="{{ saisie }}" x-model="q" placeholder="Ex. : couture, Bouaké"
+                               autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="search"
+                               aria-describedby="recherche-aide recherche-etat" aria-controls="metiers centres"
+                               class="block min-h-[56px] w-full rounded-lg border border-slate-400 bg-white pl-11 pr-4 text-base text-slate-800 placeholder:text-slate-500 focus:border-primary-700 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700">
+                    </div>
+                    {# Sans JavaScript, ce bouton lance la recherche ; avec, le filtre
+                       s'applique pendant la frappe et seul « Effacer » est utile. #}
+                    <button type="submit" x-show="false"
+                            class="inline-flex min-h-[56px] shrink-0 items-center justify-center rounded-lg bg-primary-700 px-5 text-base font-bold text-white hover:bg-primary-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700">
+                        Rechercher
+                    </button>
+                    <button type="button" x-cloak x-show="saisie" @click="q = ''; $nextTick(() => document.getElementById('recherche').focus())"
+                            class="inline-flex min-h-[56px] shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-base font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700">
+                        <i class="fas fa-xmark" aria-hidden="true"></i><span class="hidden sm:inline">Effacer</span><span class="sr-only sm:hidden">Effacer la recherche</span>
+                    </button>
+                </div>
+            </form>
+
+            {# Résultat de la recherche, annoncé aux lecteurs d'écran ; les deux
+               nombres mènent à leur liste (elles sont l'une sous l'autre). #}
+            <p id="recherche-etat" class="mt-2 flex flex-wrap items-center gap-x-1.5 text-sm text-slate-700 tabular-nums">
+                <span class="sr-only" role="status" aria-live="polite" x-text="annonce"></span>
+                <a href="#metiers" class="inline-flex min-h-[32px] items-center font-semibold text-primary-800 underline underline-offset-4 hover:text-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
+                   x-text="libelle(nombreMetiers, 'métier')">{{ total_metiers }} métier{{ total_metiers > 1 ? 's' }}</a>
+                <span aria-hidden="true">·</span>
+                <a href="#centres" class="inline-flex min-h-[32px] items-center font-semibold text-primary-800 underline underline-offset-4 hover:text-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
+                   x-text="libelle(nombreCentres, 'centre')">{{ total_centres }} centre{{ total_centres > 1 ? 's' }}</a>
+                <span class="{{ filtre ? '' : 'hidden' }}" :class="{ 'hidden': !saisie }">pour « <span x-text="q.trim()">{{ saisie }}</span> »</span>
+            </p>
+        </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-8">
+
+        {% if offre.nombreMetiers > 0 %}
+            {# Rien trouvé, ni métier ni centre. #}
+            <div class="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 {{ rien_trouve ? '' : 'hidden' }}"
+                 :class="{ 'hidden': !(saisie && nombreMetiers === 0 && nombreCentres === 0) }">
+                <i class="fas fa-circle-info mt-0.5 text-amber-700" aria-hidden="true"></i>
+                <p class="text-base text-amber-900">
+                    Nous ne trouvons rien pour cette recherche. Vérifiez l'orthographe, ou effacez la recherche pour voir tous les métiers et tous les centres.
+                    <a href="{{ path('app_home') }}#preinscription" class="mt-1 inline-flex min-h-[44px] items-center gap-1.5 font-semibold text-amber-900 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700">Je préfère être accompagné</a>
+                </p>
+            </div>
+
+            {# ---------------- 1. Les métiers ---------------- #}
+            <div id="metiers" class="scroll-mt-56 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                {{ page.entete_liste('fa-screwdriver-wrench', 'Mon métier est-il concerné ?', 'Touchez un métier pour voir les centres qui le proposent.') }}
+
+                <div class="border-b border-green-200 bg-green-50 px-4 py-3 sm:px-5 {{ filtre and metiersTrouves is not empty ? '' : 'hidden' }}"
+                     :class="{ 'hidden': !(saisie && nombreMetiers > 0) }">
+                    <p class="flex items-center gap-2 text-base font-bold text-green-800"><i class="fas fa-circle-check text-green-700" aria-hidden="true"></i>Votre métier est concerné</p>
+                </div>
+                <p class="px-4 py-4 text-base text-slate-700 sm:px-5 {{ filtre and metiersTrouves is empty and centresTrouves is not empty ? '' : 'hidden' }}"
+                   :class="{ 'hidden': !(saisie && nombreMetiers === 0 && nombreCentres > 0) }">Aucun métier ne correspond à cette recherche.</p>
+
+                <ul class="divide-y divide-slate-100">
+                    {% for filiere in offre.filieres %}
+                        {% for metier in filiere.metiers %}
+                            {% set visible = metier.cle in pagesMetiers.affiches %}
+                            {% set n = metier.centres|length %}
+                            {# Peu de résultats : les centres du métier s'ouvrent d'eux-mêmes. #}
+                            <li data-type="metier" data-cle="{{ metier.cle }}" data-radicaux="{{ metier.radicaux }}"
+                                class="{{ visible ? '' : 'hidden' }}" :class="{ 'hidden': !visible($el) }"
+                                x-effect="if (saisie && nombreMetiers <= 3 && correspond($el)) $el.querySelector('details').open = true">
+                                <details class="group/metier" {% if filtre and visible and metiersTrouves|length <= 3 %}open{% endif %}>
+                                    <summary class="flex min-h-[64px] cursor-pointer list-none items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-700 sm:px-5 [&::-webkit-details-marker]:hidden">
+                                        <span class="min-w-0 flex-1">
+                                            <span class="block text-base font-semibold text-slate-800">{{ metier.libelle }}</span>
+                                            <span class="block text-sm text-slate-600">{{ filiere.libelle }}</span>
+                                        </span>
+                                        <span class="hidden shrink-0 items-center gap-1.5 sm:flex">
+                                            {% for type in metier.types %}
+                                                <span class="rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-bold text-primary-800">{{ type }}</span>
+                                            {% endfor %}
+                                        </span>
+                                        <span class="shrink-0 text-right text-sm font-semibold text-primary-800 tabular-nums">
+                                            {{ n }} centre{{ n > 1 ? 's' }}
+                                        </span>
+                                        <i class="fas fa-chevron-down shrink-0 text-sm text-slate-500 transition-transform duration-200 motion-reduce:transition-none group-open/metier:rotate-180" aria-hidden="true"></i>
+                                    </summary>
+                                    <div class="border-t border-slate-100 bg-slate-50 px-4 py-4 sm:px-5">
+                                        <p class="flex flex-wrap items-center gap-1.5 text-sm text-slate-700 sm:hidden">
+                                            Diplômes :
+                                            {% for type in metier.types %}
+                                                <span class="rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-bold text-primary-800">{{ type }}</span>
+                                            {% endfor %}
+                                        </p>
+                                        <p class="mt-3 text-sm font-semibold text-slate-700 sm:mt-0">Proposé dans ces centres :</p>
+                                        <ul class="mt-2 grid grid-cols-1 gap-x-6 gap-y-2 md:grid-cols-2">
+                                            {% for centre in metier.centres %}
+                                                <li class="flex items-start gap-2 text-base text-slate-700">
+                                                    <i class="fas fa-location-dot mt-1 text-sm text-primary-700" aria-hidden="true"></i>
+                                                    <span><span class="font-medium text-slate-800">{{ centre.nom }}</span> — {{ centre.ville }}</span>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </details>
+                            </li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+
+                {# Pagination du projet : liens sans JavaScript, boutons avec. #}
+                <div x-show="false">
+                    {{ ui.pagination_pages(pagesMetiers.page, pagesMetiers.pages, pagesMetiers.total, 'app_metiers_centres', base|merge({pc: pagesCentres.page}), 'pm', 'metiers', 'Pages de la liste des métiers', 'métier') }}
+                </div>
+                {{ ui.pagination_alpine('metier', 'Pages de la liste des métiers', 'métier') }}
+            </div>
+
+            {# ---------------- 2. Les centres ---------------- #}
+            <div id="centres" class="scroll-mt-56 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                {{ page.entete_liste('fa-location-dot', 'Trouver mon centre VAE', 'Chaque centre, sa ville et les métiers qu’il propose.') }}
+
+                <p class="px-4 py-4 text-base text-slate-700 sm:px-5 {{ filtre and centresTrouves is empty and metiersTrouves is not empty ? '' : 'hidden' }}"
+                   :class="{ 'hidden': !(saisie && nombreCentres === 0 && nombreMetiers > 0) }">Aucun centre ne correspond à cette recherche.</p>
+
+                <ul class="divide-y divide-slate-100">
+                    {% for ville in offre.villes %}
+                        {% for centre in ville.centres %}
+                            {% set visible = centre.cle in pagesCentres.affiches %}
+                            <li data-type="centre" data-cle="{{ centre.cle }}" data-radicaux="{{ centre.radicaux }}"
+                                class="grid grid-cols-1 gap-x-6 gap-y-2 px-4 py-4 sm:px-5 md:grid-cols-5 {{ visible ? '' : 'hidden' }}" :class="{ 'hidden': !visible($el) }">
+                                <div class="min-w-0 md:col-span-2">
+                                    <p class="text-base font-semibold text-slate-800">{{ centre.nom }}</p>
+                                    <p class="mt-0.5 flex items-center gap-1.5 text-sm font-medium text-primary-800">
+                                        <i class="fas fa-location-dot text-xs" aria-hidden="true"></i>{{ ville.libelle }}
+                                    </p>
+                                </div>
+                                <ul class="flex flex-wrap content-start gap-1.5 md:col-span-3" aria-label="Métiers proposés">
+                                    {% for metier in centre.metiers %}
+                                        <li class="rounded-md bg-slate-100 px-2 py-1 text-sm text-slate-700">{{ metier }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+
+                <div x-show="false">
+                    {{ ui.pagination_pages(pagesCentres.page, pagesCentres.pages, pagesCentres.total, 'app_metiers_centres', base|merge({pm: pagesMetiers.page}), 'pc', 'centres', 'Pages de la liste des centres', 'centre') }}
+                </div>
+                {{ ui.pagination_alpine('centre', 'Pages de la liste des centres', 'centre') }}
+            </div>
+        {% else %}
+            <p class="rounded-lg border border-slate-200 bg-white px-5 py-4 text-base text-slate-700">
+                La liste des métiers et des centres de la session 2026 sera bientôt disponible ici.
+            </p>
+        {% endif %}
+
+        {% if documents.liste.disponible %}
+            <a href="{{ asset(documents.liste.chemin) }}" download
+               class="inline-flex min-h-[44px] items-center gap-2 rounded-md text-base font-semibold text-primary-800 underline underline-offset-4 hover:text-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700">
+                <i class="fas fa-file-word" aria-hidden="true"></i>
+                Télécharger la liste complète (Word)
+            </a>
+        {% endif %}
+    </div>
+</section>
+
+
+{# ============================================================
+   Reprendre le parcours
+   ============================================================ #}
+<section class="py-10 sm:py-12 bg-white border-t border-slate-200">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-800 text-balance">
+            Votre métier est concerné&nbsp;? Continuez votre démarche.
+        </h2>
+        <div class="mt-5">
+            {{ page.reprendre_parcours() }}
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+// app.js est chargé en « defer » : ce script s'enregistre avant alpine:init.
+document.addEventListener('alpine:init', function () {
+    // Filtre des métiers et des centres pendant la frappe, et pagination sur
+    // place. Même règle que OffrePublique::correspond() côté serveur : saisie
+    // normalisée contenue dans la clé, ou mot de 5 lettres et plus partageant
+    // son radical de 4.
+    window.Alpine.data('filtreOffre', function () {
+        return {
+            q: '',
+            pages: { metier: 1, centre: 1 },
+            parPage: { metier: 10, centre: 10 },
+            init: function () {
+                var d = this.$el.dataset, soi = this;
+                this.q = d.saisie || '';
+                this.parPage = { metier: +d.parPageMetier || 10, centre: +d.parPageCentre || 10 };
+                this.pages = { metier: +d.pageMetier || 1, centre: +d.pageCentre || 1 };
+                // Une nouvelle saisie repart de la première page.
+                this.$watch('q', function () { soi.pages = { metier: 1, centre: 1 }; });
+            },
+            normaliser: function (s) {
+                return String(s ?? '')
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .toLowerCase()
+                    .trim()
+                    .replace(/\s+/g, ' ');
+            },
+            get requete() { return this.normaliser(this.q); },
+            get saisie() { return this.requete !== ''; },
+            correspond: function (el) {
+                var q = this.requete;
+                if (q === '') { return true; }
+                if (el.dataset.cle.includes(q)) { return true; }
+                var radicaux = el.dataset.radicaux.split(' ');
+                return q.split(' ').some(function (mot) {
+                    return mot.length >= 5 && radicaux.includes(mot.slice(0, 4));
+                });
+            },
+            // Éléments d'un type qui correspondent à la saisie, dans l'ordre de la page.
+            trouves: function (type) {
+                var soi = this;
+                return Array.prototype.filter.call(this.$root.querySelectorAll('[data-type="' + type + '"]'), function (el) { return soi.correspond(el); });
+            },
+            // Affiché : correspond à la saisie et tombe dans la page en cours.
+            visible: function (el) {
+                var type = el.dataset.type, rang = this.trouves(type).indexOf(el), n = this.parPage[type];
+                return rang >= (this.pages[type] - 1) * n && rang < this.pages[type] * n;
+            },
+            nbPages: function (type) { return Math.max(1, Math.ceil(this.trouves(type).length / this.parPage[type])); },
+            // Numéros affichés par ui.pagination_alpine, même règle que
+            // ui.pagination_pages : 2 pages de part et d'autre, la première et
+            // la dernière toujours accessibles, « … » pour les trous.
+            numeros: function (type) {
+                var p = this.pages[type], n = this.nbPages(type), liste = [];
+                var debut = Math.max(1, p - 2), fin = Math.min(n, p + 2);
+                if (debut > 1) { liste.push(1); if (debut > 2) { liste.push('…'); } }
+                for (var i = debut; i <= fin; i++) { liste.push(i); }
+                if (fin < n) { if (fin < n - 1) { liste.push('…'); } liste.push(n); }
+                return liste;
+            },
+            // Change de page, puis remonte en haut de la liste concernée.
+            allerA: function (type, numero) {
+                this.pages[type] = Math.min(Math.max(1, numero), this.nbPages(type));
+                var cible = document.getElementById(type === 'metier' ? 'metiers' : 'centres');
+                var reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                this.$nextTick(function () { cible.scrollIntoView({ behavior: reduit ? 'auto' : 'smooth', block: 'start' }); });
+            },
+            get nombreMetiers() { return this.trouves('metier').length; },
+            get nombreCentres() { return this.trouves('centre').length; },
+            libelle: function (nombre, mot) { return nombre + ' ' + mot + (nombre > 1 ? 's' : ''); },
+            get annonce() {
+                var texte = this.libelle(this.nombreMetiers, 'métier') + ' et ' + this.libelle(this.nombreCentres, 'centre');
+                return this.saisie ? texte + ' pour « ' + this.q.trim() + ' »' : texte + ' VAE';
+            }
+        };
+    });
+});
+</script>
+{% endblock %}

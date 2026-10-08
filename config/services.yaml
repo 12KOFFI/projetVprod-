@@ -1,6 +1,8 @@
 parameters:
     dir_image: '%kernel.project_dir%/public/image/'
-    dir_media: '%kernel.project_dir%/public/media/'
+    # Pièces justificatives : hors de public/, servies uniquement par
+    # PieceController après contrôle des droits (CandidatureVoter).
+    dir_media: '%kernel.project_dir%/stockage/pieces/'
 
     # Tarifs des trois règlements du parcours, en francs CFA. Ils vivent ici et
     # non dans le code : un changement de barème ne doit pas demander de
@@ -36,7 +38,7 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
-    # Les pièces d'un dossier sont rangées sous public/media/{numéro VAE}/ :
+    # Les pièces d'un dossier sont rangées sous stockage/pieces/{numéro VAE}/ :
     # le service reçoit la racine plutôt que de reconstruire un chemin.
     App\Service\Candidature\CandidatureService:
         arguments:
@@ -84,6 +86,23 @@ services:
         arguments:
             $delaiSimulationMs: '%app.payment.simulation_delay_ms%'
 
-    # Le jour du branchement de Trésor Pay, seul cet alias change : la logique
-    # métier ne dépend que de l'interface (règle métier R5.11).
-    App\Payment\PaymentGatewayInterface: '@App\Payment\Gateway\TreasuryPaySimulationGateway'
+    # Identifiants du fournisseur de paiement ACTIF, quel qu'il soit (Trésor
+    # Pay, Orange Money, Wave…) : noms neutres, valeurs dans .env.local.
+    App\Payment\ConfigurationPasserelle:
+        arguments:
+            $urlApi: '%env(PAIEMENT_API_URL)%'
+            $identifiantMarchand: '%env(PAIEMENT_MARCHAND_ID)%'
+            $cleApi: '%env(PAIEMENT_API_CLE)%'
+            $secretNotification: '%env(PAIEMENT_SECRET_NOTIFICATION)%'
+            $urlNotification: '%env(PAIEMENT_URL_NOTIFICATION)%'
+
+    App\Payment\SelecteurPasserelle:
+        arguments:
+            $passerelle: '%env(PAIEMENT_PASSERELLE)%'
+
+    # La passerelle utilisée se choisit par PAIEMENT_PASSERELLE parmi celles
+    # qui portent #[AutoconfigureTag(SelecteurPasserelle::TAG)] : un nouveau
+    # fournisseur ne demande aucune ligne ici. La logique métier ne dépend que
+    # de l'interface (R5.11).
+    App\Payment\PaymentGatewayInterface:
+        factory: ['@App\Payment\SelecteurPasserelle', 'passerelle']

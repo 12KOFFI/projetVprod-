@@ -9,6 +9,7 @@
 import "./styles/app.css";
 
 import Alpine from "alpinejs";
+import listeDeroulante, { formaterNumero } from "./composants/liste-deroulante";
 import { Chart, DoughnutController, ArcElement, Tooltip } from "chart.js";
 
 Chart.register(DoughnutController, ArcElement, Tooltip);
@@ -184,26 +185,35 @@ window.validationFormulaire = function () {
             });
 
             if (premierInvalide) {
-                premierInvalide.focus();
-                premierInvalide.scrollIntoView({ behavior: "smooth", block: "center" });
+                const cible = this.cibleErreur(premierInvalide);
+                const bouton = cible === premierInvalide ? premierInvalide : cible.querySelector("button");
+                (bouton || premierInvalide).focus();
+                cible.scrollIntoView({ behavior: "smooth", block: "center" });
             }
+        },
+
+        // Une <select> masquée par une liste avec recherche (x-ref « natif ») :
+        // l'erreur s'affiche sous la liste entière.
+        cibleErreur(champ) {
+            return champ.hidden && champ.parentElement ? champ.parentElement : champ;
         },
 
         afficherErreur(champ) {
             this.effacerErreur(champ);
 
+            const cible = this.cibleErreur(champ);
             const message = document.createElement("p");
             message.dataset.erreurValidation = "true";
             message.className = "mt-1.5 text-sm text-red-700";
             message.textContent = this.messagePour(champ);
-            champ.insertAdjacentElement("afterend", message);
+            cible.insertAdjacentElement("afterend", message);
             champ.classList.add("border-red-500");
         },
 
         effacerErreur(champ) {
             champ.classList.remove("border-red-500");
 
-            const suivant = champ.nextElementSibling;
+            const suivant = this.cibleErreur(champ).nextElementSibling;
             if (suivant && suivant.dataset && suivant.dataset.erreurValidation) {
                 suivant.remove();
             }
@@ -221,8 +231,11 @@ window.validationFormulaire = function () {
             if (validite.tooLong) {
                 return `Ce champ ne peut pas dépasser ${champ.maxLength} caractères.`;
             }
-            if (validite.rangeUnderflow || validite.rangeOverflow) {
-                return "La valeur saisie est hors des limites autorisées.";
+            if (validite.rangeUnderflow) {
+                return champ.dataset.messageMin || `La valeur minimale est ${champ.min}.`;
+            }
+            if (validite.rangeOverflow) {
+                return `La valeur maximale est ${champ.max}.`;
             }
             if (validite.patternMismatch) {
                 return champ.title || "Le format saisi n'est pas valide.";
@@ -237,26 +250,129 @@ window.validationFormulaire = function () {
 };
 
 /**
- * Cascade du formulaire de dépôt : centre → métiers → certifications.
+ * Cascade du formulaire de dépôt : centre → métiers → certifications, et filtre
+ * des certifications selon l'expérience.
  *
  * Les trois listes se déterminent en chaîne. Le centre ouvre des métiers, et le
  * couple (centre, métier) les certifications réellement préparées : proposer
  * les diplômes du métier sans tenir compte du centre laisserait choisir une
- * certification que l'établissement n'enseigne pas.
+ * certification que l'établissement n'enseigne pas. Parmi elles, seules celles
+ * du type accessible s'affichent : CQP de 5 à 6 ans d'expérience, CAP à partir
+ * de 7 ans — ou CQP quand le centre ne prépare aucun CAP pour ce métier (seuils
+ * portés par le champ des années, règle de ProfilProfessionnel::typeRetenu).
  *
  * Partagé par les quatre écrans qui servent ce formulaire (espace candidat,
  * inscription assistée, reprise, conseiller) plutôt que recopié dans chacun.
- * Le serveur revalide toujours le triplet posté : cette cascade est un confort
- * de saisie, jamais une garantie.
+ * Les champs sont repérés par data-depot (centre, metier, certification,
+ * annees) : la liste du centre est déjà une x-ref « natif » de la liste avec
+ * recherche. Le serveur revalide toujours le triplet posté et le type du
+ * diplôme : ce filtrage est un confort de saisie, jamais une garantie.
  */
 window.depotCandidature = function () {
-    return Object.assign(window.validationFormulaire(), {
+    const base = window.validationFormulaire();
+    const initValidation = base.init;
+
+    return Object.assign(base, {
         chargement: false,
         chargementCertifications: false,
+        annees: "",
+        // Offre du couple (centre, métier) : [{id, libelle, type}].
+        certifications: [],
+        certificationsChargees: false,
+        formulaire: null,
+
+        init() {
+            initValidation.call(this);
+            this.formulaire = this.$el;
+
+            const annees = this.champ("annees");
+            this.annees = annees ? annees.value : "";
+
+            // Premier affichage : l'offre est déjà rendue par le serveur, avec le
+            // type de chaque diplôme en data-type.
+            const metier = this.champ("metier");
+            const certification = this.champ("certification");
+            if (certification && metier && metier.value) {
+                this.certifications = Array.from(certification.options)
+                    .filter((option) => option.value !== "")
+                    .map((option) => ({ id: option.value, libelle: option.text, type: option.dataset.type || "" }));
+                this.certificationsChargees = true;
+            }
+            this.afficherCertifications();
+        },
+
+        champ(nom) {
+            return this.formulaire ? this.formulaire.querySelector(`[data-depot="${nom}"]`) : null;
+        },
+
+        seuil(nom) {
+            const annees = this.champ("annees");
+
+            return annees ? parseInt(annees.dataset[nom], 10) : NaN;
+        },
+
+        /** « CQP », « CAP » ou null (années non saisies ou insuffisantes). */
+        typeAccessible() {
+            const n = parseInt(this.annees, 10);
+
+            if (Number.isNaN(n) || n < this.seuil("anneesCqp")) {
+                return null;
+            }
+
+            return n >= this.seuil("anneesCap") ? "CAP" : "CQP";
+        },
+
+        /**
+         * Type réellement proposé : celui de l'expérience, ou le CQP quand
+         * l'offre chargée ne contient aucun CAP.
+         */
+        typeRetenu() {
+            const type = this.typeAccessible();
+
+            return type === "CAP" && this.repliCqp() ? "CQP" : type;
+        },
+
+        repliCqp() {
+            return this.typeAccessible() === "CAP"
+                && this.certificationsChargees
+                && this.certifications.length > 0
+                && !this.certifications.some((item) => item.type === "CAP");
+        },
+
+        anneesInsuffisantes() {
+            const n = parseInt(this.annees, 10);
+
+            return !Number.isNaN(n) && n < this.seuil("anneesCqp");
+        },
+
+        messageRepere() {
+            const type = this.typeAccessible();
+
+            if (this.anneesInsuffisantes()) {
+                return `La VAE demande au moins ${this.seuil("anneesCqp")} ans d'expérience dans le métier.`;
+            }
+            if (type === null) {
+                return "Saisissez vos années d'expérience : le diplôme accessible s'affiche ici.";
+            }
+
+            return `Avec ${parseInt(this.annees, 10)} ans d'expérience, vous visez un ${type}.`;
+        },
+
+        messageCertification() {
+            const type = this.typeRetenu();
+
+            if (this.repliCqp()) {
+                return "Ce centre ne propose pas le CAP pour ce métier. Vous pouvez choisir un CQP.";
+            }
+
+            return type === null
+                ? `Liste ouverte une fois vos années d'expérience saisies (${this.seuil("anneesCqp")} ans minimum).`
+                : `Seuls les ${type} sont proposés pour votre expérience.`;
+        },
 
         async chargerMetiers() {
-            const centre = this.$refs.centre;
-            const metier = this.$refs.metier;
+            const centre = this.champ("centre");
+            const metier = this.champ("metier");
 
             if (!centre || !metier || !centre.value) {
                 return;
@@ -291,12 +407,12 @@ window.depotCandidature = function () {
 
             // Changer de centre invalide la certification déjà choisie : elle
             // appartenait à l'offre de l'ancien couple.
-            this.viderCertifications("Sélectionnez d'abord un métier");
+            this.viderCertifications();
         },
 
         async chargerCertifications() {
-            const metier = this.$refs.metier;
-            const certification = this.$refs.certification;
+            const metier = this.champ("metier");
+            const certification = this.champ("certification");
 
             if (!certification) {
                 return;
@@ -304,17 +420,17 @@ window.depotCandidature = function () {
 
             // En inscription assistée le centre est imposé : son champ n'existe
             // pas, et l'identifiant est alors porté par un attribut de données.
-            const centreValeur = this.$refs.centre
-                ? this.$refs.centre.value
-                : certification.dataset.centre;
+            const centre = this.champ("centre");
+            const centreValeur = centre ? centre.value : certification.dataset.centre;
 
             if (!metier || !metier.value || !centreValeur) {
-                this.viderCertifications("Sélectionnez d'abord un métier");
+                this.viderCertifications();
 
                 return;
             }
 
             this.chargementCertifications = true;
+            this.certifications = [];
             certification.innerHTML = "";
 
             try {
@@ -327,39 +443,83 @@ window.depotCandidature = function () {
                     throw new Error("Chargement impossible");
                 }
 
-                const certifications = await reponse.json();
-
-                if (certifications.length === 0) {
-                    certification.appendChild(
-                        new Option("Aucun diplôme proposé pour ce métier dans ce centre", "")
-                    );
-
-                    return;
-                }
-
-                certification.appendChild(new Option("Sélectionnez le diplôme visé", ""));
-                certifications.forEach((item) => {
-                    certification.appendChild(new Option(item.libelle, item.id));
-                });
+                this.certifications = (await reponse.json()).map((item) => ({
+                    id: String(item.id),
+                    libelle: item.libelle,
+                    type: item.type || "",
+                }));
+                this.certificationsChargees = true;
             } catch (erreur) {
-                certification.appendChild(new Option("Chargement impossible", ""));
+                this.certificationsChargees = false;
             } finally {
                 this.chargementCertifications = false;
             }
+
+            if (this.certificationsChargees) {
+                this.afficherCertifications();
+            } else {
+                certification.innerHTML = "";
+                certification.appendChild(new Option("Chargement impossible", ""));
+            }
         },
 
-        viderCertifications(message) {
-            const certification = this.$refs.certification;
+        /**
+         * Réécrit la liste des diplômes : l'offre du couple (centre, métier)
+         * réduite au type accessible. Le choix courant est gardé s'il reste
+         * proposé.
+         */
+        afficherCertifications() {
+            const certification = this.champ("certification");
 
-            if (!certification) {
+            if (!certification || this.chargementCertifications) {
                 return;
             }
 
+            const courant = certification.value;
+            const type = this.typeRetenu();
+            const ajouter = (libelle, valeur = "") => certification.appendChild(new Option(libelle, valeur));
+
             certification.innerHTML = "";
-            certification.appendChild(new Option(message, ""));
+
+            if (!this.certificationsChargees) {
+                ajouter("Sélectionnez d'abord un métier");
+            } else if (this.certifications.length === 0) {
+                ajouter("Aucun diplôme proposé pour ce métier dans ce centre");
+            } else if (this.anneesInsuffisantes()) {
+                ajouter(`Aucun diplôme accessible avant ${this.seuil("anneesCqp")} ans d'expérience`);
+            } else if (type === null) {
+                ajouter("Saisissez d'abord vos années d'expérience");
+            } else {
+                const proposees = this.certifications.filter((item) => item.type === type);
+
+                if (proposees.length === 0) {
+                    ajouter(`Aucun ${type} proposé pour ce métier dans ce centre`);
+                } else {
+                    ajouter("Sélectionnez le diplôme visé");
+                    proposees.forEach((item) => {
+                        const option = new Option(item.libelle, item.id);
+                        option.dataset.type = item.type;
+                        certification.appendChild(option);
+                    });
+                }
+            }
+
+            certification.value = Array.from(certification.options).some((option) => option.value === courant && courant !== "")
+                ? courant
+                : "";
+        },
+
+        viderCertifications() {
+            this.certifications = [];
+            this.certificationsChargees = false;
+            this.afficherCertifications();
         },
     });
 };
+
+// Liste déroulante avec recherche (nationalité, indicatif téléphonique).
+Alpine.data("listeDeroulante", listeDeroulante);
+window.formaterNumero = formaterNumero;
 
 window.Alpine = Alpine;
 Alpine.start();

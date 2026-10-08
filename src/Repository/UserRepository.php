@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Referentiel\Telephone;
 use App\Entity\Centre;
 use App\Entity\Metier;
 use App\Entity\User;
@@ -56,9 +57,10 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             return $user;
         }
 
-        $contact = preg_replace('/\D+/', '', $identifiant);
+        // Numéro au format international ; tapé sans indicatif, il est ivoirien.
+        $telephone = Telephone::depuisIdentifiant($identifiant);
 
-        return $contact !== '' ? $this->findOneBy(['contact' => $contact]) : null;
+        return $telephone !== null ? $this->findOneBy(['contact' => $telephone]) : null;
     }
 
     /**

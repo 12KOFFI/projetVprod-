@@ -33,6 +33,11 @@ class CandidatureVoter extends Voter
     public const PAY                      = 'CANDIDATURE_PAY';
     public const DELETE                   = 'CANDIDATURE_DELETE';
     public const PRINT_FICHE              = 'CANDIDATURE_PRINT_FICHE';
+    /** Pièces jointes par le conseiller (justificatif d'expérience). */
+    public const VIEW_PIECES_CONSEILLER   = 'CANDIDATURE_VIEW_PIECES_CONSEILLER';
+    /** Livret de preuves (étape 5) : consultation, puis dépôt. */
+    public const LIVRET_VOIR              = 'CANDIDATURE_LIVRET_VOIR';
+    public const LIVRET_DEPOSER           = 'CANDIDATURE_LIVRET_DEPOSER';
 
     private const ATTRIBUTS = [
         self::VIEW,
@@ -43,6 +48,9 @@ class CandidatureVoter extends Voter
         self::PAY,
         self::DELETE,
         self::PRINT_FICHE,
+        self::VIEW_PIECES_CONSEILLER,
+        self::LIVRET_VOIR,
+        self::LIVRET_DEPOSER,
     ];
 
     public function __construct(
@@ -83,6 +91,9 @@ class CandidatureVoter extends Voter
             self::PAY                    => $this->peutPayer($subject, $user),
             self::DELETE                 => false, // réservé à l'administrateur, traité plus haut
             self::PRINT_FICHE            => $this->peutImprimerFiche($subject, $user),
+            self::VIEW_PIECES_CONSEILLER => $this->peutVoirPiecesConseiller($subject, $user),
+            self::LIVRET_VOIR            => $this->peutVoirPiecesConseiller($subject, $user),
+            self::LIVRET_DEPOSER         => $this->peutDeposerAuLivret($subject, $user),
             default                      => false,
         };
     }
@@ -99,6 +110,28 @@ class CandidatureVoter extends Voter
         }
 
         return $this->estSonAccompagnateur($candidature, $user);
+    }
+
+    /**
+     * Le justificatif d'expérience, joint par le conseiller : le candidat le
+     * consulte, le conseiller du centre et l'accompagnateur aussi ; l'agent
+     * d'accueil, qui voit les autres pièces de son centre, ne le voit pas.
+     */
+    private function peutVoirPiecesConseiller(Candidature $candidature, User $user): bool
+    {
+        return $this->estLeCandidat($candidature, $user)
+            || ($this->aRole($user, Role::CONSEILLER) && $this->estDuMemeCentre($candidature, $user))
+            || $this->estSonAccompagnateur($candidature, $user);
+    }
+
+    /**
+     * Le livret se constitue à deux, candidat et accompagnateur, une fois
+     * l'accompagnateur affecté (frais d'accompagnement réglés).
+     */
+    private function peutDeposerAuLivret(Candidature $candidature, User $user): bool
+    {
+        return $candidature->getAccompagnateur() !== null
+            && ($this->estLeCandidat($candidature, $user) || $this->estSonAccompagnateur($candidature, $user));
     }
 
     /**

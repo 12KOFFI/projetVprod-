@@ -188,7 +188,7 @@
                                     {{ candidature.user ? candidature.user.nomComplet : 'Candidat non renseigné' }}
                                 </p>
                                 <p class="mt-0.5 break-words text-sm text-slate-600 tabular-nums">
-                                    {{ candidature.user and candidature.user.contact ? candidature.user.contact : 'Téléphone non renseigné' }}
+                                    {{ candidature.user and candidature.user.contact ? candidature.user.contact|telephone : 'Téléphone non renseigné' }}
                                 </p>
                             </td>
                             <td class="break-words px-4 py-4 align-top text-sm text-slate-700">
@@ -236,7 +236,7 @@
                             <div class="flex flex-wrap gap-x-2">
                                 <dt class="w-28 shrink-0 text-slate-600">Téléphone</dt>
                                 <dd class="min-w-0 break-words font-medium text-slate-900 tabular-nums">
-                                    {{ candidature.user and candidature.user.contact ? candidature.user.contact : 'Non renseigné' }}
+                                    {{ candidature.user and candidature.user.contact ? candidature.user.contact|telephone : 'Non renseigné' }}
                                 </dd>
                             </div>
                             <div class="flex flex-wrap gap-x-2">

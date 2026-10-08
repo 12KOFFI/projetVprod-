@@ -18,6 +18,7 @@ class CertificationOfferte extends Constraint
 {
     public string $messageNonOfferte = 'Ce diplôme n\'est pas préparé par le centre sélectionné pour ce métier.';
     public string $messageInactive = 'Ce diplôme n\'est plus proposé.';
+    public string $messageType = 'Avec {{ annees }} ans d\'expérience, le diplôme visé est un {{ type }}.';
 
     public function getTargets(): string
     {

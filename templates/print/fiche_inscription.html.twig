@@ -23,25 +23,12 @@
 {% set centre = candidature.centre ? candidature.centre.nom : '' %}
 {% set experience = candidature.nbAnneesExperience ?? 0 %}
 
-{% set langue = candidature.langue|upper %}
-{% set langue_libelle = langue == 'FRANCAIS' ? 'Français'
-    : (langue == 'LANGUE LOCALE' ? 'Langue locale' : (langue == 'AUTRE' ? 'Autre' : candidature.langue)) %}
-{% if candidature.preciserlangue %}{% set langue_libelle = langue_libelle ~ ' (' ~ candidature.preciserlangue ~ ')' %}{% endif %}
+{# Libellés communs à toute l'application (App\Referentiel\ProfilProfessionnel). #}
+{% set langue_libelle = candidature.langueLibelle %}
+{% set diplome = candidature.diplomeLibelle %}
 
-{% set libelles_situation = {
-    'ARTISAN A SON COMPTE': 'Indépendant (auto-emploi)',
-    'SALARIE': 'Salarié',
-    'APPRENTI': 'Autre : apprenti',
-    'AIDE FAMILIAL': 'Autre : aide familial',
-    'SANS EMPLOI': 'Autre : sans emploi'
-} %}
-{% set diplome = candidature.diplome == 'SUPERIEUR' ? 'Supérieur au BAC' : candidature.diplome %}
-
-{# Section I : toutes les rubriques sont dues, sauf le nom de jeune fille,
-   affiché seulement s'il est renseigné. #}
-{% set nom_jeune_fille = candidat_present ? candidat.nomJeuneFille : '' %}
+{# Section I : identification du candidat. #}
 {% set identification = [{libelle: 'Nom et prénoms', valeur: nom_complet}]
-    |merge(nom_jeune_fille ? [{libelle: 'Nom de jeune fille', valeur: nom_jeune_fille}] : [])
     |merge([
         {libelle: 'Date de naissance', valeur: naissance},
         {libelle: 'Lieu de naissance', valeur: lieu_naissance},
@@ -55,7 +42,7 @@
 
 {# Rubriques facultatives : une valeur vide retire la ligne. #}
 {% set situation_pro = [
-    {libelle: 'Situation professionnelle', valeur: libelles_situation[candidature.situationPro] ?? candidature.situationPro},
+    {libelle: 'Situation professionnelle', valeur: candidature.situationProLibelle},
     {libelle: "Entreprise, organisme ou administration d'attache", valeur: candidature.nomEntreprise},
     {libelle: "Lieu d'exercice (Région, Département, Sous-préfecture)", valeur: candidature.lieuExercice},
     {libelle: 'Direction, service', valeur: candidature.directionService},
@@ -69,13 +56,12 @@
     {libelle: 'Né(e) le', valeur: naissance ~ (naissance and lieu_naissance ? ' à ' : '') ~ lieu_naissance},
     {libelle: 'Sexe', valeur: sexe_libelle},
     {libelle: 'Nationalité', valeur: candidat_present ? candidat.nationalite : ''},
-    {libelle: 'Téléphone (1) fixe', valeur: candidat_present ? candidat.contact2 : ''},
-    {libelle: 'Téléphone (2) portable', valeur: candidat_present ? candidat.contact : ''},
+    {libelle: 'Contact 1', valeur: candidat_present and candidat.contact ? candidat.contact|telephone : ''},
+    {libelle: 'Contact 2', valeur: candidat_present and candidat.contact2 ? candidat.contact2|telephone : ''},
     {libelle: 'Boîte postale', valeur: candidat_present ? candidat.boitePostale : ''},
     {libelle: 'Ville', valeur: candidat_present ? candidat.residence : ''},
     {libelle: 'E-mail personnel', valeur: candidat_present ? candidat.email : '', casse_libre: true},
     {libelle: 'Diplôme académique', valeur: diplome},
-    {libelle: 'Titre professionnel', valeur: candidature.titrepro},
     {libelle: 'Emploi / métier exercé', valeur: metier}
 ] %}
 

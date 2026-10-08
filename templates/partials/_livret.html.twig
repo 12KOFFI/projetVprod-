@@ -1,0 +1,76 @@
+{#
+  Livret de preuves d'un dossier, commun au candidat et à son accompagnateur.
+  Variables : candidature, preuves (PreuveLivret[]), formulaire (PreuveLivretType,
+  null si le dépôt n'est pas ouvert à l'utilisateur).
+#}
+{% import 'partials/_ui.html.twig' as ui %}
+<section class="bg-white rounded-lg border border-slate-200 p-6" aria-labelledby="livret-titre">
+    <div class="mb-5 flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
+        <div class="flex items-start gap-3 sm:items-center">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                <i class="fas fa-book-open" aria-hidden="true"></i>
+            </div>
+            <div class="min-w-0">
+                <h2 id="livret-titre" class="text-base font-semibold text-slate-900">Livret de preuves</h2>
+                <p class="mt-0.5 text-sm text-slate-600">Les preuves de votre expérience présentées au jury : photos de réalisations, attestations, factures…</p>
+            </div>
+        </div>
+        <span class="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-sm font-semibold tabular-nums text-slate-700">{{ preuves|length }}</span>
+    </div>
+
+    {% if preuves is not empty %}
+        <ul class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+            {% for preuve in preuves %}
+                <li class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex min-w-0 items-start gap-3">
+                        <i class="fas fa-file-{{ preuve.estPdf ? 'pdf' : 'image' }} mt-0.5 text-lg text-indigo-600" aria-hidden="true"></i>
+                        <div class="min-w-0">
+                            <p class="font-medium text-slate-900">{{ preuve.titre }}</p>
+                            {% if preuve.description %}<p class="mt-0.5 text-sm text-slate-600">{{ preuve.description }}</p>{% endif %}
+                            <p class="mt-1 text-sm text-slate-600">
+                                Déposée le {{ preuve.creation|date('d/m/Y') }}
+                                par {{ preuve.deposePar ? (preuve.deposePar == candidature.user ? 'le candidat' : preuve.deposePar.nomComplet) : '—' }}
+                                · {{ (preuve.taille / 1048576)|number_format(1, ',', ' ') }} Mo
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex shrink-0 items-center gap-2">
+                        <a href="{{ path('app_preuve', {id: preuve.id}) }}" target="_blank" rel="noopener"
+                           class="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg bg-indigo-50 px-3 text-sm font-medium text-indigo-700 hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600">
+                            <i class="fas fa-eye text-xs" aria-hidden="true"></i>Ouvrir
+                        </a>
+                        {% if formulaire and preuve.deposePar and preuve.deposePar == app.user %}
+                            <form method="post" action="{{ path('app_preuve_supprimer', {id: preuve.id}) }}"
+                                  onsubmit="return confirm('Retirer cette preuve du livret ?')">
+                                <input type="hidden" name="_token" value="{{ csrf_token('supprimer_preuve_' ~ preuve.id) }}">
+                                <button type="submit" class="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-red-700 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600">
+                                    <i class="fas fa-trash-can text-xs" aria-hidden="true"></i>Retirer
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        {{ ui.etat_vide('book-open', 'Aucune preuve pour l\'instant', 'Ajoutez les documents qui montrent votre savoir-faire : ils seront présentés au jury.') }}
+    {% endif %}
+
+    {% if formulaire %}
+        <div class="mt-6 border-t border-slate-200 pt-5">
+            <h3 class="mb-4 text-sm font-semibold text-slate-900">Ajouter une preuve</h3>
+            {{ form_start(formulaire, {attr: {novalidate: 'novalidate', 'x-data': 'validationFormulaire()', '@submit': 'verifierAvantEnvoi($event)'}}) }}
+                <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    {{ ui.champ(formulaire.titre) }}
+                    {{ ui.document(formulaire.fichier, 'Fichier (PDF, JPG ou PNG — 5 Mo maximum)', true) }}
+                    {{ ui.champ(formulaire.description, 'md:col-span-2') }}
+                </div>
+                <div class="mt-5 flex justify-end">
+                    <button type="submit" class="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-medium text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                        <i class="fas fa-plus text-xs" aria-hidden="true"></i>Ajouter au livret
+                    </button>
+                </div>
+            {{ form_end(formulaire) }}
+        </div>
+    {% endif %}
+</section>
