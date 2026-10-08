@@ -15,38 +15,24 @@ use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Passerelle réelle : connecteur HTTP vers l'API de paiement du Trésor.
+ * Passerelle réelle : connecteur HTTP vers l'API du fournisseur de paiement
+ * retenu (Trésor Pay, Orange Money, Wave…). Une seule classe pour le
+ * paiement réel : changer de fournisseur, c'est adapter ce fichier à sa
+ * documentation et changer les valeurs PAIEMENT_* de .env.local.
  *
- * Parcours « page de paiement hébergée » :
- *   1. initier()  — POST /payments : le fournisseur crée la transaction et
- *      renvoie l'adresse de SA page de paiement ; le candidat y est redirigé
- *      et y saisit ses données (Mobile Money, carte) : l'application ne voit
- *      jamais un numéro de carte ou un code secret.
- *   2. Le fournisseur renvoie le candidat sur return_url ET notifie le serveur
- *      sur notify_url (lireNotification(), signature HMAC obligatoire).
- *   3. Dans les deux cas, l'état n'est entériné qu'après verifier() — GET
- *      /payments/{référence} — : seule la réponse du fournisseur fait foi.
- *
- * CONTRAT SUPPOSÉ : la documentation officielle n'est pas encore disponible.
- * Chemins, champs, statuts et format de signature sont regroupés ici (constantes
- * et méthodes privées) : les aligner sur la documentation réelle ne touche
- * aucun autre fichier. Les identifiants sont ceux, neutres, de
- * ConfigurationPasserelle (variables PAIEMENT_* de .env.local).
- *
- * Activée par PAIEMENT_PASSERELLE=tresor_pay. Un autre fournisseur (Orange
- * Money, Wave…) s'ajoute sur le même modèle, dans sa propre classe.
+
  */
 #[AutoconfigureTag(SelecteurPasserelle::TAG)]
-class TresorPayGateway implements PaymentGatewayInterface
+class PaymentGateway implements PaymentGatewayInterface
 {
-    private const NOM = 'tresor_pay';
+    private const NOM = 'api';
     private const DEVISE = 'XOF';
     private const DELAI_REPONSE_SECONDES = 20;
 
     /** Tolérance d'horodatage d'une notification : au-delà, rejouée = refusée. */
     public const TOLERANCE_NOTIFICATION_SECONDES = 300;
-    /** En-tête de signature propre à ce fournisseur (en minuscules). */
-    public const ENTETE_SIGNATURE = 'x-tresorpay-signature';
+    /** En-tête de signature des notifications (en minuscules), à aligner sur le fournisseur. */
+    public const ENTETE_SIGNATURE = 'x-signature';
 
     /** Statuts du fournisseur → statuts métier. Tout statut inconnu reste « en attente ». */
     private const STATUTS = [
@@ -226,10 +212,10 @@ class TresorPayGateway implements PaymentGatewayInterface
 
         if ($code >= 500) {
             // Indisponibilité : remontée au service, qui la traduit pour le candidat.
-            throw new \RuntimeException(sprintf('Passerelle Trésor Pay indisponible (HTTP %d).', $code));
+            throw new \RuntimeException(sprintf('Passerelle de paiement indisponible (HTTP %d).', $code));
         }
 
-        $this->logger->info('Appel Trésor Pay', ['methode' => $methode, 'chemin' => $chemin, 'code' => $code]);
+        $this->logger->info('Appel de l\'API de paiement', ['methode' => $methode, 'chemin' => $chemin, 'code' => $code]);
 
         $donnees = is_array($donnees) ? $donnees : [];
         $donnees['_http'] = $code;

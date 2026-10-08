@@ -22,7 +22,7 @@ interface PaymentGatewayInterface
 {
     /**
      * Clé de la passerelle, valeur attendue dans PAIEMENT_PASSERELLE
-     * (« simulation », « tresor_pay », « wave »…).
+     * (« simulation » pour la démo, « api » pour le fournisseur réel).
      */
     public static function cle(): string;
 

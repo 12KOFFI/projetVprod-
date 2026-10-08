@@ -82,7 +82,7 @@ services:
             $importsActifs: '%app.jury.imports_actifs%'
         tags: ['controller.service_arguments']
 
-    App\Payment\Gateway\TreasuryPaySimulationGateway:
+    App\Payment\Gateway\SimulationGateway:
         arguments:
             $delaiSimulationMs: '%app.payment.simulation_delay_ms%'
 

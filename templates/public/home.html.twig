@@ -467,6 +467,72 @@
     </div>
 </section>
 
+
+{# ============================================================
+   LA VAE EN CHIFFRES — dernière section, sur le modèle de vae.gouv.fr :
+   bandeau bleu clair d'un bord à l'autre, hexagones blancs à ombre douce
+   (240 × 268, chiffre 32 px, ligne en gras, ligne courante). Aux couleurs
+   DAIP, en Plus Jakarta Sans, avec la signature DAIP : le filet orange au
+   pied du bandeau.
+   Trois indicateurs : texte centré au-dessus, hexagones en ligne dès md ;
+   sur téléphone ils défilent à l'horizontale et se calent un par un.
+   Chaque hexagone porte un second contour intérieur, comme un sceau de
+   diplôme, et un trait orange sous le chiffre.
+   Rapport général VAE de la session 2023 (DAIP) : 1 383 candidats ayant
+   composé, 875 admis (certification complète), 1 380 certifiés totalement
+   ou partiellement. Calculé : 1 380 / 1 383 = 99,8 %, soit « +99 % ».
+   ============================================================ #}
+{% set chiffres_vae = [
+    { valeur: '1&nbsp;383', fort: 'candidats', detail: 'ont effectivement composé aux épreuves' },
+    { valeur: '875', fort: 'candidats admis', detail: 'à une certification complète' },
+    { valeur: '+99&nbsp;%', fort: 'certifiés', detail: 'totalement ou partiellement' }
+] %}
+<section aria-labelledby="chiffres-titre" class="bg-white py-10 md:pt-12 md:pb-20">
+    <div class="relative bg-primary-200/60">
+        <div class="max-w-6xl mx-auto px-4 py-8 sm:px-6 md:py-12">
+            <div class="max-w-2xl lg:mx-auto lg:text-center">
+                <h2 id="chiffres-titre" class="text-[22px] font-bold leading-9 tracking-tight text-primary-900 text-balance md:text-[32px] md:leading-10">La VAE en chiffres</h2>
+                <p class="mt-4 text-base font-bold leading-6 text-slate-800 text-balance md:text-lg">
+                    En 2023, la VAE a permis à 875 candidats d’obtenir leur CAP ou leur CQP.
+                </p>
+            </div>
+
+            {# Sur téléphone : défilement horizontal calé sur chaque hexagone, le
+               suivant dépasse pour inviter au geste. Zone atteignable au clavier. #}
+            <ul class="-mx-4 mt-6 flex snap-x snap-mandatory scroll-px-4 overflow-x-auto px-4 pb-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700 sm:-mx-6 sm:scroll-px-6 sm:px-6 md:mx-0 md:mt-8 md:grid md:grid-cols-[repeat(3,240px)] md:justify-center md:overflow-visible md:px-0"
+                tabindex="0" aria-label="Chiffres clés de la session 2023">
+                {% for chiffre in chiffres_vae %}
+                    <li class="relative flex h-[268px] w-[240px] shrink-0 snap-start flex-col items-center justify-center px-7 pb-14 pt-7 text-center">
+                        {# Hexagone aux angles arrondis, ombre douce teintée du bleu DAIP,
+                           doublé d’un contour intérieur orange du logo, réduit à 95 % (effet sceau). #}
+                        <svg class="absolute inset-0 h-full w-full drop-shadow-[0_6px_9px_rgba(1,47,95,0.16)]" viewBox="0 0 236 260" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
+                            <path class="fill-white" d="M129.76 15.9457C122.417 11.7127 113.37 11.7127 106.026 15.9457L29.8669 59.8474C22.5236 64.0804 18 71.9033 18 80.3693V168.173C18 176.639 22.5236 184.462 29.8669 188.695L106.026 232.596C113.37 236.829 122.417 236.829 129.76 232.596L205.92 188.695C213.263 184.462 217.787 176.639 217.787 168.173V80.3693C217.787 71.9033 213.263 64.0804 205.92 59.8474L129.76 15.9457Z"/>
+                            <path class="fill-none stroke-[#ED8F33]" stroke-width="1.5" vector-effect="non-scaling-stroke" transform="translate(117.89 124.27) scale(0.95) translate(-117.89 -124.27)" d="M129.76 15.9457C122.417 11.7127 113.37 11.7127 106.026 15.9457L29.8669 59.8474C22.5236 64.0804 18 71.9033 18 80.3693V168.173C18 176.639 22.5236 184.462 29.8669 188.695L106.026 232.596C113.37 236.829 122.417 236.829 129.76 232.596L205.92 188.695C213.263 184.462 217.787 176.639 217.787 168.173V80.3693C217.787 71.9033 213.263 64.0804 205.92 59.8474L129.76 15.9457Z"/>
+                        </svg>
+                        <span class="relative whitespace-nowrap text-[36px] font-extrabold leading-10 tracking-tight tabular-nums text-primary-900">{{ chiffre.valeur|raw }}</span>
+                        {# Trait orange : l'accent DAIP, repris du filet au pied du bandeau. #}
+                        <span class="relative mb-2.5 mt-2 h-1 w-8 rounded-full bg-[#ED8F33]" aria-hidden="true"></span>
+                        <span class="relative font-bold leading-6 text-slate-800">{{ chiffre.fort }}</span>
+                        {# Deux lignes réservées : les chiffres restent alignés d'un hexagone à l'autre. #}
+                        <span class="relative min-h-12 leading-6 text-balance text-slate-700">{{ chiffre.detail|raw }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+
+            <div class="mt-6 flex flex-col gap-4 md:mt-8 lg:items-center lg:text-center">
+                <a href="#conditions-candidature"
+                   class="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-primary-700 px-5 text-base font-semibold text-white transition-colors duration-200 motion-reduce:transition-none hover:bg-primary-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700 sm:w-auto sm:self-start lg:self-center">
+                    Je vérifie si je peux candidater
+                    <i class="fas fa-arrow-up text-sm" aria-hidden="true"></i>
+                </a>
+              
+            </div>
+        </div>
+        {# Signature DAIP : le filet orange au pied du bandeau, comme les en-têtes de pages. #}
+        <div class="absolute inset-x-0 bottom-0 h-1 bg-[#ED8F33]" aria-hidden="true"></div>
+    </div>
+</section>
+
 {% endblock %}
 
 {% block javascripts %}

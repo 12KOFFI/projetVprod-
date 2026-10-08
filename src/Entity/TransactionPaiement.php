@@ -45,7 +45,7 @@ class TransactionPaiement
     #[ORM\Column(length: 30, nullable: true)]
     private ?string $moyenPaiement = null;
 
-    /** Passerelle ayant traité l'opération, ex. « tresor_pay_simulation ». */
+    /** Passerelle ayant traité l'opération, ex. « simulation » ou « api ». */
     #[ORM\Column(length: 50)]
     private ?string $passerelle = null;
 

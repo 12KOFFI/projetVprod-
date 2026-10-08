@@ -12,7 +12,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**
- * Passerelle simulée, en attendant l'ouverture du compte Trésor Pay.
+ * Passerelle simulée (démo), en attendant le raccordement d'un fournisseur réel.
  *
  * Elle ne contacte aucun service : elle produit des réponses au format attendu
  * de la passerelle réelle, de façon DÉTERMINISTE afin que les parcours soient
@@ -25,9 +25,9 @@ use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
  * .env.local (règle R5.9).
  */
 #[AutoconfigureTag(SelecteurPasserelle::TAG)]
-class TreasuryPaySimulationGateway implements PaymentGatewayInterface
+class SimulationGateway implements PaymentGatewayInterface
 {
-    private const NOM = 'tresor_pay_simulation';
+    private const NOM = 'simulation';
 
     /** Montant piégé qui déclenche un échec, pour éprouver le parcours d'erreur. */
     private const SUFFIXE_ECHEC = '13';

@@ -4,7 +4,7 @@ namespace App\Enum;
 
 /**
  * Cycle de vie d'un paiement, aligné sur les états qu'une passerelle réelle
- * (Trésor Pay) est capable de renvoyer.
+ * est capable de renvoyer.
  *
  * La valeur historique 'paye' présente en base est migrée vers 'reussi'.
  */
