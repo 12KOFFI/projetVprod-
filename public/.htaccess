@@ -9,7 +9,13 @@ Options -Indexes
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /public/
+
+    # Pas de RewriteBase volontairement : mod_rewrite deduit alors la base du
+    # prefixe du repertoire, ce qui vaut « /public/ » quand la racine web du
+    # domaine pointe sur le dossier du projet et « / » quand elle pointe
+    # directement sur public/. La substitution relative « index.php » ci-dessous
+    # se resout donc correctement dans les deux montages. Une valeur figee
+    # casserait l'un des deux.
 
     # Conserve l'en-tete Authorization (API / auth HTTP) avec PHP en CGI/FastCGI
     RewriteCond %{HTTP:Authorization} .+
@@ -26,3 +32,13 @@ Options -Indexes
         RedirectMatch 307 ^/$ /index.php/
     </IfModule>
 </IfModule>
+
+# php -- BEGIN cPanel-generated handler, do not edit
+# Set the "ea-php83" package as the default "PHP" programming language.
+# Repete ici en plus du .htaccess de la racine : lorsque la racine web pointe
+# directement sur public/, le fichier de la racine n'est jamais lu par Apache et
+# PHP retomberait sur la version par defaut de l'hebergement.
+<IfModule mime_module>
+  AddHandler application/x-httpd-ea-php83 .php .php8 .phtml
+</IfModule>
+# php -- END cPanel-generated handler, do not edit
