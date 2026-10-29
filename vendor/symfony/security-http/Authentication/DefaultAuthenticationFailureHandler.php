@@ -43,7 +43,7 @@ class DefaultAuthenticationFailureHandler implements AuthenticationFailureHandle
         'failure_path_parameter' => '_failure_path',
     ];
 
-    public function __construct(HttpKernelInterface $httpKernel, HttpUtils $httpUtils, array $options = [], LoggerInterface $logger = null)
+    public function __construct(HttpKernelInterface $httpKernel, HttpUtils $httpUtils, array $options = [], ?LoggerInterface $logger = null)
     {
         $this->httpKernel = $httpKernel;
         $this->httpUtils = $httpUtils;
@@ -59,6 +59,9 @@ class DefaultAuthenticationFailureHandler implements AuthenticationFailureHandle
         return $this->options;
     }
 
+    /**
+     * @return void
+     */
     public function setOptions(array $options)
     {
         $this->options = array_merge($this->defaultOptions, $options);
@@ -67,17 +70,9 @@ class DefaultAuthenticationFailureHandler implements AuthenticationFailureHandle
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): Response
     {
         $options = $this->options;
-        $failureUrl = ParameterBagUtils::getRequestParameterValue($request, $options['failure_path_parameter']);
-
-        if (\is_string($failureUrl) && (str_starts_with($failureUrl, '/') || str_starts_with($failureUrl, 'http'))) {
-            $options['failure_path'] = $failureUrl;
-        } elseif ($this->logger && $failureUrl) {
-            $this->logger->debug(sprintf('Ignoring query parameter "%s": not a valid URL.', $options['failure_path_parameter']));
-        }
-
-        $options['failure_path'] ??= $options['login_path'];
 
         if ($options['failure_forward']) {
+            $options['failure_path'] ??= $options['login_path'];
             $this->logger?->debug('Authentication failure, forward triggered.', ['failure_path' => $options['failure_path']]);
 
             $subRequest = $this->httpUtils->createRequest($request, $options['failure_path']);
@@ -86,9 +81,21 @@ class DefaultAuthenticationFailureHandler implements AuthenticationFailureHandle
             return $this->httpKernel->handle($subRequest, HttpKernelInterface::SUB_REQUEST);
         }
 
+        $failureUrl = ParameterBagUtils::getRequestParameterValue($request, $options['failure_path_parameter']);
+
+        if (\is_string($failureUrl) && (str_starts_with($failureUrl, '/') || str_starts_with($failureUrl, 'http'))) {
+            $options['failure_path'] = $failureUrl;
+        } elseif ($this->logger && $failureUrl) {
+            $this->logger->debug(\sprintf('Ignoring query parameter "%s": not a valid URL.', $options['failure_path_parameter']));
+        }
+
+        $options['failure_path'] ??= $options['login_path'];
+
         $this->logger?->debug('Authentication failure, redirect triggered.', ['failure_path' => $options['failure_path']]);
 
-        $request->getSession()->set(SecurityRequestAttributes::AUTHENTICATION_ERROR, $exception);
+        if (!$request->attributes->getBoolean('_stateless')) {
+            $request->getSession()->set(SecurityRequestAttributes::AUTHENTICATION_ERROR, $exception);
+        }
 
         return $this->httpUtils->createRedirectResponse($request, $options['failure_path']);
     }

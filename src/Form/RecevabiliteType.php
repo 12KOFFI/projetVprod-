@@ -10,7 +10,7 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
- * Formulaire de la décision de recevabilité (écran E4.5), ouvert uniquement
+ * Formulaire de la décision de recevabilité du jury local, ouvert uniquement
  * une fois le dossier INSCRIT. Aucun commentaire n'est requis.
  */
 class RecevabiliteType extends AbstractType
@@ -21,9 +21,10 @@ class RecevabiliteType extends AbstractType
             ->add('statut', EnumType::class, [
                 'class' => StatutRecevabilite::class,
                 'label' => 'Décision de recevabilité',
-                'placeholder' => 'Sélectionnez une décision',
+                'expanded' => true,
                 'choice_label' => static fn (StatutRecevabilite $statut): string => $statut->libelle(),
-                'choice_filter' => static fn (?StatutRecevabilite $s): bool => $s !== StatutRecevabilite::EN_ATTENTE,
+                // Décision favorable d'abord ; « En attente » n'est pas proposé.
+                'choices' => [StatutRecevabilite::RECEVABLE, StatutRecevabilite::NON_RECEVABLE],
             ]);
     }
 

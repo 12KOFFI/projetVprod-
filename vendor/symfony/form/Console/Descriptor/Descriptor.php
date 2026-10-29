@@ -29,18 +29,16 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  */
 abstract class Descriptor implements DescriptorInterface
 {
-    /** @var OutputStyle */
-    protected $output;
-    protected $type;
-    protected $ownOptions = [];
-    protected $overriddenOptions = [];
-    protected $parentOptions = [];
-    protected $extensionOptions = [];
-    protected $requiredOptions = [];
-    protected $parents = [];
-    protected $extensions = [];
+    protected OutputStyle $output;
+    protected array $ownOptions = [];
+    protected array $overriddenOptions = [];
+    protected array $parentOptions = [];
+    protected array $extensionOptions = [];
+    protected array $requiredOptions = [];
+    protected array $parents = [];
+    protected array $extensions = [];
 
-    public function describe(OutputInterface $output, ?object $object, array $options = [])
+    public function describe(OutputInterface $output, ?object $object, array $options = []): void
     {
         $this->output = $output instanceof OutputStyle ? $output : new SymfonyStyle(new ArrayInput([]), $output);
 
@@ -48,17 +46,17 @@ abstract class Descriptor implements DescriptorInterface
             null === $object => $this->describeDefaults($options),
             $object instanceof ResolvedFormTypeInterface => $this->describeResolvedFormType($object, $options),
             $object instanceof OptionsResolver => $this->describeOption($object, $options),
-            default => throw new \InvalidArgumentException(sprintf('Object of type "%s" is not describable.', get_debug_type($object))),
+            default => throw new \InvalidArgumentException(\sprintf('Object of type "%s" is not describable.', get_debug_type($object))),
         };
     }
 
-    abstract protected function describeDefaults(array $options);
+    abstract protected function describeDefaults(array $options): void;
 
-    abstract protected function describeResolvedFormType(ResolvedFormTypeInterface $resolvedFormType, array $options = []);
+    abstract protected function describeResolvedFormType(ResolvedFormTypeInterface $resolvedFormType, array $options = []): void;
 
-    abstract protected function describeOption(OptionsResolver $optionsResolver, array $options);
+    abstract protected function describeOption(OptionsResolver $optionsResolver, array $options): void;
 
-    protected function collectOptions(ResolvedFormTypeInterface $type)
+    protected function collectOptions(ResolvedFormTypeInterface $type): void
     {
         $this->parents = [];
         $this->extensions = [];
@@ -71,7 +69,7 @@ abstract class Descriptor implements DescriptorInterface
 
         $type->getInnerType()->configureOptions($ownOptionsResolver = new OptionsResolverWrapper());
         $this->ownOptions = array_diff($ownOptionsResolver->getDefinedOptions(), $optionsResolver->getDefinedOptions());
-        $overriddenOptions = array_intersect(array_merge($ownOptionsResolver->getDefinedOptions(), $ownOptionsResolver->getUndefinedOptions()), $optionsResolver->getDefinedOptions());
+        $overriddenOptions = array_intersect(array_unique(array_merge($ownOptionsResolver->getDefinedOptions(), $ownOptionsResolver->getUndefinedOptions())), $optionsResolver->getDefinedOptions());
 
         $this->parentOptions = [];
         foreach ($this->parents as $class => $parentOptions) {
@@ -96,7 +94,7 @@ abstract class Descriptor implements DescriptorInterface
         $this->extensions = array_keys($this->extensions);
     }
 
-    protected function getOptionDefinition(OptionsResolver $optionsResolver, string $option)
+    protected function getOptionDefinition(OptionsResolver $optionsResolver, string $option): array
     {
         $definition = [];
 
@@ -139,7 +137,7 @@ abstract class Descriptor implements DescriptorInterface
         return $definition;
     }
 
-    protected function filterOptionsByDeprecated(ResolvedFormTypeInterface $type)
+    protected function filterOptionsByDeprecated(ResolvedFormTypeInterface $type): void
     {
         $deprecatedOptions = [];
         $resolver = $type->getOptionsResolver();
@@ -149,7 +147,7 @@ abstract class Descriptor implements DescriptorInterface
             }
         }
 
-        $filterByDeprecated = function (array $options) use ($deprecatedOptions) {
+        $filterByDeprecated = static function (array $options) use ($deprecatedOptions) {
             foreach ($options as $class => $opts) {
                 if ($deprecated = array_intersect($deprecatedOptions, $opts)) {
                     $options[$class] = $deprecated;
@@ -169,7 +167,7 @@ abstract class Descriptor implements DescriptorInterface
 
     private function getParentOptionsResolver(ResolvedFormTypeInterface $type): OptionsResolver
     {
-        $this->parents[$class = \get_class($type->getInnerType())] = [];
+        $this->parents[$class = $type->getInnerType()::class] = [];
 
         if (null !== $type->getParent()) {
             $optionsResolver = clone $this->getParentOptionsResolver($type->getParent());
@@ -186,12 +184,16 @@ abstract class Descriptor implements DescriptorInterface
         return $optionsResolver;
     }
 
-    private function collectTypeExtensionsOptions(ResolvedFormTypeInterface $type, OptionsResolver $optionsResolver)
+    private function collectTypeExtensionsOptions(ResolvedFormTypeInterface $type, OptionsResolver $optionsResolver): void
     {
         foreach ($type->getTypeExtensions() as $extension) {
             $inheritedOptions = $optionsResolver->getDefinedOptions();
             $extension->configureOptions($optionsResolver);
-            $this->extensions[$extension::class] = array_diff($optionsResolver->getDefinedOptions(), $inheritedOptions);
+            // an extension of both a type and one of its parents defines its options at the highest level only
+            $this->extensions[$extension::class] = array_merge(
+                $this->extensions[$extension::class] ?? [],
+                array_diff($optionsResolver->getDefinedOptions(), $inheritedOptions),
+            );
         }
     }
 }

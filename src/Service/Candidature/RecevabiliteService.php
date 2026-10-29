@@ -13,8 +13,9 @@ use App\Exception\RecevabiliteException;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Étude du dossier et décision de recevabilité, toutes deux rendues par le
- * conseiller VAE (module M4, étape 2 de la spécification).
+ * Étude du dossier, rendue par le conseiller VAE, puis décision de
+ * recevabilité, prononcée par le jury local du centre (module M4, étape 2 de
+ * la spécification).
  *
  * L'étude (`etuStatut`) ne fait pas avancer le statut global : elle est
  * enregistrée ici puis journalisée. La recevabilité est une décision : elle
@@ -51,6 +52,11 @@ class RecevabiliteService
      * passer le dossier à INSCRIT (PaiementSubscriber). REFUSE le laisse
      * modifiable et réétudiable. Dans les deux cas, la décision est tracée dans
      * l'historique. Un dossier déjà accepté ne se réétudie pas.
+     *
+     * Le justificatif d'expérience professionnelle est joint par le conseiller,
+     * jamais par le candidat : il doit figurer au dossier pour que l'étude soit
+     * rendue, quel qu'en soit le résultat. Le contrôleur l'enregistre (avec les
+     * éventuelles corrections du dossier) avant d'appeler cette méthode.
      */
     public function etudier(Candidature $candidature, EtudeDto $dto, User $auteur): Candidature
     {
@@ -66,6 +72,10 @@ class RecevabiliteService
 
         if ($statut->exigeCommentaire() && trim((string) $dto->commentaire) === '') {
             throw RecevabiliteException::motifObligatoire();
+        }
+
+        if (in_array($candidature->getFexperiencepro(), [null, ''], true)) {
+            throw RecevabiliteException::justificatifExperienceManquant();
         }
 
         // Le conseiller qui se prononce prend le dossier en charge s'il n'était
@@ -90,12 +100,17 @@ class RecevabiliteService
     }
 
     /**
-     * Enregistre la décision de recevabilité et applique la transition
-     * officielle correspondante. Impossible tant que le dossier n'est pas
-     * INSCRIT (paiement des frais de dossier confirmé).
+     * Enregistre la décision de recevabilité du jury local et applique la
+     * transition officielle correspondante. Impossible tant que le dossier
+     * n'est pas INSCRIT (paiement des frais de dossier confirmé), et définitive
+     * une fois prononcée.
      */
     public function enregistrerRecevabilite(Candidature $candidature, RecevabiliteDto $dto, User $auteur): Candidature
     {
+        if ($candidature->getRecStatut() !== null) {
+            throw RecevabiliteException::recevabiliteDejaPrononcee((string) $candidature->getNumero());
+        }
+
         if ($this->resolver->resolve($candidature) !== StatutCandidature::INSCRIT) {
             throw RecevabiliteException::recevabiliteImpossible((string) $candidature->getNumero());
         }

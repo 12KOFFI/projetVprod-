@@ -59,6 +59,7 @@ class CandidatureDepotDto
     public ?string $situationProPrecision = null;
 
     /** Diplôme académique déjà obtenu (CEPE, BEPC, BAC…). */
+    #[Assert\NotBlank(message: 'Le diplôme académique obtenu est obligatoire.')]
     #[Assert\Length(max: 255)]
     public ?string $diplome = null;
 
@@ -69,21 +70,26 @@ class CandidatureDepotDto
     #[Assert\Length(max: 255)]
     public ?string $diplomePrecision = null;
 
+    #[Assert\NotBlank(message: "L'entreprise, organisme ou administration d'attache est obligatoire.")]
     #[Assert\Length(max: 255)]
     public ?string $nomEntreprise = null;
 
+    #[Assert\NotBlank(message: "Les références de l'entreprise sont obligatoires.")]
     #[Assert\Length(max: 255)]
     public ?string $refentreprise = null;
 
+    #[Assert\NotBlank(message: "Le lieu d'exercice est obligatoire.")]
     #[Assert\Length(max: 255)]
     public ?string $lieuExercice = null;
 
+    #[Assert\NotBlank(message: 'Le poste de travail est obligatoire.')]
     #[Assert\Length(max: 255)]
     public ?string $fonction = null;
 
     #[Assert\Length(max: 255)]
     public ?string $refContrat = null;
 
+    #[Assert\NotBlank(message: 'La direction ou le service est obligatoire.')]
     #[Assert\Length(max: 255)]
     public ?string $directionService = null;
 
@@ -91,6 +97,7 @@ class CandidatureDepotDto
     #[Assert\Length(max: 22)]
     public ?string $contactemployeur = null;
 
+    #[Assert\NotBlank(message: "La langue d'évaluation est obligatoire.")]
     #[Assert\Length(max: 45)]
     public ?string $langue = null;
 
@@ -126,8 +133,9 @@ class CandidatureDepotDto
 
     /**
      * Pièces jointes par le conseiller VAE seul, pendant l'étude du dossier :
-     * non exigées au dépôt, consultables par le candidat (sans pouvoir les
-     * modifier), absentes des écrans de l'agent d'accueil.
+     * non exigées au dépôt mais obligatoires pour rendre l'étude, consultables
+     * par le candidat (sans pouvoir les modifier) et par le jury local,
+     * absentes des écrans de l'agent d'accueil.
      *
      * @return array<string, string>
      */

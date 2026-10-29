@@ -49,17 +49,17 @@ class Count extends Constraint
     public $divisibleBy;
 
     public function __construct(
-        int|array $exactly = null,
-        int $min = null,
-        int $max = null,
-        int $divisibleBy = null,
-        string $exactMessage = null,
-        string $minMessage = null,
-        string $maxMessage = null,
-        string $divisibleByMessage = null,
-        array $groups = null,
+        int|array|null $exactly = null,
+        ?int $min = null,
+        ?int $max = null,
+        ?int $divisibleBy = null,
+        ?string $exactMessage = null,
+        ?string $minMessage = null,
+        ?string $maxMessage = null,
+        ?string $divisibleByMessage = null,
+        ?array $groups = null,
         mixed $payload = null,
-        array $options = []
+        array $options = [],
     ) {
         if (\is_array($exactly)) {
             $options = array_merge($exactly, $options);
@@ -86,7 +86,7 @@ class Count extends Constraint
         $this->divisibleByMessage = $divisibleByMessage ?? $this->divisibleByMessage;
 
         if (null === $this->min && null === $this->max && null === $this->divisibleBy) {
-            throw new MissingOptionsException(sprintf('Either option "min", "max" or "divisibleBy" must be given for constraint "%s".', __CLASS__), ['min', 'max', 'divisibleBy']);
+            throw new MissingOptionsException(\sprintf('Either option "min", "max" or "divisibleBy" must be given for constraint "%s".', __CLASS__), ['min', 'max', 'divisibleBy']);
         }
     }
 }

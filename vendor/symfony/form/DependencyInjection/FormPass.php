@@ -30,6 +30,9 @@ class FormPass implements CompilerPassInterface
 {
     use PriorityTaggedServiceTrait;
 
+    /**
+     * @return void
+     */
     public function process(ContainerBuilder $container)
     {
         if (!$container->hasDefinition('form.extension')) {
@@ -83,13 +86,14 @@ class FormPass implements CompilerPassInterface
                 $extendsTypes = false;
 
                 $typeExtensionsClasses[] = $typeExtensionClass;
+                $container->getReflectionClass($typeExtensionClass);
                 foreach ($typeExtensionClass::getExtendedTypes() as $extendedType) {
                     $typeExtensions[$extendedType][] = new Reference($serviceId);
                     $extendsTypes = true;
                 }
 
                 if (!$extendsTypes) {
-                    throw new InvalidArgumentException(sprintf('The getExtendedTypes() method for service "%s" does not return any extended types.', $serviceId));
+                    throw new InvalidArgumentException(\sprintf('The getExtendedTypes() method for service "%s" does not return any extended types.', $serviceId));
                 }
             }
         }

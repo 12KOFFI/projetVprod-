@@ -38,21 +38,24 @@ class DebugCommand extends Command
         parent::__construct();
     }
 
+    /**
+     * @return void
+     */
     protected function configure()
     {
         $this
-            ->addArgument('bus', InputArgument::OPTIONAL, sprintf('The bus id (one of "%s")', implode('", "', array_keys($this->mapping))))
+            ->addArgument('bus', InputArgument::OPTIONAL, \sprintf('The bus id (one of "%s")', implode('", "', array_keys($this->mapping))))
             ->setHelp(<<<'EOF'
-The <info>%command.name%</info> command displays all messages that can be
-dispatched using the message buses:
+                The <info>%command.name%</info> command displays all messages that can be
+                dispatched using the message buses:
 
-  <info>php %command.full_name%</info>
+                  <info>php %command.full_name%</info>
 
-Or for a specific bus only:
+                Or for a specific bus only:
 
-  <info>php %command.full_name% command_bus</info>
+                  <info>php %command.full_name% command_bus</info>
 
-EOF
+                EOF
             )
         ;
     }
@@ -65,7 +68,7 @@ EOF
         $mapping = $this->mapping;
         if ($bus = $input->getArgument('bus')) {
             if (!isset($mapping[$bus])) {
-                throw new RuntimeException(sprintf('Bus "%s" does not exist. Known buses are "%s".', $bus, implode('", "', array_keys($this->mapping))));
+                throw new RuntimeException(\sprintf('Bus "%s" does not exist. Known buses are "%s".', $bus, implode('", "', array_keys($this->mapping))));
             }
             $mapping = [$bus => $mapping[$bus]];
         }
@@ -76,16 +79,16 @@ EOF
             $tableRows = [];
             foreach ($handlersByMessage as $message => $handlers) {
                 if ($description = self::getClassDescription($message)) {
-                    $tableRows[] = [sprintf('<comment>%s</>', $description)];
+                    $tableRows[] = [\sprintf('<comment>%s</>', $description)];
                 }
 
-                $tableRows[] = [sprintf('<fg=cyan>%s</fg=cyan>', $message)];
+                $tableRows[] = [\sprintf('<fg=cyan>%s</fg=cyan>', $message)];
                 foreach ($handlers as $handler) {
                     $tableRows[] = [
-                        sprintf('    handled by <info>%s</>', $handler[0]).$this->formatConditions($handler[1]),
+                        \sprintf('    handled by <info>%s</>', $handler[0]).$this->formatConditions($handler[1], $handler[0]),
                     ];
                     if ($handlerDescription = self::getClassDescription($handler[0])) {
-                        $tableRows[] = [sprintf('               <comment>%s</>', $handlerDescription)];
+                        $tableRows[] = [\sprintf('               <comment>%s</>', $handlerDescription)];
                     }
                 }
                 $tableRows[] = [''];
@@ -96,15 +99,20 @@ EOF
                 $io->newLine();
                 $io->table([], $tableRows);
             } else {
-                $io->warning(sprintf('No handled message found in bus "%s".', $bus));
+                $io->warning(\sprintf('No handled message found in bus "%s".', $bus));
             }
         }
 
         return 0;
     }
 
-    private function formatConditions(array $options): string
+    private function formatConditions(array $options, string $serviceId): string
     {
+        // the alias MessengerPass generates is the service id, which is already displayed as the handler
+        if ($serviceId === ($options['alias'] ?? null)) {
+            unset($options['alias']);
+        }
+
         if (!$options) {
             return '';
         }
@@ -124,6 +132,10 @@ EOF
 
             if ($docComment = $r->getDocComment()) {
                 $docComment = preg_split('#\n\s*\*\s*[\n@]#', substr($docComment, 3, -2), 2)[0];
+
+                if (str_starts_with(ltrim($docComment), '@')) {
+                    return '';
+                }
 
                 return trim(preg_replace('#\s*\n\s*\*\s*#', ' ', $docComment));
             }

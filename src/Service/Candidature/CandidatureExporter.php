@@ -5,6 +5,7 @@ namespace App\Service\Candidature;
 use App\Entity\Candidature;
 use App\Service\PdfGenerator;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -69,7 +70,16 @@ class CandidatureExporter
 
         foreach ($candidatures as $ligne => $candidature) {
             foreach ($this->enLigne($candidature) as $index => $valeur) {
-                $feuille->setCellValue(Coordinate::stringFromColumnIndex($index + 1) . ($ligne + 2), $valeur);
+                $cellule = Coordinate::stringFromColumnIndex($index + 1) . ($ligne + 2);
+
+                // Texte écrit comme texte : une saisie du candidat commençant par
+                // « = » (nom, lieu…) deviendrait sinon une formule active à
+                // l'ouverture du fichier, et un numéro « +225… » un nombre.
+                if (is_string($valeur)) {
+                    $feuille->setCellValueExplicit($cellule, $valeur, DataType::TYPE_STRING);
+                } else {
+                    $feuille->setCellValue($cellule, $valeur);
+                }
             }
         }
 
@@ -120,7 +130,8 @@ class CandidatureExporter
             (string) $candidat?->getContact(),
             (string) $candidature->getMetier()?->getLibelle(),
             (string) $candidature->getCentre()?->getNom(),
-            (string) $candidature->getNbAnneesExperience(),
+            // Nombre et non texte : la colonne reste exploitable (tri, somme).
+            $candidature->getNbAnneesExperience() ?? '',
             (string) $candidature->getDiplomedemande(),
             $this->resolver->resolve($candidature)->libelle(),
             $etude?->libelle() ?? '',

@@ -4,17 +4,14 @@ namespace App\Controller\Conseiller;
 
 use App\Dto\CandidatureDepotDto;
 use App\Dto\EtudeDto;
-use App\Dto\RecevabiliteDto;
 use App\Entity\Candidature;
 use App\Entity\User;
 use App\Enum\StatutCandidature;
 use App\Exception\RecevabiliteException;
 use App\Form\CandidatureDepotType;
 use App\Form\EtudeType;
-use App\Form\RecevabiliteType;
 use App\Repository\CandidatureRepository;
 use App\Repository\CertificationRepository;
-use App\Repository\HistoriqueStatutRepository;
 use App\Repository\PaiementRepository;
 use App\Security\Voter\CandidatureVoter;
 use App\Service\Candidature\CandidatureService;
@@ -31,7 +28,9 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
- * Espace du conseiller VAE : étude des dossiers et décision de recevabilité.
+ * Espace du conseiller VAE : étude des dossiers. La décision de recevabilité
+ * qui suit l'inscription est prononcée par le jury local du centre
+ * (JuryLocalController), plus par le conseiller.
  *
  * Le conseiller ne travaille que sur les dossiers de son centre : le périmètre
  * des listes est porté par CandidatureRepository, et l'accès à un dossier
@@ -96,7 +95,7 @@ class ConseillerController extends AbstractController
 
         if ($statutParam === 'etu_2') {
             $etuStatut = \App\Enum\StatutEtude::ACCEPTE->value;
-        } elseif ($statutParam === CandidatureRepository::ETUDE_A_RENDRE || $statutParam === CandidatureRepository::ETUDE_ACCEPTEE) {
+        } elseif (in_array($statutParam, [CandidatureRepository::ETUDE_A_RENDRE, CandidatureRepository::ETUDE_REFUSEE, CandidatureRepository::ETUDE_ACCEPTEE], true)) {
             $etude = $statutParam;
         } elseif ($statutParam !== null && $statutParam !== '') {
             $statut = (int) $statutParam;
@@ -131,17 +130,16 @@ class ConseillerController extends AbstractController
      * s'ouvre en mode édition : le conseiller peut corriger les données du
      * dossier ET enregistrer le résultat de l'étude en une seule fois, via un
      * unique formulaire et un unique bouton (soumis vers recevabilite() ci-
-     * dessous, qui ne rend plus de page propre). Une fois INSCRIT, seule la
-     * décision de recevabilité reste modifiable, séparément (juryLocal()).
+     * dessous, qui ne rend plus de page propre). Ensuite, la fiche est en
+     * lecture seule : la recevabilité revient au jury local du centre.
      */
     #[Route('/candidature/{id}', name: 'candidature', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function candidature(Request $request, Candidature $candidature, HistoriqueStatutRepository $historiques): Response
+    public function candidature(Request $request, Candidature $candidature): Response
     {
         $this->denyAccessUnlessGranted(CandidatureVoter::VIEW, $candidature);
 
         $formCandidature = null;
         $formEtude = null;
-        $formRecevabilite = null;
 
         // Mode édition tant que l'étude reste à rendre ; une fois acceptée, le
         // dossier reste préinscrit jusqu'au paiement mais n'est plus modifiable.
@@ -155,18 +153,14 @@ class ConseillerController extends AbstractController
                 ['pieces_conseiller' => true] + $this->optionsFormulaire->pourModification($candidature, $request, centreImpose: true)
             )->createView();
             $formEtude = $this->createForm(EtudeType::class, EtudeDto::depuisCandidature($candidature))->createView();
-        } elseif ($this->resolver->resolve($candidature) === StatutCandidature::INSCRIT) {
-            $formRecevabilite = $this->createForm(RecevabiliteType::class, RecevabiliteDto::depuisCandidature($candidature))->createView();
         }
 
         return $this->render('conseiller/candidature.html.twig', [
             'candidature' => $candidature,
-            'historique' => $historiques->findPourCandidature($candidature),
             'etude_rendue' => $this->recevabilite->etudeRendue($candidature),
-            'documents' => $this->documents($candidature),
+            'documents' => $this->candidatureService->piecesTransmises($candidature),
             'form_candidature' => $formCandidature,
             'form_etude' => $formEtude,
-            'form_recevabilite' => $formRecevabilite,
             'documents_obligatoires' => CandidatureDepotDto::documentsObligatoires(),
             'documents_conseiller' => CandidatureDepotDto::documentsConseiller(),
         ]);
@@ -179,7 +173,7 @@ class ConseillerController extends AbstractController
      * les deux formulaires réinjectés et leurs erreurs.
      */
     #[Route('/candidature/{id}/recevabilite', name: 'recevabilite', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function recevabilite(Request $request, Candidature $candidature, HistoriqueStatutRepository $historiques): Response
+    public function recevabilite(Request $request, Candidature $candidature): Response
     {
         $this->denyAccessUnlessGranted(CandidatureVoter::EVALUATE_RECEVABILITE, $candidature);
 
@@ -205,7 +199,9 @@ class ConseillerController extends AbstractController
         if ($formCandidature->isSubmitted() && $formCandidature->isValid()
             && $formEtude->isSubmitted() && $formEtude->isValid()) {
             $dtoCandidature->documents = $this->collecterDocuments($formCandidature);
-            $manquants = $this->candidatureService->documentsManquants($dtoCandidature->documents, $candidature);
+            // Le justificatif d'expérience, joint par le conseiller lui-même,
+            // est exigé avec les pièces du candidat pour rendre l'étude.
+            $manquants = $this->candidatureService->documentsManquants($dtoCandidature->documents, $candidature, piecesConseiller: true);
 
             if ($manquants === []) {
                 $this->candidatureService->mettreAJour($candidature, $dtoCandidature, $conseiller);
@@ -228,48 +224,10 @@ class ConseillerController extends AbstractController
 
         return $this->render('conseiller/candidature.html.twig', [
             'candidature' => $candidature,
-            'historique' => $historiques->findPourCandidature($candidature),
             'etude_rendue' => $this->recevabilite->etudeRendue($candidature),
-            'documents' => $this->documents($candidature),
+            'documents' => $this->candidatureService->piecesTransmises($candidature),
             'form_candidature' => $formCandidature->createView(),
             'form_etude' => $formEtude->createView(),
-            'form_recevabilite' => null,
-            'documents_obligatoires' => CandidatureDepotDto::documentsObligatoires(),
-            'documents_conseiller' => CandidatureDepotDto::documentsConseiller(),
-        ]);
-    }
-
-    /**
-     * Traite le formulaire de recevabilité posté depuis la page du dossier.
-     */
-    #[Route('/candidature/{id}/jury-local', name: 'jury_local', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function juryLocal(Request $request, Candidature $candidature, HistoriqueStatutRepository $historiques): Response
-    {
-        $this->denyAccessUnlessGranted(CandidatureVoter::EVALUATE_RECEVABILITE, $candidature);
-
-        $dto = RecevabiliteDto::depuisCandidature($candidature);
-        $form = $this->createForm(RecevabiliteType::class, $dto);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $this->recevabilite->enregistrerRecevabilite($candidature, $dto, $this->conseiller());
-
-            $this->addFlash('success', sprintf(
-                'Décision de recevabilité enregistrée pour le dossier %s.',
-                (string) $candidature->getNumero()
-            ));
-
-            return $this->redirectToRoute('app_conseiller_candidature', ['id' => $candidature->getId()]);
-        }
-
-        return $this->render('conseiller/candidature.html.twig', [
-            'candidature' => $candidature,
-            'historique' => $historiques->findPourCandidature($candidature),
-            'etude_rendue' => $this->recevabilite->etudeRendue($candidature),
-            'documents' => $this->documents($candidature),
-            'form_candidature' => null,
-            'form_etude' => null,
-            'form_recevabilite' => $form->createView(),
             'documents_obligatoires' => CandidatureDepotDto::documentsObligatoires(),
             'documents_conseiller' => CandidatureDepotDto::documentsConseiller(),
         ]);
@@ -335,32 +293,18 @@ class ConseillerController extends AbstractController
         }
     }
 
-    /**
-     * Pièces transmises avec le dossier, pour la consultation (F4.3).
-     *
-     * @return array<string, array{libelle: string, fichier: string}>
-     */
-    private function documents(Candidature $candidature): array
-    {
-        $documents = [];
-
-        // Le conseiller voit aussi le justificatif d'expérience, qu'il est seul
-        // à joindre.
-        foreach (CandidatureDepotDto::champsDocuments() as $champ => $libelle) {
-            $fichier = $candidature->{'get' . ucfirst($champ)}();
-
-            if (!in_array($fichier, [null, ''], true)) {
-                $documents[$champ] = ['libelle' => $libelle, 'fichier' => $fichier];
-            }
-        }
-
-        return $documents;
-    }
-
     private function libellesStatuts(): array
     {
-        // Réduit pour l'instant aux statuts que le conseiller traite lui-même
-        // (étude et recevabilité) ; éligibilité/admissibilité/admission
+        // Les préinscrits se lisent d'abord selon leur étude : à étudier (le
+        // conseiller doit agir), refusée (plus rien à faire, sauf retour du
+        // candidat), acceptée (le candidat doit payer).
+        $libelles = [
+            CandidatureRepository::ETUDE_A_RENDRE => 'Préinscrit — à étudier',
+            CandidatureRepository::ETUDE_REFUSEE => 'Préinscrit — étude refusée',
+            CandidatureRepository::ETUDE_ACCEPTEE => 'Préinscrit — acceptée, frais à payer',
+        ];
+
+        // Puis les statuts que le conseiller suit ; admissibilité et admission
         // arrivent par import jury et n'ont pas leur place dans ce filtre.
         $essentiels = [
             StatutCandidature::PREINSCRIT,
@@ -370,8 +314,6 @@ class ConseillerController extends AbstractController
             StatutCandidature::ELIGIBLE,
             StatutCandidature::NON_ELIGIBLE,
         ];
-
-        $libelles = [];
 
         foreach ($essentiels as $casStatut) {
             $libelles[(string) $casStatut->value] = $casStatut->libelle();

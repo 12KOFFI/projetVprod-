@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Doctrine\Bundle\DoctrineBundle\Dbal;
 
 use Doctrine\DBAL\Schema\AbstractAsset;
@@ -9,13 +11,10 @@ use Doctrine\DBAL\Schema\AbstractAsset;
  */
 class SchemaAssetsFilterManager
 {
-    /** @var callable[] */
-    private array $schemaAssetFilters;
-
     /** @param callable[] $schemaAssetFilters */
-    public function __construct(array $schemaAssetFilters)
-    {
-        $this->schemaAssetFilters = $schemaAssetFilters;
+    public function __construct(
+        private readonly array $schemaAssetFilters,
+    ) {
     }
 
     /** @param string|AbstractAsset $assetName */

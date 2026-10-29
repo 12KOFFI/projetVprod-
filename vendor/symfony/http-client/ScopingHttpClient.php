@@ -32,18 +32,18 @@ class ScopingHttpClient implements HttpClientInterface, ResetInterface, LoggerAw
     private array $defaultOptionsByRegexp;
     private ?string $defaultRegexp;
 
-    public function __construct(HttpClientInterface $client, array $defaultOptionsByRegexp, string $defaultRegexp = null)
+    public function __construct(HttpClientInterface $client, array $defaultOptionsByRegexp, ?string $defaultRegexp = null)
     {
         $this->client = $client;
         $this->defaultOptionsByRegexp = $defaultOptionsByRegexp;
         $this->defaultRegexp = $defaultRegexp;
 
         if (null !== $defaultRegexp && !isset($defaultOptionsByRegexp[$defaultRegexp])) {
-            throw new InvalidArgumentException(sprintf('No options are mapped to the provided "%s" default regexp.', $defaultRegexp));
+            throw new InvalidArgumentException(\sprintf('No options are mapped to the provided "%s" default regexp.', $defaultRegexp));
         }
     }
 
-    public static function forBaseUri(HttpClientInterface $client, string $baseUri, array $defaultOptions = [], string $regexp = null): self
+    public static function forBaseUri(HttpClientInterface $client, string $baseUri, array $defaultOptions = [], ?string $regexp = null): self
     {
         $regexp ??= preg_quote(implode('', self::resolveUrl(self::parseUrl('.'), self::parseUrl($baseUri))));
 
@@ -56,9 +56,11 @@ class ScopingHttpClient implements HttpClientInterface, ResetInterface, LoggerAw
     {
         $e = null;
         $url = self::parseUrl($url, $options['query'] ?? []);
+        $resolved = false;
 
         if (\is_string($options['base_uri'] ?? null)) {
             $options['base_uri'] = self::parseUrl($options['base_uri']);
+            $resolved = true;
         }
 
         try {
@@ -72,8 +74,13 @@ class ScopingHttpClient implements HttpClientInterface, ResetInterface, LoggerAw
             $options = self::mergeDefaultOptions($options, $defaultOptions, true);
             if (\is_string($options['base_uri'] ?? null)) {
                 $options['base_uri'] = self::parseUrl($options['base_uri']);
+                $resolved = true;
             }
             $url = implode('', self::resolveUrl($url, $options['base_uri'] ?? null, $defaultOptions['query'] ?? []));
+        }
+
+        if ($resolved) {
+            unset($options['base_uri']);
         }
 
         foreach ($this->defaultOptionsByRegexp as $regexp => $defaultOptions) {
@@ -88,11 +95,14 @@ class ScopingHttpClient implements HttpClientInterface, ResetInterface, LoggerAw
         return $this->client->request($method, $url, $options);
     }
 
-    public function stream(ResponseInterface|iterable $responses, float $timeout = null): ResponseStreamInterface
+    public function stream(ResponseInterface|iterable $responses, ?float $timeout = null): ResponseStreamInterface
     {
         return $this->client->stream($responses, $timeout);
     }
 
+    /**
+     * @return void
+     */
     public function reset()
     {
         if ($this->client instanceof ResetInterface) {

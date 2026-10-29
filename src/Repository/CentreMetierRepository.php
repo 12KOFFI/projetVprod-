@@ -55,10 +55,13 @@ class CentreMetierRepository extends ServiceEntityRepository
         // La racine de la requête est Metier et non CentreMetier : DQL refuse de
         // sélectionner une entité jointe sans son alias racine, et c'est bien une
         // liste de métiers que les appelants attendent.
+        // La filière est chargée avec le métier : l'API de la cascade la lit
+        // pour chaque métier, ce qui coûtait sinon une requête par métier.
         return $this->getEntityManager()
             ->createQueryBuilder()
-            ->select('m')
+            ->select('m', 'f')
             ->from(Metier::class, 'm')
+            ->leftJoin('m.filiere', 'f')
             ->join(CentreMetier::class, 'cm', Join::WITH, 'cm.metier = m')
             ->andWhere('cm.centre = :centre')
             ->andWhere('m.statut = :actif')

@@ -14,17 +14,39 @@ namespace Twig\Extra\TwigExtraBundle\DependencyInjection;
 use League\CommonMark\CommonMarkConverter;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
-use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Twig\Extra\TwigExtraBundle\Extensions;
+
+if (!method_exists(ContainerBuilder::class, 'getAutoconfiguredAttributes')) {
+    /** @internal */
+    trait TwigExtraExtensionTrait
+    {
+        public function load(array $configs, ContainerBuilder $container): void
+        {
+            $this->doLoad($configs, $container);
+        }
+    }
+} else {
+    /** @internal */
+    trait TwigExtraExtensionTrait
+    {
+        /** @return void */
+        public function load(array $configs, ContainerBuilder $container)
+        {
+            $this->doLoad($configs, $container);
+        }
+    }
+}
 
 /**
  * @author Fabien Potencier <fabien@symfony.com>
  */
 class TwigExtraExtension extends Extension
 {
-    /** @return void */
-    public function load(array $configs, ContainerBuilder $container)
+    use TwigExtraExtensionTrait;
+
+    private function doLoad(array $configs, ContainerBuilder $container): void
     {
         $loader = new PhpFileLoader($container, new FileLocator(\dirname(__DIR__).'/Resources/config'));
         $configuration = $this->getConfiguration($configs, $container);
@@ -38,8 +60,14 @@ class TwigExtraExtension extends Extension
             if ($this->isConfigEnabled($container, $config[$extension])) {
                 $loader->load($extension.'.php');
 
-                if ('markdown' === $extension && \class_exists(CommonMarkConverter::class)) {
+                if ('markdown' === $extension && class_exists(CommonMarkConverter::class)) {
                     $loader->load('markdown_league.php');
+
+                    if ($container->hasDefinition('twig.markdown.league_common_mark_converter_factory')) {
+                        $container
+                            ->getDefinition('twig.markdown.league_common_mark_converter_factory')
+                            ->setArgument('$config', $config['commonmark'] ?? []);
+                    }
                 }
             }
         }

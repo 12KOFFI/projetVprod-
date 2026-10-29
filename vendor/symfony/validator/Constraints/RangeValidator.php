@@ -12,6 +12,7 @@
 namespace Symfony\Component\Validator\Constraints;
 
 use Symfony\Component\PropertyAccess\Exception\NoSuchPropertyException;
+use Symfony\Component\PropertyAccess\Exception\UninitializedPropertyException;
 use Symfony\Component\PropertyAccess\PropertyAccess;
 use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 use Symfony\Component\Validator\Constraint;
@@ -26,11 +27,14 @@ class RangeValidator extends ConstraintValidator
 {
     private ?PropertyAccessorInterface $propertyAccessor;
 
-    public function __construct(PropertyAccessorInterface $propertyAccessor = null)
+    public function __construct(?PropertyAccessorInterface $propertyAccessor = null)
     {
         $this->propertyAccessor = $propertyAccessor;
     }
 
+    /**
+     * @return void
+     */
     public function validate(mixed $value, Constraint $constraint)
     {
         if (!$constraint instanceof Range) {
@@ -65,25 +69,19 @@ class RangeValidator extends ConstraintValidator
         // the DateTime constructor:
         // https://php.net/datetime.formats
         if ($value instanceof \DateTimeInterface) {
-            $dateTimeClass = null;
-
             if (\is_string($min)) {
-                $dateTimeClass = $value instanceof \DateTimeImmutable ? \DateTimeImmutable::class : \DateTime::class;
-
                 try {
-                    $min = new $dateTimeClass($min);
+                    $min = new $value($min);
                 } catch (\Exception) {
-                    throw new ConstraintDefinitionException(sprintf('The min value "%s" could not be converted to a "%s" instance in the "%s" constraint.', $min, $dateTimeClass, get_debug_type($constraint)));
+                    throw new ConstraintDefinitionException(\sprintf('The min value "%s" could not be converted to a "%s" instance in the "%s" constraint.', $min, get_debug_type($value), get_debug_type($constraint)));
                 }
             }
 
             if (\is_string($max)) {
-                $dateTimeClass = $dateTimeClass ?: ($value instanceof \DateTimeImmutable ? \DateTimeImmutable::class : \DateTime::class);
-
                 try {
-                    $max = new $dateTimeClass($max);
+                    $max = new $value($max);
                 } catch (\Exception) {
-                    throw new ConstraintDefinitionException(sprintf('The max value "%s" could not be converted to a "%s" instance in the "%s" constraint.', $max, $dateTimeClass, get_debug_type($constraint)));
+                    throw new ConstraintDefinitionException(\sprintf('The max value "%s" could not be converted to a "%s" instance in the "%s" constraint.', $max, get_debug_type($value), get_debug_type($constraint)));
                 }
             }
         }
@@ -91,7 +89,7 @@ class RangeValidator extends ConstraintValidator
         $hasLowerLimit = null !== $min;
         $hasUpperLimit = null !== $max;
 
-        if ($hasLowerLimit && $hasUpperLimit && ($value < $min || $value > $max)) {
+        if ($hasLowerLimit && $hasUpperLimit && ($this->isGreaterThan($min, $value) || $this->isGreaterThan($value, $max))) {
             $message = $constraint->notInRangeMessage;
             $code = Range::NOT_IN_RANGE_ERROR;
 
@@ -114,7 +112,7 @@ class RangeValidator extends ConstraintValidator
             return;
         }
 
-        if ($hasUpperLimit && $value > $max) {
+        if ($hasUpperLimit && $this->isGreaterThan($value, $max)) {
             $violationBuilder = $this->context->buildViolation($constraint->maxMessage)
                 ->setParameter('{{ value }}', $this->formatValue($value, self::PRETTY_DATE))
                 ->setParameter('{{ limit }}', $this->formatValue($max, self::PRETTY_DATE))
@@ -133,7 +131,7 @@ class RangeValidator extends ConstraintValidator
             return;
         }
 
-        if ($hasLowerLimit && $value < $min) {
+        if ($hasLowerLimit && $this->isGreaterThan($min, $value)) {
             $violationBuilder = $this->context->buildViolation($constraint->minMessage)
                 ->setParameter('{{ value }}', $this->formatValue($value, self::PRETTY_DATE))
                 ->setParameter('{{ limit }}', $this->formatValue($min, self::PRETTY_DATE))
@@ -151,6 +149,43 @@ class RangeValidator extends ConstraintValidator
         }
     }
 
+    private function isGreaterThan(mixed $value, mixed $limit): bool
+    {
+        // PHP compares numeric strings beyond the int range as floats, so only those can lose precision
+        if (!$this->isFloatString($value) && !$this->isFloatString($limit)) {
+            return $value > $limit;
+        }
+
+        if ((!\is_int($value) && !\is_string($value)) || (!\is_int($limit) && !\is_string($limit))) {
+            return $value > $limit;
+        }
+
+        $valueString = trim((string) $value, " \t\n\r\v\f");
+        $limitString = trim((string) $limit, " \t\n\r\v\f");
+
+        if (!preg_match('/^[+-]?[0-9]+$/D', $valueString) || !preg_match('/^[+-]?[0-9]+$/D', $limitString)) {
+            return $value > $limit;
+        }
+
+        $valueDigits = ltrim(ltrim($valueString, '+-'), '0');
+        $limitDigits = ltrim(ltrim($limitString, '+-'), '0');
+        $valueNegative = '' !== $valueDigits && '-' === $valueString[0];
+        $limitNegative = '' !== $limitDigits && '-' === $limitString[0];
+
+        if ($valueNegative !== $limitNegative) {
+            return $limitNegative;
+        }
+
+        $comparison = strnatcmp($valueDigits, $limitDigits);
+
+        return $valueNegative ? $comparison < 0 : $comparison > 0;
+    }
+
+    private function isFloatString(mixed $value): bool
+    {
+        return \is_string($value) && is_numeric($value) && \is_float($value + 0);
+    }
+
     private function getLimit(?string $propertyPath, mixed $default, Constraint $constraint): mixed
     {
         if (null === $propertyPath) {
@@ -164,7 +199,9 @@ class RangeValidator extends ConstraintValidator
         try {
             return $this->getPropertyAccessor()->getValue($object, $propertyPath);
         } catch (NoSuchPropertyException $e) {
-            throw new ConstraintDefinitionException(sprintf('Invalid property path "%s" provided to "%s" constraint: ', $propertyPath, get_debug_type($constraint)).$e->getMessage(), 0, $e);
+            throw new ConstraintDefinitionException(\sprintf('Invalid property path "%s" provided to "%s" constraint: ', $propertyPath, get_debug_type($constraint)).$e->getMessage(), 0, $e);
+        } catch (UninitializedPropertyException) {
+            return null;
         }
     }
 
@@ -184,7 +221,7 @@ class RangeValidator extends ConstraintValidator
         }
 
         try {
-            new \DateTime($boundary);
+            new \DateTimeImmutable($boundary);
         } catch (\Exception) {
             return false;
         }

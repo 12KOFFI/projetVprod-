@@ -38,6 +38,9 @@ class FileValidator extends ConstraintValidator
         self::MIB_BYTES => 'MiB',
     ];
 
+    /**
+     * @return void
+     */
     public function validate(mixed $value, Constraint $constraint)
     {
         if (!$constraint instanceof File) {
@@ -140,6 +143,16 @@ class FileValidator extends ConstraintValidator
         $sizeInBytes = filesize($path);
         $basename = $value instanceof UploadedFile ? $value->getClientOriginalName() : basename($path);
 
+        if ($constraint->filenameMaxLength && $constraint->filenameMaxLength < $filenameLength = \strlen($basename)) {
+            $this->context->buildViolation($constraint->filenameTooLongMessage)
+                ->setParameter('{{ filename_max_length }}', $this->formatValue($constraint->filenameMaxLength))
+                ->setCode(File::FILENAME_TOO_LONG)
+                ->setPlural($constraint->filenameMaxLength)
+                ->addViolation();
+
+            return;
+        }
+
         if (0 === $sizeInBytes) {
             $this->context->buildViolation($constraint->disallowEmptyMessage)
                 ->setParameter('{{ file }}', $this->formatValue($path))
@@ -197,7 +210,9 @@ class FileValidator extends ConstraintValidator
                     $v = $mimeTypesHelper->getMimeTypes($k);
                 }
 
-                $mimeTypes = $mimeTypes ? array_intersect($v, $mimeTypes) : (array) $v;
+                // when the configured mime types share none with the ones of the matched
+                // extension, keep the configured ones so that the file is still checked
+                $mimeTypes = $mimeTypes ? (array_intersect($v, $mimeTypes) ?: $mimeTypes) : (array) $v;
                 break;
             }
 

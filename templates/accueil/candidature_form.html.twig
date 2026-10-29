@@ -25,7 +25,7 @@
     {% endif %}
 
     {{ depot.experience(form) }}
-    {{ depot.entreprise(form, 'Facultatif') }}
+    {{ depot.entreprise(form) }}
     {{ depot.formation(form, candidature, candidature.centre ? candidature.centre.nom : null, 'Le centre de dépôt du dossier ne peut pas être changé') }}
     {{ depot.pieces(form, documents_obligatoires, candidature) }}
 

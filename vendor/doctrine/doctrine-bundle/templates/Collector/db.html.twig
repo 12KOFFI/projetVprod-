@@ -44,6 +44,10 @@
                 <b>Invalid entities</b>
                 <span class="sf-toolbar-status {{ collector.invalidEntityCount > 0 ? 'sf-toolbar-status-red' : '' }}">{{ collector.invalidEntityCount }}</span>
             </div>
+            <div class="sf-toolbar-info-piece">
+                <b>Managed entities</b>
+                <span class="sf-toolbar-status">{{ collector.managedEntityCount }}</span>
+            </div>
             {% if collector.cacheEnabled %}
                 <div class="sf-toolbar-info-piece">
                     <b>Cache hits</b>
@@ -97,9 +101,15 @@
 
 {% block queries %}
     <style>
+        :root {
+            --query-time-bar-color: var(--gray-200);
+        }
+        .theme-dark {
+            --query-time-bar-color: var(--gray-700);
+        }
         .time-container { position: relative; }
-        .time-container .nowrap { position: relative; z-index: 1; text-shadow: 0 0 2px #fff; }
-        .time-bar { display: block; position: absolute; top: 0; left: 0; bottom: 0; background: #e0e0e0; }
+        .time-container .nowrap { position: relative; z-index: 1; text-shadow: 0 0 2px var(--page-background); }
+        .time-bar { display: block; position: absolute; top: 0; left: 0; bottom: 0; background: var(--query-time-bar-color); }
         .sql-runnable.sf-toggle-content.sf-toggle-visible { display: flex; flex-direction: column; }
         .sql-runnable button { align-self: end; }
         {% if profiler_markup_version >= 3 %}
@@ -136,6 +146,11 @@
             <div class="metric">
                 <span class="value">{{ collector.invalidEntityCount }}</span>
                 <span class="label">Invalid entities</span>
+            </div>
+
+            <div class="metric">
+                <span class="value">{{ collector.managedEntityCount }}</span>
+                <span class="label">Managed entities</span>
             </div>
         </div>
 
@@ -278,12 +293,12 @@
                                                                 <td>{{ loop.index }}</td>
                                                                 <td>
                                                                             <span class="text-small">
-                                                                                {% set line_number = trace.line|default(1) %}
+                                                                                {% set line_number = trace.line|default(query.backtrace[loop.index].line|default(1)) %}
                                                                                 {% if trace.file is defined %}
                                                                                     <a href="{{ trace.file|file_link(line_number) }}">
                                                                                 {% endif %}
-                                                                                        {{- trace.class|default ~ (trace.class is defined ? trace.type|default('::')) -}}
-                                                                                    <span class="status-warning">{{ trace.function }}</span>
+                                                                                        {{- query.backtrace[loop.index].class|default ~ (query.backtrace[loop.index].class is defined ? trace.type|default('::')) -}}
+                                                                                    <span class="status-warning">{{ query.backtrace[loop.index].function|default(trace.function) }}</span>
                                                                                 {% if trace.file is defined %}
                                                                                     </a>
                                                                                 {% endif %}
@@ -384,6 +399,22 @@
             </div>
         </div>
 
+        <div class="tab">
+            <h3 class="tab-title">Managed Entities</h3>
+            <div class="tab-content">
+                {% if not collector.managedEntityCountByClass %}
+                    <div class="empty">
+                        <p>No managed entities.</p>
+                    </div>
+                {% else %}
+                    {% for manager, entityCounts in collector.managedEntityCountByClass %}
+                        <h4>{{ manager }} <small>entity manager</small></h4>
+                        {{ helper.render_simple_table('Class', 'Amount of managed objects', entityCounts) }}
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
         <div class="tab {{ not collector.entities ? 'disabled' }}">
             <h3 class="tab-title">Entities Mapping</h3>
             <div class="tab-content">
@@ -395,7 +426,7 @@
                 {% else %}
                     {% for manager, classes in collector.entities %}
                         {% if collector.managers|length > 1 %}
-                            <h3>{{ manager }} <small>entity manager</small></h3>
+                            <h4>{{ manager }} <small>entity manager</small></h4>
                         {% endif %}
 
                         {% if classes is empty %}
@@ -415,8 +446,8 @@
                                     {% set contains_errors = collector.mappingErrors[manager] is defined and collector.mappingErrors[manager][class.class] is defined %}
                                     <tr class="{{ contains_errors ? 'status-error' }}">
                                         <td>
-                                <a href="{{ class.file|file_link(class.line) }}">{{ class. class}}</a>
-                            </td>
+                                            <a href="{{ class.file|file_link(class.line) }}">{{ class. class}}</a>
+                                        </td>
                                         <td class="font-normal">
                                             {% if contains_errors %}
                                                 <ul>

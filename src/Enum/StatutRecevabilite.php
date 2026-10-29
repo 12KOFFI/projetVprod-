@@ -3,7 +3,7 @@
 namespace App\Enum;
 
 /**
- * Résultat de la décision de recevabilité rendue par le conseiller VAE,
+ * Résultat de la décision de recevabilité rendue par le jury local du centre,
  * une fois le dossier INSCRIT (paiement des frais de dossier confirmé).
  *
  * Ce n'est PAS le statut global de la candidature : c'est la décision portée

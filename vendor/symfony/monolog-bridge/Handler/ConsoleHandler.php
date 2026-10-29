@@ -95,6 +95,7 @@ class ConsoleHandler extends AbstractProcessingHandler implements EventSubscribe
         OutputInterface::VERBOSITY_DEBUG => Logger::DEBUG,
     ];
     private array $consoleFormatterOptions;
+    private int $nestedCommandDepth = 0;
 
     /**
      * @param OutputInterface|null $output            The console output to use (the handler remains disabled when passing null
@@ -103,7 +104,7 @@ class ConsoleHandler extends AbstractProcessingHandler implements EventSubscribe
      * @param array                $verbosityLevelMap Array that maps the OutputInterface verbosity to a minimum logging
      *                                                level (leave empty to use the default mapping)
      */
-    public function __construct(OutputInterface $output = null, bool $bubble = true, array $verbosityLevelMap = [], array $consoleFormatterOptions = [])
+    public function __construct(?OutputInterface $output = null, bool $bubble = true, array $verbosityLevelMap = [], array $consoleFormatterOptions = [])
     {
         parent::__construct(Logger::DEBUG, $bubble);
         $this->output = $output;
@@ -129,6 +130,8 @@ class ConsoleHandler extends AbstractProcessingHandler implements EventSubscribe
 
     /**
      * Sets the console output to use for printing logs.
+     *
+     * @return void
      */
     public function setOutput(OutputInterface $output)
     {
@@ -140,6 +143,7 @@ class ConsoleHandler extends AbstractProcessingHandler implements EventSubscribe
      */
     public function close(): void
     {
+        $this->nestedCommandDepth = 0;
         $this->output = null;
 
         parent::close();
@@ -148,9 +152,15 @@ class ConsoleHandler extends AbstractProcessingHandler implements EventSubscribe
     /**
      * Before a command is executed, the handler gets activated and the console output
      * is set in order to know where to write the logs.
+     *
+     * @return void
      */
     public function onCommand(ConsoleCommandEvent $event)
     {
+        if (1 !== ++$this->nestedCommandDepth) {
+            return;
+        }
+
         $output = $event->getOutput();
         if ($output instanceof ConsoleOutputInterface) {
             $output = $output->getErrorOutput();
@@ -161,10 +171,14 @@ class ConsoleHandler extends AbstractProcessingHandler implements EventSubscribe
 
     /**
      * After a command has been executed, it disables the output.
+     *
+     * @return void
      */
     public function onTerminate(ConsoleTerminateEvent $event)
     {
-        $this->close();
+        if ($this->nestedCommandDepth && !--$this->nestedCommandDepth) {
+            $this->close();
+        }
     }
 
     public static function getSubscribedEvents(): array

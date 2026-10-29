@@ -181,6 +181,8 @@ class ChargerJeuDemoCommand extends Command
             'conseiller_bke' => ['conseiller.bouake@vae.test', Role::CONSEILLER, $centres['bouake'], null, 'COULIBALY', 'Seydou'],
             'accomp_coif'    => ['accompagnateur@vae.test', Role::ACCOMPAGNATEUR, $centres['cocody'], $coiffure, 'DIALLO', 'Fatoumata'],
             'accomp_maco'    => ['accompagnateur2@vae.test', Role::ACCOMPAGNATEUR, $centres['cocody'], $maconnerie, 'SANGARE', 'Moussa'],
+            'jury_local'     => ['jury@vae.test', Role::JURY_LOCAL, $centres['cocody'], null, 'KOFFI', 'Adjoa'],
+            'jury_bouake'    => ['jury.bouake@vae.test', Role::JURY_LOCAL, $centres['bouake'], null, 'DOUMBIA', 'Lassina'],
         ];
 
         $personnel = [];

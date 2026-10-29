@@ -44,12 +44,14 @@ trait ReferenceSetArgumentTrait
 
     /**
      * @param Reference[] $values The service references to put in the set
+     *
+     * @return void
      */
     public function setValues(array $values)
     {
         foreach ($values as $k => $v) {
             if (null !== $v && !$v instanceof Reference) {
-                throw new InvalidArgumentException(sprintf('A "%s" must hold only Reference instances, "%s" given.', __CLASS__, get_debug_type($v)));
+                throw new InvalidArgumentException(\sprintf('A "%s" must hold only Reference instances, "%s" given.', __CLASS__, get_debug_type($v)));
             }
         }
 

@@ -12,6 +12,8 @@
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 use Symfony\Bundle\FrameworkBundle\DataCollector\RouterDataCollector;
+use Symfony\Component\Cache\DataCollector\CacheDataCollector;
+use Symfony\Component\Console\DataCollector\CommandDataCollector;
 use Symfony\Component\HttpKernel\DataCollector\AjaxDataCollector;
 use Symfony\Component\HttpKernel\DataCollector\ConfigDataCollector;
 use Symfony\Component\HttpKernel\DataCollector\EventDataCollector;
@@ -30,7 +32,7 @@ return static function (ContainerConfigurator $container) {
 
         ->set('data_collector.request', RequestDataCollector::class)
             ->args([
-                service('request_stack')->ignoreOnInvalid(),
+                service('.virtual_request_stack')->ignoreOnInvalid(),
             ])
             ->tag('kernel.event_subscriber')
             ->tag('data_collector', ['template' => '@WebProfiler/Collector/request.html.twig', 'id' => 'request', 'priority' => 335])
@@ -38,6 +40,11 @@ return static function (ContainerConfigurator $container) {
         ->set('data_collector.request.session_collector', \Closure::class)
             ->factory([\Closure::class, 'fromCallable'])
             ->args([[service('data_collector.request'), 'collectSessionUsage']])
+
+        // public to prevent inlining, made private in CacheCollectorPass
+        ->set('data_collector.cache', CacheDataCollector::class)
+            ->public()
+            ->tag('data_collector', ['template' => '@WebProfiler/Collector/cache.html.twig', 'id' => 'cache', 'priority' => 275])
 
         ->set('data_collector.ajax', AjaxDataCollector::class)
             ->tag('data_collector', ['template' => '@WebProfiler/Collector/ajax.html.twig', 'id' => 'ajax', 'priority' => 315])
@@ -47,16 +54,16 @@ return static function (ContainerConfigurator $container) {
 
         ->set('data_collector.events', EventDataCollector::class)
             ->args([
-                service('debug.event_dispatcher')->ignoreOnInvalid(),
-                service('request_stack')->ignoreOnInvalid(),
+                tagged_iterator('event_dispatcher.dispatcher', 'name'),
+                service('.virtual_request_stack')->ignoreOnInvalid(),
             ])
             ->tag('data_collector', ['template' => '@WebProfiler/Collector/events.html.twig', 'id' => 'events', 'priority' => 290])
 
         ->set('data_collector.logger', LoggerDataCollector::class)
             ->args([
                 service('logger')->ignoreOnInvalid(),
-                sprintf('%s/%s', param('kernel.build_dir'), param('kernel.container_class')),
-                service('request_stack')->ignoreOnInvalid(),
+                \sprintf('%s/%s', param('kernel.build_dir'), param('kernel.container_class')),
+                service('.virtual_request_stack')->ignoreOnInvalid(),
             ])
             ->tag('monolog.logger', ['channel' => 'profiler'])
             ->tag('data_collector', ['template' => '@WebProfiler/Collector/logger.html.twig', 'id' => 'logger', 'priority' => 300])
@@ -74,5 +81,8 @@ return static function (ContainerConfigurator $container) {
         ->set('data_collector.router', RouterDataCollector::class)
             ->tag('kernel.event_listener', ['event' => KernelEvents::CONTROLLER, 'method' => 'onKernelController'])
             ->tag('data_collector', ['template' => '@WebProfiler/Collector/router.html.twig', 'id' => 'router', 'priority' => 285])
+
+        ->set('.data_collector.command', CommandDataCollector::class)
+            ->tag('data_collector', ['template' => '@WebProfiler/Collector/command.html.twig', 'id' => 'command', 'priority' => 335])
     ;
 };

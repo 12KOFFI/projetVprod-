@@ -112,9 +112,9 @@ final class Envelope
      *
      * @return StampInterface[]|StampInterface[][] The stamps for the specified FQCN, or all stamps by their class name
      *
-     * @psalm-return ($stampFqcn is string : array<class-string<StampInterface>, list<StampInterface>> ? list<TStamp>)
+     * @psalm-return ($stampFqcn is null ? array<class-string<StampInterface>, list<StampInterface>> : list<TStamp>)
      */
-    public function all(string $stampFqcn = null): array
+    public function all(?string $stampFqcn = null): array
     {
         if (null !== $stampFqcn) {
             return $this->stamps[$stampFqcn] ?? [];
@@ -126,5 +126,31 @@ final class Envelope
     public function getMessage(): object
     {
         return $this->message;
+    }
+
+    public function __wakeup(): void
+    {
+        if (!isset($this->message)) {
+            throw new \BadMethodCallException('Cannot unserialize '.__CLASS__);
+        }
+
+        foreach ($this->stamps as $class => $stamps) {
+            if (!\is_array($stamps) || !$stamps) {
+                throw new \BadMethodCallException('Cannot unserialize '.__CLASS__);
+            }
+
+            foreach ($stamps as $stamp) {
+                if ($stamp instanceof \__PHP_Incomplete_Class) {
+                    // the class of the stamp is missing, or unserialize() was not allowed to load it
+                    $stampClass = ((array) $stamp)['__PHP_Incomplete_Class_Name'] ?? null;
+                } else {
+                    $stampClass = $stamp instanceof StampInterface ? $stamp::class : null;
+                }
+
+                if ($class !== $stampClass) {
+                    throw new \BadMethodCallException('Cannot unserialize '.__CLASS__);
+                }
+            }
+        }
     }
 }

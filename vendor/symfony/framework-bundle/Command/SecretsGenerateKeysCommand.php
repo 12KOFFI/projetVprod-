@@ -33,7 +33,7 @@ final class SecretsGenerateKeysCommand extends Command
     private AbstractVault $vault;
     private ?AbstractVault $localVault;
 
-    public function __construct(AbstractVault $vault, AbstractVault $localVault = null)
+    public function __construct(AbstractVault $vault, ?AbstractVault $localVault = null)
     {
         $this->vault = $vault;
         $this->localVault = $localVault;
@@ -41,22 +41,22 @@ final class SecretsGenerateKeysCommand extends Command
         parent::__construct();
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->addOption('local', 'l', InputOption::VALUE_NONE, 'Update the local vault.')
             ->addOption('rotate', 'r', InputOption::VALUE_NONE, 'Re-encrypt existing secrets with the newly generated keys.')
             ->setHelp(<<<'EOF'
-The <info>%command.name%</info> command generates a new encryption key.
+                The <info>%command.name%</info> command generates a new encryption key.
 
-    <info>%command.full_name%</info>
+                    <info>%command.full_name%</info>
 
-If encryption keys already exist, the command must be called with
-the <info>--rotate</info> option in order to override those keys and re-encrypt
-existing secrets.
+                If encryption keys already exist, the command must be called with
+                the <info>--rotate</info> option in order to override those keys and re-encrypt
+                existing secrets.
 
-    <info>%command.full_name% --rotate</info>
-EOF
+                    <info>%command.full_name% --rotate</info>
+                EOF
             )
         ;
     }
@@ -67,7 +67,7 @@ EOF
         $vault = $input->getOption('local') ? $this->localVault : $this->vault;
 
         if (null === $vault) {
-            $io->success('The local vault is disabled.');
+            $io->error('The local vault is disabled.');
 
             return 1;
         }
@@ -99,7 +99,7 @@ EOF
             $secrets[$name] = $value;
         }
 
-        if (!$vault->generateKeys(true)) {
+        if (!$vault->rotate($secrets)) {
             $io->warning($vault->getLastMessage());
 
             return 1;
@@ -108,10 +108,6 @@ EOF
         $io->success($vault->getLastMessage());
 
         if ($secrets) {
-            foreach ($secrets as $name => $value) {
-                $vault->seal($name, $value);
-            }
-
             $io->comment('Existing secrets have been rotated to the new keys.');
         }
 

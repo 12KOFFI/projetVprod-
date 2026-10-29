@@ -6,6 +6,7 @@ use App\Repository\UserRepository;
 use App\Validator\RattachementUtilisateur;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Security\Core\User\EquatableInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
@@ -13,7 +14,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 #[ORM\Table(name: '`user`')]
 #[ORM\HasLifecycleCallbacks]
 #[RattachementUtilisateur]
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+class User implements UserInterface, PasswordAuthenticatedUserInterface, EquatableInterface
 {
     public const ROLE_CANDIDAT = 'ROLE_CANDIDAT';
     public const NATIONALITE_IVOIRIENNE = "COTE D'IVOIRE";
@@ -162,6 +163,30 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         // If you store any temporary, sensitive data on the user, clear it here
         // $this->plainPassword = null;
+    }
+
+    /**
+     * Comparaison, à chaque requête, de l'utilisateur en session avec sa
+     * version relue en base : toute différence ferme la session.
+     *
+     * Reprend les contrôles par défaut de Symfony (mot de passe, rôles,
+     * identifiant) et y ajoute l'état du compte : un compte désactivé par
+     * l'administrateur perd immédiatement sa session en cours.
+     */
+    public function isEqualTo(UserInterface $user): bool
+    {
+        if (!$user instanceof self || !$user->isActif()) {
+            return false;
+        }
+
+        $rolesSession = $this->getRoles();
+        $rolesBase = $user->getRoles();
+        sort($rolesSession);
+        sort($rolesBase);
+
+        return $this->getPassword() === $user->getPassword()
+            && $this->getUserIdentifier() === $user->getUserIdentifier()
+            && $rolesSession === $rolesBase;
     }
 
     public function getNom(): ?string

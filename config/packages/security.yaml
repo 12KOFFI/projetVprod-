@@ -18,6 +18,8 @@ security:
     main:
       lazy: false
       provider: app_user_provider
+      # Refuse la connexion d'un compte désactivé par l'administrateur.
+      user_checker: App\Security\UserChecker
       access_denied_handler: App\Security\AccessDeniedHandler
 
       # Authenticator personnalisé
@@ -69,6 +71,8 @@ security:
     - { path: "^/conseiller", roles: ROLE_CONSEILLER }
     - { path: "^/accueil", roles: ROLE_AGENT_ACCEUIL }
     - { path: "^/accompagnement", roles: ROLE_ACCOMPAGNATEUR }
+    # Jury local : décision de recevabilité des dossiers inscrits de son centre.
+    - { path: "^/jury-local", roles: ROLE_JURY_LOCAL }
     - { path: "^/espace-candidat", roles: ROLE_CANDIDAT }
     - { path: "^/api/candidature", roles: ROLE_USER }
     - { path: "^/tableau-de-bord", roles: ROLE_USER }
@@ -80,12 +84,14 @@ security:
     ROLE_CONSEILLER: ROLE_USER
     ROLE_JURY: ROLE_USER
     ROLE_ACCOMPAGNATEUR: ROLE_USER
+    ROLE_JURY_LOCAL: ROLE_USER
 
     ROLE_ADMIN:
       - ROLE_CANDIDAT
       - ROLE_AGENT_ACCEUIL
       - ROLE_CONSEILLER
       - ROLE_JURY
+      - ROLE_JURY_LOCAL
       - ROLE_ACCOMPAGNATEUR
       - ROLE_ALLOWED_TO_SWITCH
 

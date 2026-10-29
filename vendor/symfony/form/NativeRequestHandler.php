@@ -12,6 +12,7 @@
 namespace Symfony\Component\Form;
 
 use Symfony\Component\Form\Exception\UnexpectedTypeException;
+use Symfony\Component\Form\Util\FormUtil;
 use Symfony\Component\Form\Util\ServerParams;
 
 /**
@@ -34,13 +35,15 @@ class NativeRequestHandler implements RequestHandlerInterface
         'type',
     ];
 
-    public function __construct(ServerParams $params = null)
+    public function __construct(?ServerParams $params = null)
     {
         $this->serverParams = $params ?? new ServerParams();
     }
 
     /**
-     * @throws Exception\UnexpectedTypeException If the $request is not null
+     * @return void
+     *
+     * @throws UnexpectedTypeException If the $request is not null
      */
     public function handleRequest(FormInterface $form, mixed $request = null)
     {
@@ -77,11 +80,10 @@ class NativeRequestHandler implements RequestHandlerInterface
                 // Submit the form, but don't clear the default values
                 $form->submit(null, false);
 
-                $form->addError(new FormError(
-                    $form->getConfig()->getOption('upload_max_size_message')(),
-                    null,
-                    ['{{ max }}' => $this->serverParams->getNormalizedIniPostMaxSize()]
-                ));
+                $messageTemplate = $form->getConfig()->getOption('upload_max_size_message')();
+                $messageParameters = ['{{ max }}' => $this->serverParams->getNormalizedIniPostMaxSize()];
+
+                $form->addError(new FormError(strtr($messageTemplate, $messageParameters), $messageTemplate, $messageParameters));
 
                 return;
             }
@@ -104,14 +106,14 @@ class NativeRequestHandler implements RequestHandlerInterface
             }
 
             if (\is_array($params) && \is_array($files)) {
-                $data = array_replace_recursive($params, $files);
+                $data = FormUtil::mergeParamsAndFiles($params, $files);
             } else {
                 $data = $params ?: $files;
             }
         }
 
         // Don't auto-submit the form unless at least one field is present.
-        if ('' === $name && \count(array_intersect_key($data, $form->all())) <= 0) {
+        if ('' === $name && !array_intersect_key($data, $form->all())) {
             return;
         }
 

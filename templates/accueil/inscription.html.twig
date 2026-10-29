@@ -19,6 +19,8 @@
     <div class="bg-white rounded-lg border border-slate-200 p-6">
         {{ ui.section('Identité du candidat', 'Ces informations créent son compte d\'accès à la plateforme', 'id-card', 'orange') }}
 
+        <p class="text-xs text-slate-500 mb-4"><span class="text-red-600 font-bold">*</span> Champs obligatoires</p>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             {{ ui.champ(form_candidat.nom) }}
             {{ ui.champ(form_candidat.prenoms) }}
@@ -58,7 +60,7 @@
     </div>
 
     {{ depot.experience(form_dossier) }}
-    {{ depot.entreprise(form_dossier, 'Facultatif') }}
+    {{ depot.entreprise(form_dossier) }}
     {{ depot.formation(form_dossier, null, centre.nom, 'Le centre est celui auquel vous êtes rattaché') }}
     {{ depot.pieces(form_dossier, documents_obligatoires) }}
 

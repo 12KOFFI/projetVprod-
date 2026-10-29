@@ -11,11 +11,17 @@
 
 namespace Symfony\Bundle\WebProfilerBundle\Twig;
 
+use Symfony\Component\Mime\Exception\InvalidArgumentException;
+use Symfony\Component\Mime\Part\AbstractPart;
+use Symfony\Component\Mime\Part\DataPart;
+use Symfony\Component\Mime\RawMessage;
 use Symfony\Component\VarDumper\Cloner\Data;
 use Symfony\Component\VarDumper\Dumper\HtmlDumper;
 use Twig\Environment;
+use Twig\Extension\EscaperExtension;
 use Twig\Extension\ProfilerExtension;
 use Twig\Profiler\Profile;
+use Twig\Runtime\EscaperRuntime;
 use Twig\TwigFunction;
 
 /**
@@ -27,22 +33,16 @@ use Twig\TwigFunction;
  */
 class WebProfilerExtension extends ProfilerExtension
 {
-    /**
-     * @var HtmlDumper
-     */
-    private $dumper;
+    private HtmlDumper $dumper;
 
     /**
      * @var resource
      */
     private $output;
 
-    /**
-     * @var int
-     */
-    private $stackLevel = 0;
+    private int $stackLevel = 0;
 
-    public function __construct(HtmlDumper $dumper = null)
+    public function __construct(?HtmlDumper $dumper = null)
     {
         $this->dumper = $dumper ?? new HtmlDumper();
         $this->dumper->setOutput($this->output = fopen('php://memory', 'r+'));
@@ -65,10 +65,36 @@ class WebProfilerExtension extends ProfilerExtension
         return [
             new TwigFunction('profiler_dump', $this->dumpData(...), ['is_safe' => ['html'], 'needs_environment' => true]),
             new TwigFunction('profiler_dump_log', $this->dumpLog(...), ['is_safe' => ['html'], 'needs_environment' => true]),
+            new TwigFunction('profiler_mailer_body', $this->mailerBody(...)),
+            new TwigFunction('profiler_mailer_as_string', $this->mailerAsString(...)),
         ];
     }
 
-    public function dumpData(Environment $env, Data $data, int $maxDepth = 0)
+    /**
+     * Returns null when the part refers to a file that cannot be read anymore.
+     */
+    public function mailerBody(DataPart $part): ?string
+    {
+        try {
+            return $part->getBody();
+        } catch (InvalidArgumentException) {
+            return null;
+        }
+    }
+
+    /**
+     * Returns null when the message or the part refers to a file that cannot be read anymore.
+     */
+    public function mailerAsString(RawMessage|AbstractPart $message): ?string
+    {
+        try {
+            return $message->toString();
+        } catch (InvalidArgumentException) {
+            return null;
+        }
+    }
+
+    public function dumpData(Environment $env, Data $data, int $maxDepth = 0): string
     {
         $this->dumper->setCharset($env->getCharset());
         $this->dumper->dump($data, null, [
@@ -82,14 +108,14 @@ class WebProfilerExtension extends ProfilerExtension
         return str_replace("\n</pre", '</pre', rtrim($dump));
     }
 
-    public function dumpLog(Environment $env, string $message, Data $context = null)
+    public function dumpLog(Environment $env, string $message, ?Data $context = null): string
     {
-        $message = twig_escape_filter($env, $message);
+        $message = self::escape($env, $message);
         $message = preg_replace('/&quot;(.*?)&quot;/', '&quot;<b>$1</b>&quot;', $message);
 
         $replacements = [];
         foreach ($context ?? [] as $k => $v) {
-            $k = '{'.twig_escape_filter($env, $k).'}';
+            $k = '{'.self::escape($env, $k).'}';
             if (str_contains($message, $k)) {
                 $replacements[$k] = $v;
             }
@@ -106,8 +132,24 @@ class WebProfilerExtension extends ProfilerExtension
         return '<span class="dump-inline">'.strtr($message, $replacements).'</span>';
     }
 
-    public function getName()
+    public function getName(): string
     {
         return 'profiler';
+    }
+
+    private static function escape(Environment $env, string $s): string
+    {
+        // Twig 3.10 and above
+        if (class_exists(EscaperRuntime::class)) {
+            return $env->getRuntime(EscaperRuntime::class)->escape($s);
+        }
+
+        // Twig 3.9
+        if (method_exists(EscaperExtension::class, 'escape')) {
+            return EscaperExtension::escape($env, $s);
+        }
+
+        // to be removed when support for Twig 3 is dropped
+        return twig_escape_filter($env, $s);
     }
 }

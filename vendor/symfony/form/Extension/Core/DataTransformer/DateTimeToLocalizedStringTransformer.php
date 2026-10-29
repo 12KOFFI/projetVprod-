@@ -24,6 +24,15 @@ use Symfony\Component\Form\Exception\UnexpectedTypeException;
  */
 class DateTimeToLocalizedStringTransformer extends BaseDateTimeTransformer
 {
+    /**
+     * Unicode whitespace characters used by ICU in formatted date strings.
+     *
+     * @see https://unicode-org.atlassian.net/browse/CLDR-14032
+     */
+    private const NO_BREAK_SPACE = "\u{00A0}";
+    private const NARROW_NO_BREAK_SPACE = "\u{202F}"; // Used by ICU 72+ before AM/PM
+    private const THIN_SPACE = "\u{2009}";
+
     private int $dateFormat;
     private int $timeFormat;
     private ?string $pattern;
@@ -41,7 +50,7 @@ class DateTimeToLocalizedStringTransformer extends BaseDateTimeTransformer
      *
      * @throws UnexpectedTypeException If a format is not supported or if a timezone is not a string
      */
-    public function __construct(string $inputTimezone = null, string $outputTimezone = null, int $dateFormat = null, int $timeFormat = null, int $calendar = \IntlDateFormatter::GREGORIAN, string $pattern = null)
+    public function __construct(?string $inputTimezone = null, ?string $outputTimezone = null, ?int $dateFormat = null, ?int $timeFormat = null, int $calendar = \IntlDateFormatter::GREGORIAN, ?string $pattern = null)
     {
         parent::__construct($inputTimezone, $outputTimezone);
 
@@ -86,7 +95,7 @@ class DateTimeToLocalizedStringTransformer extends BaseDateTimeTransformer
             throw new TransformationFailedException(intl_get_error_message());
         }
 
-        return $value;
+        return self::normalizeWhitespace($value);
     }
 
     /**
@@ -112,11 +121,7 @@ class DateTimeToLocalizedStringTransformer extends BaseDateTimeTransformer
         $dateOnly = $this->isPatternDateOnly();
         $dateFormatter = $this->getIntlDateFormatter($dateOnly);
 
-        try {
-            $timestamp = @$dateFormatter->parse($value);
-        } catch (\IntlException $e) {
-            throw new TransformationFailedException($e->getMessage(), $e->getCode(), $e);
-        }
+        $timestamp = $this->parse($dateFormatter, $value);
 
         if (0 != intl_get_error_code()) {
             throw new TransformationFailedException(intl_get_error_message(), intl_get_error_code());
@@ -126,7 +131,7 @@ class DateTimeToLocalizedStringTransformer extends BaseDateTimeTransformer
         } elseif (false === $timestamp) {
             // the value couldn't be parsed but the Intl extension didn't report an error code, this
             // could be the case when the Intl polyfill is used which always returns 0 as the error code
-            throw new TransformationFailedException(sprintf('"%s" could not be parsed as a date.', $value));
+            throw new TransformationFailedException(\sprintf('"%s" could not be parsed as a date.', $value));
         }
 
         try {
@@ -135,7 +140,7 @@ class DateTimeToLocalizedStringTransformer extends BaseDateTimeTransformer
                 $dateTime = new \DateTime(gmdate('Y-m-d', $timestamp), new \DateTimeZone($this->outputTimezone));
             } else {
                 // read timestamp into DateTime object - the formatter delivers a timestamp
-                $dateTime = new \DateTime(sprintf('@%s', $timestamp));
+                $dateTime = new \DateTime(\sprintf('@%s', $timestamp));
             }
             // set timezone separately, as it would be ignored if set via the constructor,
             // see https://php.net/datetime.construct
@@ -167,6 +172,12 @@ class DateTimeToLocalizedStringTransformer extends BaseDateTimeTransformer
         $calendar = $this->calendar;
         $pattern = $this->pattern;
 
+        if (\IntlDateFormatter::GREGORIAN === $calendar && class_exists(\IntlGregorianCalendar::class, false)) {
+            // ICU uses the Julian calendar before October 1582, PHP always uses the Gregorian one
+            $calendar = new \IntlGregorianCalendar($timezone, \Locale::getDefault());
+            $calendar->setGregorianChange(-\PHP_FLOAT_MAX);
+        }
+
         $intlDateFormatter = new \IntlDateFormatter(\Locale::getDefault(), $dateFormat, $timeFormat, $timezone, $calendar, $pattern ?? '');
 
         // new \intlDateFormatter may return null instead of false in case of failure, see https://bugs.php.net/66323
@@ -193,5 +204,48 @@ class DateTimeToLocalizedStringTransformer extends BaseDateTimeTransformer
 
         // check for the absence of time-related placeholders
         return 0 === preg_match('#[ahHkKmsSAzZOvVxX]#', $pattern);
+    }
+
+    /**
+     * Normalizes various Unicode whitespace characters to regular ASCII spaces.
+     *
+     * ICU 72+ uses special Unicode whitespace characters (such as narrow no-break space U+202F)
+     * in formatted date strings. This method ensures consistent handling regardless of ICU version
+     * by normalizing these characters to regular ASCII spaces (U+0020).
+     */
+    private static function normalizeWhitespace(string $string): string
+    {
+        return str_replace([self::NO_BREAK_SPACE, self::NARROW_NO_BREAK_SPACE, self::THIN_SPACE], ' ', $string);
+    }
+
+    /**
+     * Parses a localized date string, handling ICU version differences in whitespace.
+     *
+     * ICU 72+ uses special Unicode whitespace characters (such as narrow no-break space U+202F)
+     * that users typically don't type. This method first tries parsing the input as-is, then
+     * tries with whitespace normalization to ensure compatibility across ICU versions.
+     *
+     * @throws TransformationFailedException When the input cannot be parsed
+     */
+    private function parse(\IntlDateFormatter $dateFormatter, string $value): int|float|false
+    {
+        try {
+            $timestamp = @$dateFormatter->parse($value);
+        } catch (\IntlException $e) {
+            throw new TransformationFailedException($e->getMessage(), $e->getCode(), $e);
+        }
+
+        // If parsing failed and the value contains regular spaces, try with ICU 72+ whitespace
+        if ((false === $timestamp || 0 !== intl_get_error_code()) && str_contains($value, ' ')) {
+            $icuValue = str_replace(' ', self::NARROW_NO_BREAK_SPACE, $value);
+
+            try {
+                $timestamp = @$dateFormatter->parse($icuValue);
+            } catch (\IntlException) {
+                // Ignore, we'll use the original error below
+            }
+        }
+
+        return $timestamp;
     }
 }

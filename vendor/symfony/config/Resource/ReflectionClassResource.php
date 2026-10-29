@@ -12,6 +12,7 @@
 namespace Symfony\Component\Config\Resource;
 
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\Form\FormTypeExtensionInterface;
 use Symfony\Component\Messenger\Handler\MessageSubscriberInterface;
 use Symfony\Contracts\Service\ServiceSubscriberInterface;
 
@@ -60,20 +61,22 @@ class ReflectionClassResource implements SelfCheckingResourceInterface
         return 'reflection.'.$this->className;
     }
 
-    /**
-     * @internal
-     */
-    public function __sleep(): array
+    public function __serialize(): array
     {
         if (!isset($this->hash)) {
             $this->hash = $this->computeHash();
             $this->loadFiles($this->classReflector);
         }
 
-        return ['files', 'className', 'hash'];
+        return [
+            'files' => $this->files,
+            'className' => $this->className,
+            'excludedVendors' => $this->excludedVendors,
+            'hash' => $this->hash,
+        ];
     }
 
-    private function loadFiles(\ReflectionClass $class)
+    private function loadFiles(\ReflectionClass $class): void
     {
         foreach ($class->getInterfaces() as $v) {
             $this->loadFiles($v);
@@ -105,7 +108,7 @@ class ReflectionClassResource implements SelfCheckingResourceInterface
             // the class does not exist anymore
             return false;
         }
-        $hash = hash_init('md5');
+        $hash = hash_init('xxh128');
 
         foreach ($this->generateSignature($this->classReflector) as $info) {
             hash_update($hash, $info);
@@ -123,7 +126,7 @@ class ReflectionClassResource implements SelfCheckingResourceInterface
         yield print_r($attributes, true);
         $attributes = [];
 
-        yield $class->getDocComment();
+        yield $class->getDocComment() ?: '';
         yield (int) $class->isFinal();
         yield (int) $class->isAbstract();
 
@@ -133,6 +136,14 @@ class ReflectionClassResource implements SelfCheckingResourceInterface
             yield print_r(class_parents($class->name), true);
             yield print_r(class_implements($class->name), true);
             yield print_r($class->getConstants(), true);
+        }
+
+        foreach ($class->getReflectionConstants() as $constant) {
+            foreach ($constant->getAttributes() as $a) {
+                $attributes[] = [$a->getName(), (string) $a];
+            }
+            yield $constant->name.print_r($attributes, true);
+            $attributes = [];
         }
 
         if (!$class->isInterface()) {
@@ -145,7 +156,7 @@ class ReflectionClassResource implements SelfCheckingResourceInterface
                 yield print_r($attributes, true);
                 $attributes = [];
 
-                yield $p->getDocComment();
+                yield $p->getDocComment() ?: '';
                 yield $p->isDefault() ? '<default>' : '';
                 yield $p->isPublic() ? 'public' : 'protected';
                 yield $p->isStatic() ? 'static' : '';
@@ -153,8 +164,6 @@ class ReflectionClassResource implements SelfCheckingResourceInterface
                 yield print_r(isset($defaults[$p->name]) && !\is_object($defaults[$p->name]) ? $defaults[$p->name] : null, true);
             }
         }
-
-        $defined = \Closure::bind(static function ($c) { return \defined($c); }, null, $class->name);
 
         foreach ($class->getMethods(\ReflectionMethod::IS_PUBLIC | \ReflectionMethod::IS_PROTECTED) as $m) {
             foreach ($m->getAttributes() as $a) {
@@ -203,6 +212,13 @@ class ReflectionClassResource implements SelfCheckingResourceInterface
         if (interface_exists(ServiceSubscriberInterface::class, false) && $class->isSubclassOf(ServiceSubscriberInterface::class)) {
             yield ServiceSubscriberInterface::class;
             yield print_r($class->name::getSubscribedServices(), true);
+        }
+
+        if (interface_exists(FormTypeExtensionInterface::class, false) && $class->isSubclassOf(FormTypeExtensionInterface::class)) {
+            yield FormTypeExtensionInterface::class;
+            foreach ($class->name::getExtendedTypes() as $key => $value) {
+                yield $key.print_r($value, true);
+            }
         }
     }
 }

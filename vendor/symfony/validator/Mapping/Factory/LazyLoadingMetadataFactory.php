@@ -12,10 +12,16 @@
 namespace Symfony\Component\Validator\Mapping\Factory;
 
 use Psr\Cache\CacheItemPoolInterface;
+use Symfony\Component\Validator\Constraints\DisableAutoMapping;
+use Symfony\Component\Validator\Constraints\EnableAutoMapping;
 use Symfony\Component\Validator\Exception\NoSuchMetadataException;
+use Symfony\Component\Validator\Mapping\AutoMappingStrategy;
+use Symfony\Component\Validator\Mapping\CascadingStrategy;
 use Symfony\Component\Validator\Mapping\ClassMetadata;
 use Symfony\Component\Validator\Mapping\Loader\LoaderInterface;
+use Symfony\Component\Validator\Mapping\MemberMetadata;
 use Symfony\Component\Validator\Mapping\MetadataInterface;
+use Symfony\Component\Validator\Mapping\PropertyMetadata;
 
 /**
  * Creates new {@link ClassMetadataInterface} instances.
@@ -49,7 +55,7 @@ class LazyLoadingMetadataFactory implements MetadataFactoryInterface
      */
     protected $loadedClasses = [];
 
-    public function __construct(LoaderInterface $loader = null, CacheItemPoolInterface $cache = null)
+    public function __construct(?LoaderInterface $loader = null, ?CacheItemPoolInterface $cache = null)
     {
         $this->loader = $loader;
         $this->cache = $cache;
@@ -71,7 +77,7 @@ class LazyLoadingMetadataFactory implements MetadataFactoryInterface
     public function getMetadataFor(mixed $value): MetadataInterface
     {
         if (!\is_object($value) && !\is_string($value)) {
-            throw new NoSuchMetadataException(sprintf('Cannot create metadata for non-objects. Got: "%s".', get_debug_type($value)));
+            throw new NoSuchMetadataException(\sprintf('Cannot create metadata for non-objects. Got: "%s".', get_debug_type($value)));
         }
 
         $class = ltrim(\is_object($value) ? $value::class : $value, '\\');
@@ -81,7 +87,7 @@ class LazyLoadingMetadataFactory implements MetadataFactoryInterface
         }
 
         if (!class_exists($class) && !interface_exists($class, false)) {
-            throw new NoSuchMetadataException(sprintf('The class or interface "%s" does not exist.', $class));
+            throw new NoSuchMetadataException(\sprintf('The class or interface "%s" does not exist.', $class));
         }
 
         $cacheItem = $this->cache?->getItem($this->escapeClassName($class));
@@ -96,7 +102,14 @@ class LazyLoadingMetadataFactory implements MetadataFactoryInterface
 
         $metadata = new ClassMetadata($class);
 
-        $this->loader?->loadClassMetadata($metadata);
+        if (null !== $this->loader) {
+            // Loaders that map constraints automatically need to know about the strategies declared in parent classes
+            $placeholders = $this->inheritAutoMappingStrategies($metadata);
+
+            $this->loader->loadClassMetadata($metadata);
+
+            $this->removeUnusedPlaceholders($metadata, $placeholders);
+        }
 
         if (null !== $cacheItem) {
             $this->cache->save($cacheItem->set($metadata));
@@ -108,7 +121,7 @@ class LazyLoadingMetadataFactory implements MetadataFactoryInterface
         return $this->loadedClasses[$class] = $metadata;
     }
 
-    private function mergeConstraints(ClassMetadata $metadata)
+    private function mergeConstraints(ClassMetadata $metadata): void
     {
         if ($metadata->getReflectionClass()->isInterface()) {
             return;
@@ -142,6 +155,71 @@ class LazyLoadingMetadataFactory implements MetadataFactoryInterface
         $class = ltrim(\is_object($value) ? $value::class : $value, '\\');
 
         return class_exists($class) || interface_exists($class, false);
+    }
+
+    /**
+     * Copies the auto-mapping strategies declared on the parent's properties.
+     *
+     * @return array<string, array{PropertyMetadata, int}> the property metadata created to carry them
+     */
+    private function inheritAutoMappingStrategies(ClassMetadata $metadata): array
+    {
+        if (!$parent = $metadata->getReflectionClass()->getParentClass()) {
+            return [];
+        }
+
+        $parentMetadata = $this->getMetadataFor($parent->name);
+
+        if (!$parentMetadata instanceof ClassMetadata) {
+            return [];
+        }
+
+        $class = $metadata->getClassName();
+        $placeholders = [];
+
+        foreach ($parentMetadata->getConstrainedProperties() as $property) {
+            foreach ($parentMetadata->getPropertyMetadata($property) as $member) {
+                if (!$member instanceof PropertyMetadata || $member->isPrivate($class)) {
+                    continue;
+                }
+
+                if (AutoMappingStrategy::NONE !== $strategy = $member->getAutoMappingStrategy()) {
+                    $metadata->addPropertyConstraint($property, AutoMappingStrategy::DISABLED === $strategy ? new DisableAutoMapping() : new EnableAutoMapping());
+                    $placeholders[$property] = [$metadata->properties[$property], $strategy];
+                }
+
+                // The first property metadata is the one declared closest to the class, so it wins
+                break;
+            }
+        }
+
+        return $placeholders;
+    }
+
+    /**
+     * Drops the placeholders the loaders left untouched, and moves the remaining
+     * ones last, where merging the parent's metadata would have put them.
+     *
+     * @param array<string, array{PropertyMetadata, int}> $placeholders
+     */
+    private function removeUnusedPlaceholders(ClassMetadata $metadata, array $placeholders): void
+    {
+        foreach ($placeholders as $property => [$placeholder, $strategy]) {
+            if (!$placeholder->getConstraints() && $strategy === $placeholder->getAutoMappingStrategy() && CascadingStrategy::NONE === $placeholder->getCascadingStrategy()) {
+                $metadata->members[$property] = array_values(array_filter($metadata->members[$property], static fn (MemberMetadata $member) => $member !== $placeholder));
+
+                if ($placeholder === ($metadata->properties[$property] ?? null)) {
+                    unset($metadata->properties[$property]);
+                }
+            }
+
+            $members = $metadata->members[$property];
+            unset($metadata->members[$property]);
+
+            if ($members) {
+                $metadata->members[$property] = $members;
+            }
+        }
     }
 
     /**

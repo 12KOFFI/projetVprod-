@@ -1,0 +1,265 @@
+{#
+  Blocs de consultation d'un dossier, partagés par la fiche du conseiller VAE
+  (conseiller/candidature.html.twig) et celle du jury local
+  (jury_local/candidature.html.twig) : même en-tête, mêmes pièces, même
+  historique, pour qu'un dossier se lise de la même façon d'un espace à l'autre.
+
+  Usage : {% import 'candidature/_fiche.html.twig' as fiche %}
+#}
+
+{#
+  En-tête du dossier : numéro, candidat, métier, diplôme visé, centre et
+  téléphone, puis le statut. C'est le seul bandeau teinté de la page.
+#}
+{% macro entete(candidature) %}
+{% set candidat = candidature.user %}
+<div class="relative mb-6 overflow-hidden rounded-2xl border border-primary-200 bg-primary-100 p-5 text-primary-900 sm:p-6 md:p-8">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div class="min-w-0">
+            <p class="font-mono text-sm font-semibold tabular-nums text-primary-800">{{ candidature.numero }}</p>
+            <h1 class="mt-1 break-words text-2xl font-bold tracking-tight text-primary-900 md:text-3xl">
+                {{ candidat ? (candidat.nomComplet|title) : 'Candidat inconnu' }}
+            </h1>
+            <dl class="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-primary-800">
+                <div>
+                    <dt class="sr-only">Métier</dt>
+                    <dd class="flex items-center gap-2"><i class="fas fa-screwdriver-wrench text-xs" aria-hidden="true"></i>{{ candidature.metier ? candidature.metier.libelle : 'Métier non renseigné' }}</dd>
+                </div>
+                <div>
+                    <dt class="sr-only">Diplôme visé</dt>
+                    <dd class="flex items-center gap-2"><i class="fas fa-graduation-cap text-xs" aria-hidden="true"></i>{{ candidature.diplomedemande ?: 'Diplôme non renseigné' }}</dd>
+                </div>
+                <div>
+                    <dt class="sr-only">Centre</dt>
+                    <dd class="flex items-center gap-2"><i class="fas fa-building text-xs" aria-hidden="true"></i>{{ candidature.centre ? candidature.centre.nom : 'Centre non renseigné' }}</dd>
+                </div>
+                {% if candidat and candidat.contact %}
+                    <div>
+                        <dt class="sr-only">Téléphone</dt>
+                        <dd class="flex items-center gap-2 tabular-nums"><i class="fas fa-phone text-xs" aria-hidden="true"></i>{{ candidat.contact|telephone }}</dd>
+                    </div>
+                {% endif %}
+            </dl>
+        </div>
+
+        <div class="shrink-0">
+            <p class="sr-only">Statut du dossier</p>
+            {{ include('partials/_statut_badge.html.twig', { statut: statut_candidature(candidature) }) }}
+        </div>
+    </div>
+    <div class="absolute inset-x-0 bottom-0 h-1 bg-[#ED8F33]" aria-hidden="true"></div>
+</div>
+{% endmacro %}
+
+{# Panneau blanc à titre : le conteneur commun des blocs ci-dessous. #}
+{% macro titre_panneau(titre, sous_titre = null, id = null) %}
+<div class="border-b border-slate-200 px-5 py-4 sm:px-6">
+    <h2 {% if id %}id="{{ id }}"{% endif %} class="text-base font-semibold text-slate-900">{{ titre }}</h2>
+    {% if sous_titre %}
+        <p class="mt-0.5 text-sm text-slate-600">{{ sous_titre }}</p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{# Identité du candidat : de quoi contrôler la pièce d'identité. #}
+{% macro identite(candidat) %}
+<section class="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-labelledby="titre-identite">
+    {{ _self.titre_panneau('Identité du candidat', null, 'titre-identite') }}
+    {% set lignes = {
+        'Nom complet': candidat ? (candidat.nomComplet|title) : null,
+        'Date de naissance': candidat and candidat.datenaissance ? candidat.datenaissance|date('d/m/Y') : null,
+        'Lieu de naissance': candidat ? candidat.lieunaissance : null,
+        'Téléphone': candidat and candidat.contact ? candidat.contact|telephone : null,
+        'Adresse e-mail': candidat ? candidat.email : null,
+        'Résidence': candidat ? candidat.residence : null
+    } %}
+    <dl class="grid grid-cols-1 gap-x-6 gap-y-4 px-5 py-5 sm:grid-cols-2 sm:px-6 xl:grid-cols-3">
+        {% for libelle, valeur in lignes %}
+            <div class="min-w-0">
+                <dt class="text-sm text-slate-600">{{ libelle }}</dt>
+                <dd class="mt-0.5 break-words text-sm font-medium text-slate-900">{{ valeur ?: 'Non renseigné' }}</dd>
+            </div>
+        {% endfor %}
+    </dl>
+</section>
+{% endmacro %}
+
+{# Informations déclarées par le candidat, en lecture seule. #}
+{% macro informations(candidature) %}
+<section class="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-labelledby="titre-informations">
+    {{ _self.titre_panneau('Informations déclarées par le candidat', null, 'titre-informations') }}
+    {% set lignes = {
+        "Années d'expérience": candidature.nbAnneesExperience is not null ? candidature.nbAnneesExperience ~ ' an(s)' : null,
+        'Situation professionnelle': candidature.situationProLibelle,
+        'Diplôme obtenu': candidature.diplomeLibelle,
+        'Diplôme visé': candidature.diplomedemande,
+        "Langue d'évaluation": candidature.langueLibelle,
+        "Entreprise ou atelier": candidature.nomEntreprise,
+        "Références de l'entreprise": candidature.refentreprise,
+        "Lieu d'exercice": candidature.lieuExercice,
+        'Direction ou service': candidature.directionService,
+        'Poste de travail': candidature.fonction,
+        'Référence du contrat de travail': candidature.refContrat,
+        "Contact de l'employeur": candidature.contactemployeur ? candidature.contactemployeur|telephone : null
+    } %}
+    <dl class="grid grid-cols-1 gap-x-6 gap-y-4 px-5 py-5 sm:grid-cols-2 sm:px-6">
+        {% for libelle, valeur in lignes %}
+            <div class="min-w-0">
+                <dt class="text-sm text-slate-600">{{ libelle }}</dt>
+                <dd class="mt-0.5 break-words text-sm font-medium text-slate-900">{{ valeur ?: 'Non renseigné' }}</dd>
+            </div>
+        {% endfor %}
+    </dl>
+</section>
+{% endmacro %}
+
+{#
+  Pièces du dossier en consultation : une ligne par pièce attendue, avec son
+  lien d'ouverture, ou la mention « non fournie ». documents : pièces versées
+  (CandidatureService::piecesTransmises) ; attendues : champ => libellé.
+#}
+{% macro pieces(candidature, documents, attendues) %}
+<section class="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-labelledby="titre-pieces">
+    {{ _self.titre_panneau('Pièces du dossier', 'Ouvrez chaque pièce pour la vérifier ; elle s\'affiche dans un nouvel onglet.', 'titre-pieces') }}
+    <ul class="divide-y divide-slate-200">
+        {% for champ, libelle in attendues %}
+            {% set document = documents[champ] ?? null %}
+            <li class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <div class="flex min-w-0 items-center gap-3">
+                    <i class="fas {{ document ? (document.fichier ends with '.pdf' ? 'fa-file-pdf' : 'fa-file-image') : 'fa-file-circle-xmark' }} w-5 shrink-0 text-center text-lg {{ document ? 'text-slate-500' : 'text-amber-600' }}" aria-hidden="true"></i>
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium text-slate-900">{{ libelle }}</p>
+                        <p class="text-sm {{ document ? 'text-slate-600' : 'font-medium text-amber-800' }}">
+                            {{ document ? (document.fichier ends with '.pdf' ? 'Document PDF' : 'Image') : 'Non fournie' }}
+                        </p>
+                    </div>
+                </div>
+                {% if document %}
+                    <a href="{{ path('app_piece', {id: candidature.id, champ: champ}) }}" target="_blank" rel="noopener"
+                       class="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-indigo-700
+                              transition duration-150 motion-reduce:transition-none hover:border-indigo-300 hover:bg-indigo-50
+                              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                        <i class="fas fa-arrow-up-right-from-square text-xs" aria-hidden="true"></i>Ouvrir<span class="sr-only"> : {{ libelle }}</span>
+                    </a>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endmacro %}
+
+{#
+  Décisions rendues sur le dossier : l'étude du conseiller VAE, puis la
+  recevabilité du jury local.
+#}
+{% macro decisions(candidature) %}
+{% import 'partials/_ui.html.twig' as ui %}
+{% set etude = candidature.resultatEtude %}
+{% set recevabilite = candidature.resultatRecevabilite %}
+<section class="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-labelledby="titre-decisions">
+    {{ _self.titre_panneau('Décisions', null, 'titre-decisions') }}
+    <dl class="divide-y divide-slate-200">
+        <div class="px-5 py-4 sm:px-6">
+            <dt class="text-sm font-medium text-slate-900">Étude du dossier</dt>
+            <dd class="mt-2">
+                {% if etude and etude.name != 'EN_ATTENTE' %}
+                    {{ ui.badge(etude.libelle, etude.couleur) }}
+                    <p class="mt-2 text-sm text-slate-600">
+                        {% if candidature.conseiller %}{{ candidature.conseiller.nomComplet }}, conseiller VAE{% endif %}
+                        {% if candidature.etuDate %}<span class="tabular-nums">· {{ candidature.etuDate|date('d/m/Y') }}</span>{% endif %}
+                    </p>
+                    {% if candidature.etuCom %}
+                        <p class="mt-2 whitespace-pre-line text-sm text-slate-700">{{ candidature.etuCom }}</p>
+                    {% endif %}
+                {% else %}
+                    <p class="text-sm text-slate-600">Pas encore rendue</p>
+                {% endif %}
+            </dd>
+        </div>
+        <div class="px-5 py-4 sm:px-6">
+            <dt class="text-sm font-medium text-slate-900">Recevabilité</dt>
+            <dd class="mt-2">
+                {% if recevabilite and recevabilite.name != 'EN_ATTENTE' %}
+                    {{ ui.badge(recevabilite.libelle, recevabilite.couleur) }}
+                    <p class="mt-2 text-sm text-slate-600">
+                        Jury local{% if candidature.recDate %}<span class="tabular-nums"> · {{ candidature.recDate|date('d/m/Y') }}</span>{% endif %}
+                    </p>
+                {% elseif statut_candidature(candidature).name == 'INSCRIT' %}
+                    <p class="text-sm text-slate-700">À prononcer par le jury local du centre</p>
+                {% elseif candidature_en_attente_paiement(candidature) %}
+                    <p class="text-sm text-slate-700">En attente du règlement des frais de dossier par le candidat</p>
+                {% else %}
+                    <p class="text-sm text-slate-600">Après l'étude du dossier et le règlement des frais de dossier</p>
+                {% endif %}
+            </dd>
+        </div>
+    </dl>
+</section>
+{% endmacro %}
+
+{# Historique du dossier, du plus récent au plus ancien. #}
+{% macro historique(historique) %}
+{% import 'partials/_ui.html.twig' as ui %}
+<section class="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-labelledby="titre-historique">
+    {{ _self.titre_panneau('Historique du dossier', null, 'titre-historique') }}
+    {% if historique is not empty %}
+        <ol class="divide-y divide-slate-200">
+            {% for ligne in historique|reverse %}
+                <li class="px-5 py-4 sm:px-6">
+                    <p class="text-sm font-medium text-slate-900">{{ ligne.motif ?: ligne.statutApres.libelle }}</p>
+                    <p class="mt-1 text-sm text-slate-600">
+                        <span class="tabular-nums">{{ ligne.creation|date('d/m/Y à H\\hi') }}</span>
+                        · {{ ligne.auteur ? ligne.auteur.nomComplet : 'Système' }}
+                    </p>
+                    {% if ligne.commentaire %}
+                        <p class="mt-1.5 whitespace-pre-line text-sm text-slate-700">{{ ligne.commentaire }}</p>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ol>
+    {% else %}
+        {{ ui.etat_vide('clock-rotate-left', 'Aucun évènement', 'Ce dossier n\'a encore aucun historique.') }}
+    {% endif %}
+</section>
+{% endmacro %}
+
+{#
+  Choix d'une décision (étude, recevabilité) : deux grands boutons radio
+  toujours visibles, verts pour la décision favorable, rouges pour l'autre.
+
+  À placer dans un composant Alpine qui porte `statut` (valeur choisie),
+  `confirmation` et `manque` (choix absent au moment d'enregistrer). Sans
+  JavaScript, les boutons radio restent utilisables et le serveur valide.
+  valeur_negative : valeur de la décision défavorable ('1' pour les deux).
+#}
+{% macro choix_decision(champ_form, valeur_negative) %}
+<fieldset>
+    <legend class="mb-2 text-sm font-medium text-slate-900">
+        {{ champ_form.vars.label }}<span class="ml-1 text-red-600" aria-hidden="true">*</span><span class="sr-only"> (obligatoire)</span>
+    </legend>
+    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
+        {% for choix in champ_form %}
+            {% set negative = choix.vars.value == valeur_negative %}
+            <label for="{{ choix.vars.id }}"
+                   class="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-lg border-2 px-4 py-3 text-sm font-semibold
+                          transition-colors duration-150 motion-reduce:transition-none
+                          focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-offset-2"
+                   :class="statut === '{{ choix.vars.value }}'
+                       ? '{{ negative ? 'border-red-600 bg-red-50 text-red-800' : 'border-green-600 bg-green-50 text-green-800' }}'
+                       : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'">
+                {{ form_widget(choix, {required: false, attr: {
+                    'x-model': 'statut',
+                    '@change': 'confirmation = false; manque = false',
+                    class: 'h-4 w-4 shrink-0 ' ~ (negative ? 'accent-red-600' : 'accent-green-600')
+                }}) }}
+                <i class="fas {{ negative ? 'fa-circle-xmark' : 'fa-circle-check' }}" aria-hidden="true"></i>
+                {{ choix.vars.label }}
+            </label>
+        {% endfor %}
+    </div>
+    <p class="mt-2 text-sm font-medium text-red-700" role="alert" x-show="manque" x-cloak>
+        <i class="fas fa-circle-exclamation mr-1" aria-hidden="true"></i>Choisissez une décision avant d'enregistrer.
+    </p>
+    {{ form_errors(champ_form) }}
+</fieldset>
+{% endmacro %}

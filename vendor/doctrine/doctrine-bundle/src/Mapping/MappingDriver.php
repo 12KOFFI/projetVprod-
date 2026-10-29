@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Doctrine\Bundle\DoctrineBundle\Mapping;
 
 use Doctrine\ORM\Mapping\ClassMetadata as OrmClassMetadata;
@@ -9,19 +11,16 @@ use Psr\Container\ContainerInterface;
 
 class MappingDriver implements MappingDriverInterface
 {
-    private MappingDriverInterface $driver;
-    private ContainerInterface $idGeneratorLocator;
-
-    public function __construct(MappingDriverInterface $driver, ContainerInterface $idGeneratorLocator)
-    {
-        $this->driver             = $driver;
-        $this->idGeneratorLocator = $idGeneratorLocator;
+    public function __construct(
+        private readonly MappingDriverInterface $driver,
+        private readonly ContainerInterface $idGeneratorLocator,
+    ) {
     }
 
     /**
      * {@inheritDoc}
      */
-    public function getAllClassNames()
+    public function getAllClassNames(): array
     {
         return $this->driver->getAllClassNames();
     }

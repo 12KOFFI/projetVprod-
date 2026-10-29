@@ -50,6 +50,12 @@ class SendersLocator implements SendersLocatorInterface
         $seen = [];
 
         foreach (HandlersLocator::listTypes($envelope) as $type) {
+            if (str_ends_with($type, '*') && $seen) {
+                // the '*' acts as a fallback, if other senders already matched
+                // with previous types, skip the senders bound to the fallback
+                continue;
+            }
+
             foreach ($this->sendersMap[$type] ?? [] as $senderAlias) {
                 if (!\in_array($senderAlias, $seen, true)) {
                     $seen[] = $senderAlias;
@@ -63,7 +69,7 @@ class SendersLocator implements SendersLocatorInterface
     private function getSenderFromAlias(string $senderAlias): iterable
     {
         if (!$this->sendersLocator->has($senderAlias)) {
-            throw new RuntimeException(sprintf('Invalid senders configuration: sender "%s" is not in the senders locator.', $senderAlias));
+            throw new RuntimeException(\sprintf('Invalid senders configuration: sender "%s" is not in the senders locator.', $senderAlias));
         }
 
         yield $senderAlias => $this->sendersLocator->get($senderAlias);

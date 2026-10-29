@@ -1,4 +1,4 @@
-{# Écran E4.6 : dossiers INSCRIT dont ce conseiller a la charge, à décider en recevabilité. #}
+{# Écran E4.6 : dossiers INSCRIT dont ce conseiller a la charge, en attente de la recevabilité du jury local. #}
 {% extends 'base_dashboard.html.twig' %}
 {% import 'partials/_ui.html.twig' as ui %}
 
@@ -33,11 +33,11 @@
 {{ include('conseiller/_liste_export.html.twig', {
     candidatures: candidatures,
     titre: 'Mes dossiers inscrits',
-    sous_titre: 'Dossiers dont vous avez la charge, inscrits et prêts pour la décision de recevabilité.',
+    sous_titre: 'Dossiers dont vous avez la charge, inscrits et transmis au jury local pour la recevabilité.',
     icone: 'gavel',
     route: 'app_conseiller_mes_analyses',
     colonne_decision: 'recevabilite',
-    action_libelle: 'Analyser le dossier',
+    action_libelle: 'Consulter le dossier',
     vide_titre: 'Aucun dossier inscrit',
     vide_texte: 'Aucun de vos dossiers n\'est actuellement inscrit.',
     export: false

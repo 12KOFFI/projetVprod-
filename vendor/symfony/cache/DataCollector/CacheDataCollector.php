@@ -31,12 +31,25 @@ class CacheDataCollector extends DataCollector implements LateDataCollectorInter
      */
     private array $instances = [];
 
-    public function addInstance(string $name, TraceableAdapter $instance)
+    public function addInstance(string $name, TraceableAdapter $instance): void
     {
         $this->instances[$name] = $instance;
     }
 
-    public function collect(Request $request, Response $response, \Throwable $exception = null)
+    public function collect(Request $request, Response $response, ?\Throwable $exception = null): void
+    {
+        $this->lateCollect();
+    }
+
+    public function reset(): void
+    {
+        $this->data = [];
+        foreach ($this->instances as $instance) {
+            $instance->clearCalls();
+        }
+    }
+
+    public function lateCollect(): void
     {
         $empty = ['calls' => [], 'adapters' => [], 'config' => [], 'options' => [], 'statistics' => []];
         $this->data = ['instances' => $empty, 'total' => $empty];
@@ -47,18 +60,6 @@ class CacheDataCollector extends DataCollector implements LateDataCollectorInter
 
         $this->data['instances']['statistics'] = $this->calculateStatistics();
         $this->data['total']['statistics'] = $this->calculateTotalStatistics();
-    }
-
-    public function reset()
-    {
-        $this->data = [];
-        foreach ($this->instances as $instance) {
-            $instance->clearCalls();
-        }
-    }
-
-    public function lateCollect()
-    {
         $this->data['instances']['calls'] = $this->cloneVar($this->data['instances']['calls']);
     }
 
@@ -141,6 +142,8 @@ class CacheDataCollector extends DataCollector implements LateDataCollectorInter
                         ++$statistics[$name][$result ? 'hits' : 'misses'];
                     }
                 } elseif ('save' === $call->name) {
+                    ++$statistics[$name]['writes'];
+                } elseif ('saveDeferred' === $call->name) {
                     ++$statistics[$name]['writes'];
                 } elseif ('deleteItem' === $call->name) {
                     ++$statistics[$name]['deletes'];

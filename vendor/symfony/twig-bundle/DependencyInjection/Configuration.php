@@ -33,8 +33,8 @@ class Configuration implements ConfigurationInterface
         $rootNode = $treeBuilder->getRootNode();
 
         $rootNode->beforeNormalization()
-            ->ifTrue(function ($v) { return \is_array($v) && \array_key_exists('exception_controller', $v); })
-            ->then(function ($v) {
+            ->ifTrue(static fn ($v) => \is_array($v) && \array_key_exists('exception_controller', $v))
+            ->then(static function ($v) {
                 if (isset($v['exception_controller'])) {
                     throw new InvalidConfigurationException('Option "exception_controller" under "twig" must be null or unset, use "error_controller" under "framework" instead.');
                 }
@@ -54,7 +54,7 @@ class Configuration implements ConfigurationInterface
         return $treeBuilder;
     }
 
-    private function addFormThemesSection(ArrayNodeDefinition $rootNode)
+    private function addFormThemesSection(ArrayNodeDefinition $rootNode): void
     {
         $rootNode
             ->fixXmlConfig('form_theme')
@@ -64,17 +64,15 @@ class Configuration implements ConfigurationInterface
                     ->prototype('scalar')->defaultValue('form_div_layout.html.twig')->end()
                     ->example(['@My/form.html.twig'])
                     ->validate()
-                        ->ifTrue(function ($v) { return !\in_array('form_div_layout.html.twig', $v); })
-                        ->then(function ($v) {
-                            return array_merge(['form_div_layout.html.twig'], $v);
-                        })
+                        ->ifTrue(static fn ($v) => !\in_array('form_div_layout.html.twig', $v))
+                        ->then(static fn ($v) => array_merge(['form_div_layout.html.twig'], $v))
                     ->end()
                 ->end()
             ->end()
         ;
     }
 
-    private function addGlobalsSection(ArrayNodeDefinition $rootNode)
+    private function addGlobalsSection(ArrayNodeDefinition $rootNode): void
     {
         $rootNode
             ->fixXmlConfig('global')
@@ -86,8 +84,8 @@ class Configuration implements ConfigurationInterface
                     ->prototype('array')
                         ->normalizeKeys(false)
                         ->beforeNormalization()
-                            ->ifTrue(function ($v) { return \is_string($v) && str_starts_with($v, '@'); })
-                            ->then(function ($v) {
+                            ->ifTrue(static fn ($v) => \is_string($v) && str_starts_with($v, '@'))
+                            ->then(static function ($v) {
                                 if (str_starts_with($v, '@@')) {
                                     return substr($v, 1);
                                 }
@@ -96,7 +94,7 @@ class Configuration implements ConfigurationInterface
                             })
                         ->end()
                         ->beforeNormalization()
-                            ->ifTrue(function ($v) {
+                            ->ifTrue(static function ($v) {
                                 if (\is_array($v)) {
                                     $keys = array_keys($v);
                                     sort($keys);
@@ -106,7 +104,7 @@ class Configuration implements ConfigurationInterface
 
                                 return true;
                             })
-                            ->then(function ($v) { return ['value' => $v]; })
+                            ->then(static fn ($v) => ['value' => $v])
                         ->end()
                         ->children()
                             ->scalarNode('id')->end()
@@ -124,7 +122,7 @@ class Configuration implements ConfigurationInterface
         ;
     }
 
-    private function addTwigOptions(ArrayNodeDefinition $rootNode)
+    private function addTwigOptions(ArrayNodeDefinition $rootNode): void
     {
         $rootNode
             ->fixXmlConfig('path')
@@ -151,7 +149,7 @@ class Configuration implements ConfigurationInterface
                     ->info('Pattern of file name used for cache warmer and linter')
                     ->beforeNormalization()
                         ->ifString()
-                            ->then(function ($value) { return [$value]; })
+                            ->then(static fn ($value) => [$value])
                         ->end()
                     ->prototype('scalar')->end()
                 ->end()
@@ -159,8 +157,8 @@ class Configuration implements ConfigurationInterface
                     ->normalizeKeys(false)
                     ->useAttributeAsKey('paths')
                     ->beforeNormalization()
-                        ->always()
-                        ->then(function ($paths) {
+                        ->ifArray()
+                        ->then(static function ($paths) {
                             $normalized = [];
                             foreach ($paths as $path => $namespace) {
                                 if (\is_array($namespace)) {
@@ -187,7 +185,7 @@ class Configuration implements ConfigurationInterface
         ;
     }
 
-    private function addTwigFormatOptions(ArrayNodeDefinition $rootNode)
+    private function addTwigFormatOptions(ArrayNodeDefinition $rootNode): void
     {
         $rootNode
             ->children()
@@ -216,14 +214,14 @@ class Configuration implements ConfigurationInterface
         ;
     }
 
-    private function addMailerSection(ArrayNodeDefinition $rootNode)
+    private function addMailerSection(ArrayNodeDefinition $rootNode): void
     {
         $rootNode
             ->children()
                 ->arrayNode('mailer')
                     ->children()
                         ->scalarNode('html_to_text_converter')
-                            ->info(sprintf('A service implementing the "%s"', HtmlToTextConverterInterface::class))
+                            ->info(\sprintf('A service implementing the "%s"', HtmlToTextConverterInterface::class))
                             ->defaultNull()
                         ->end()
                     ->end()

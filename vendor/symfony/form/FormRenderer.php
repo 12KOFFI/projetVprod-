@@ -31,7 +31,7 @@ class FormRenderer implements FormRendererInterface
     private array $hierarchyLevelMap = [];
     private array $variableStack = [];
 
-    public function __construct(FormRendererEngineInterface $engine, CsrfTokenManagerInterface $csrfTokenManager = null)
+    public function __construct(FormRendererEngineInterface $engine, ?CsrfTokenManagerInterface $csrfTokenManager = null)
     {
         $this->engine = $engine;
         $this->csrfTokenManager = $csrfTokenManager;
@@ -42,6 +42,9 @@ class FormRenderer implements FormRendererInterface
         return $this->engine;
     }
 
+    /**
+     * @return void
+     */
     public function setTheme(FormView $view, mixed $themes, bool $useDefaultThemes = true)
     {
         $this->engine->setTheme($view, $themes, $useDefaultThemes);
@@ -61,7 +64,7 @@ class FormRenderer implements FormRendererInterface
         $resource = $this->engine->getResourceForBlockName($view, $blockName);
 
         if (!$resource) {
-            throw new LogicException(sprintf('No block "%s" found while rendering the form.', $blockName));
+            throw new LogicException(\sprintf('No block "%s" found while rendering the form.', $blockName));
         }
 
         $viewCacheKey = $view->vars[self::CACHE_KEY_VAR];
@@ -69,8 +72,6 @@ class FormRenderer implements FormRendererInterface
         // The variables are cached globally for a view (instead of for the
         // current suffix)
         if (!isset($this->variableStack[$viewCacheKey])) {
-            $this->variableStack[$viewCacheKey] = [];
-
             // The default variable scope contains all view variables, merged with
             // the variables passed explicitly to the helper
             $scopeVariables = $view->vars;
@@ -99,14 +100,16 @@ class FormRenderer implements FormRendererInterface
 
         $this->variableStack[$viewCacheKey][] = $variables;
 
-        // Do the rendering
-        $html = $this->engine->renderBlock($view, $resource, $blockName, $variables);
+        try {
+            // Do the rendering
+            $html = $this->engine->renderBlock($view, $resource, $blockName, $variables);
+        } finally {
+            // Clear the stack, even if the rendering failed
+            array_pop($this->variableStack[$viewCacheKey]);
 
-        // Clear the stack
-        array_pop($this->variableStack[$viewCacheKey]);
-
-        if ($varInit) {
-            unset($this->variableStack[$viewCacheKey]);
+            if ($varInit) {
+                unset($this->variableStack[$viewCacheKey]);
+            }
         }
 
         return $html;
@@ -118,7 +121,7 @@ class FormRenderer implements FormRendererInterface
 
         if ($renderOnlyOnce && $view->isRendered()) {
             // This is not allowed, because it would result in rendering same IDs multiple times, which is not valid.
-            throw new BadMethodCallException(sprintf('Field "%s" has already been rendered, save the result of previous render call to a variable and output that instead.', $view->vars['name']));
+            throw new BadMethodCallException(\sprintf('Field "%s" has already been rendered, save the result of previous render call to a variable and output that instead.', $view->vars['name']));
         }
 
         // The cache key for storing the variables and types
@@ -168,7 +171,8 @@ class FormRenderer implements FormRendererInterface
             // If a block recursively calls searchAndRenderBlock() again, resume rendering
             // using the parent type in the hierarchy.
             $blockNameHierarchy = $this->blockNameHierarchyMap[$viewAndSuffixCacheKey];
-            $hierarchyLevel = $this->hierarchyLevelMap[$viewAndSuffixCacheKey] - 1;
+            $previousHierarchyLevel = $this->hierarchyLevelMap[$viewAndSuffixCacheKey];
+            $hierarchyLevel = $previousHierarchyLevel - 1;
 
             $hierarchyInit = false;
         }
@@ -176,8 +180,6 @@ class FormRenderer implements FormRendererInterface
         // The variables are cached globally for a view (instead of for the
         // current suffix)
         if (!isset($this->variableStack[$viewCacheKey])) {
-            $this->variableStack[$viewCacheKey] = [];
-
             // The default variable scope contains all view variables, merged with
             // the variables passed explicitly to the helper
             $scopeVariables = $view->vars;
@@ -205,10 +207,10 @@ class FormRenderer implements FormRendererInterface
         // Escape if no resource exists for this block
         if (!$resource) {
             if (\count($blockNameHierarchy) !== \count(array_unique($blockNameHierarchy))) {
-                throw new LogicException(sprintf('Unable to render the form because the block names array contains duplicates: "%s".', implode('", "', array_reverse($blockNameHierarchy))));
+                throw new LogicException(\sprintf('Unable to render the form because the block names array contains duplicates: "%s".', implode('", "', array_reverse($blockNameHierarchy))));
             }
 
-            throw new LogicException(sprintf('Unable to render the form as none of the following blocks exist: "%s".', implode('", "', array_reverse($blockNameHierarchy))));
+            throw new LogicException(\sprintf('Unable to render the form as none of the following blocks exist: "%s".', implode('", "', array_reverse($blockNameHierarchy))));
         }
 
         // Merge the passed with the existing attributes
@@ -239,20 +241,25 @@ class FormRenderer implements FormRendererInterface
         // blocks for the same view using the same variables as in the outer block.
         $this->variableStack[$viewCacheKey][] = $variables;
 
-        // Do the rendering
-        $html = $this->engine->renderBlock($view, $resource, $blockName, $variables);
+        try {
+            // Do the rendering
+            $html = $this->engine->renderBlock($view, $resource, $blockName, $variables);
+        } finally {
+            // Clear the stack, even if the rendering failed
+            array_pop($this->variableStack[$viewCacheKey]);
 
-        // Clear the stack
-        array_pop($this->variableStack[$viewCacheKey]);
+            // Clear the caches if they were filled for the first time within
+            // this function call
+            if ($hierarchyInit) {
+                unset($this->blockNameHierarchyMap[$viewAndSuffixCacheKey], $this->hierarchyLevelMap[$viewAndSuffixCacheKey]);
+            } else {
+                // Let the calling block resume from its own level if it renders the same block again
+                $this->hierarchyLevelMap[$viewAndSuffixCacheKey] = $previousHierarchyLevel;
+            }
 
-        // Clear the caches if they were filled for the first time within
-        // this function call
-        if ($hierarchyInit) {
-            unset($this->blockNameHierarchyMap[$viewAndSuffixCacheKey], $this->hierarchyLevelMap[$viewAndSuffixCacheKey]);
-        }
-
-        if ($varInit) {
-            unset($this->variableStack[$viewCacheKey]);
+            if ($varInit) {
+                unset($this->variableStack[$viewCacheKey]);
+            }
         }
 
         if ($renderOnlyOnce) {

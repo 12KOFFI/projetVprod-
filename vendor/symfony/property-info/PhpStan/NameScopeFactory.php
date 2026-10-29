@@ -20,18 +20,15 @@ use phpDocumentor\Reflection\Types\ContextFactory;
  */
 final class NameScopeFactory
 {
-    public function create(string $calledClassName, string $declaringClassName = null): NameScope
+    public function create(string $calledClassName, ?string $declaringClassName = null, ?string $selfClassName = null): NameScope
     {
         $declaringClassName ??= $calledClassName;
-
-        $path = explode('\\', $calledClassName);
-        $calledClassName = array_pop($path);
 
         $declaringReflection = new \ReflectionClass($declaringClassName);
         [$declaringNamespace, $declaringUses] = $this->extractFromFullClassName($declaringReflection);
         $declaringUses = array_merge($declaringUses, $this->collectUses($declaringReflection));
 
-        return new NameScope($calledClassName, $declaringNamespace, $declaringUses);
+        return new NameScope($calledClassName, $declaringNamespace, $declaringUses, $selfClassName ?? $declaringClassName);
     }
 
     private function collectUses(\ReflectionClass $reflection): array
@@ -56,7 +53,7 @@ final class NameScopeFactory
 
         if (\is_string($fileName) && is_file($fileName)) {
             if (false === $contents = file_get_contents($fileName)) {
-                throw new \RuntimeException(sprintf('Unable to read file "%s".', $fileName));
+                throw new \RuntimeException(\sprintf('Unable to read file "%s".', $fileName));
             }
 
             $factory = new ContextFactory();

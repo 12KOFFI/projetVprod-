@@ -11,7 +11,10 @@
 
 namespace Symfony\Component\Security\Http\Firewall;
 
+use Doctrine\Persistence\Proxy;
+use ProxyManager\Proxy\LazyLoadingInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
@@ -31,7 +34,7 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
 use Symfony\Component\Security\Http\Event\TokenDeauthenticatedEvent;
-use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\VarExporter\LazyObjectInterface;
 
 /**
  * ContextListener manages the SecurityContext persistence through a session.
@@ -55,7 +58,7 @@ class ContextListener extends AbstractListener
     /**
      * @param iterable<mixed, UserProviderInterface> $userProviders
      */
-    public function __construct(TokenStorageInterface $tokenStorage, iterable $userProviders, string $contextKey, LoggerInterface $logger = null, EventDispatcherInterface $dispatcher = null, AuthenticationTrustResolverInterface $trustResolver = null, callable $sessionTrackerEnabler = null)
+    public function __construct(TokenStorageInterface $tokenStorage, iterable $userProviders, string $contextKey, ?LoggerInterface $logger = null, ?EventDispatcherInterface $dispatcher = null, ?AuthenticationTrustResolverInterface $trustResolver = null, ?callable $sessionTrackerEnabler = null)
     {
         if (empty($contextKey)) {
             throw new \InvalidArgumentException('$contextKey must not be empty.');
@@ -79,7 +82,7 @@ class ContextListener extends AbstractListener
     /**
      * Reads the Security Token from the session.
      */
-    public function authenticate(RequestEvent $event)
+    public function authenticate(RequestEvent $event): void
     {
         if (!$this->registered && null !== $this->dispatcher && $event->isMainRequest()) {
             $this->dispatcher->addListener(KernelEvents::RESPONSE, $this->onKernelResponse(...));
@@ -123,6 +126,10 @@ class ContextListener extends AbstractListener
         ]);
 
         if ($token instanceof TokenInterface) {
+            if (!$token->getUser()) {
+                throw new \UnexpectedValueException(\sprintf('Cannot authenticate a "%s" token because it doesn\'t store a user.', $token::class));
+            }
+
             $originalToken = $token;
             $token = $this->refreshUser($token);
 
@@ -132,7 +139,7 @@ class ContextListener extends AbstractListener
                 $this->dispatcher?->dispatch(new TokenDeauthenticatedEvent($originalToken, $request));
             }
         } elseif (null !== $token) {
-            $this->logger?->warning('Expected a security token from the session, got something else.', ['key' => $this->sessionKey, 'received' => $token]);
+            $this->logger?->warning('Expected a security token from the session, got something else.', ['key' => $this->sessionKey, 'received' => get_debug_type($token)]);
 
             $token = null;
         }
@@ -147,7 +154,7 @@ class ContextListener extends AbstractListener
     /**
      * Writes the security token into the session.
      */
-    public function onKernelResponse(ResponseEvent $event)
+    public function onKernelResponse(ResponseEvent $event): void
     {
         if (!$event->isMainRequest()) {
             return;
@@ -164,6 +171,7 @@ class ContextListener extends AbstractListener
         $session = $request->getSession();
         $sessionId = $session->getId();
         $usageIndexValue = $session instanceof Session ? $usageIndexReference = &$session->getUsageIndex() : null;
+        $usageIndexReference = \PHP_INT_MIN;
         $token = $this->tokenStorage->getToken();
 
         if (!$this->trustResolver->isAuthenticated($token)) {
@@ -171,6 +179,18 @@ class ContextListener extends AbstractListener
                 $session->remove($this->sessionKey);
             }
         } else {
+            if ($user = $token?->getUser()) {
+                if (\PHP_VERSION_ID >= 80400 && ($reflector = new \ReflectionClass($user))->isUninitializedLazyObject($user)) {
+                    $reflector->initializeLazyObject($user);
+                } elseif ($user instanceof Proxy && !$user->__isInitialized()) {
+                    $user->__load();
+                } elseif ($user instanceof LazyObjectInterface && !$user->isLazyObjectInitialized()) {
+                    $user->initializeLazyObject();
+                } elseif ($user instanceof LazyLoadingInterface && !$user->isProxyInitialized()) {
+                    $user->initializeProxy();
+                }
+            }
+
             $session->set($this->sessionKey, serialize($token));
 
             $this->logger?->debug('Stored the security token in the session.', ['key' => $this->sessionKey]);
@@ -178,6 +198,8 @@ class ContextListener extends AbstractListener
 
         if ($this->sessionTrackerEnabler && $session->getId() === $sessionId) {
             $usageIndexReference = $usageIndexValue;
+        } else {
+            $usageIndexReference = $usageIndexReference - \PHP_INT_MIN + $usageIndexValue;
         }
     }
 
@@ -188,6 +210,10 @@ class ContextListener extends AbstractListener
      */
     protected function refreshUser(TokenInterface $token): ?TokenInterface
     {
+        if ($token instanceof SwitchUserToken && $token->getOriginalToken()->getUser() && !$this->refreshUser($token->getOriginalToken())) {
+            return null;
+        }
+
         $user = $token->getUser();
 
         $userNotFoundByProvider = false;
@@ -196,7 +222,7 @@ class ContextListener extends AbstractListener
 
         foreach ($this->userProviders as $provider) {
             if (!$provider instanceof UserProviderInterface) {
-                throw new \InvalidArgumentException(sprintf('User provider "%s" must implement "%s".', get_debug_type($provider), UserProviderInterface::class));
+                throw new \InvalidArgumentException(\sprintf('User provider "%s" must implement "%s".', get_debug_type($provider), UserProviderInterface::class));
             }
 
             if (!$provider->supportsClass($userClass)) {
@@ -205,11 +231,9 @@ class ContextListener extends AbstractListener
 
             try {
                 $refreshedUser = $provider->refreshUser($user);
-                $newToken = clone $token;
-                $newToken->setUser($refreshedUser, false);
 
                 // tokens can be deauthenticated if the user has been changed.
-                if ($token instanceof AbstractToken && $this->hasUserChanged($user, $newToken)) {
+                if ($token instanceof AbstractToken && self::hasUserChanged($token, $user, $refreshedUser)) {
                     $userDeauthenticated = true;
 
                     $this->logger?->debug('Cannot refresh token because user has changed.', ['username' => $refreshedUser->getUserIdentifier(), 'provider' => $provider::class]);
@@ -248,15 +272,15 @@ class ContextListener extends AbstractListener
             return null;
         }
 
-        throw new \RuntimeException(sprintf('There is no user provider for user "%s". Shouldn\'t the "supportsClass()" method of your user provider return true for this classname?', $userClass));
+        throw new \RuntimeException(\sprintf('There is no user provider for user "%s". Shouldn\'t the "supportsClass()" method of your user provider return true for this classname?', $userClass));
     }
 
-    private function safelyUnserialize(string $serializedToken)
+    private function safelyUnserialize(string $serializedToken): mixed
     {
         $token = null;
         $prevUnserializeHandler = ini_set('unserialize_callback_func', __CLASS__.'::handleUnserializeCallback');
-        $prevErrorHandler = set_error_handler(function ($type, $msg, $file, $line, $context = []) use (&$prevErrorHandler) {
-            if (__FILE__ === $file) {
+        $prevErrorHandler = set_error_handler(static function ($type, $msg, $file, $line, $context = []) use (&$prevErrorHandler) {
+            if (__FILE__ === $file && !\in_array($type, [\E_DEPRECATED, \E_USER_DEPRECATED], true)) {
                 throw new \ErrorException($msg, 0x37313BC, $type, $file, $line);
             }
 
@@ -264,12 +288,12 @@ class ContextListener extends AbstractListener
         });
 
         try {
-            $token = unserialize($serializedToken);
+            $token = unserialize($serializedToken, ['allowed_classes' => true]);
         } catch (\ErrorException $e) {
             if (0x37313BC !== $e->getCode()) {
                 throw $e;
             }
-            $this->logger?->warning('Failed to unserialize the security token from the session.', ['key' => $this->sessionKey, 'received' => $serializedToken, 'exception' => $e]);
+            $this->logger?->warning('Failed to unserialize the security token from the session.', ['key' => $this->sessionKey, 'exception' => $e]);
         } finally {
             restore_error_handler();
             ini_set('unserialize_callback_func', $prevUnserializeHandler);
@@ -278,12 +302,10 @@ class ContextListener extends AbstractListener
         return $token;
     }
 
-    private static function hasUserChanged(UserInterface $originalUser, TokenInterface $refreshedToken): bool
+    private static function hasUserChanged(AbstractToken $token, UserInterface $originalUser, UserInterface $refreshedUser): bool
     {
-        $refreshedUser = $refreshedToken->getUser();
-
         if ($originalUser instanceof EquatableInterface) {
-            return !(bool) $originalUser->isEqualTo($refreshedUser);
+            return !$originalUser->isEqualTo($refreshedUser);
         }
 
         if ($originalUser instanceof PasswordAuthenticatedUserInterface || $refreshedUser instanceof PasswordAuthenticatedUserInterface) {
@@ -302,13 +324,15 @@ class ContextListener extends AbstractListener
 
         $userRoles = array_map('strval', (array) $refreshedUser->getRoles());
 
-        if ($refreshedToken instanceof SwitchUserToken) {
+        if ($token instanceof SwitchUserToken) {
             $userRoles[] = 'ROLE_PREVIOUS_ADMIN';
         }
 
+        $tokenRoleNames = $token->getRoleNames();
+
         if (
-            \count($userRoles) !== \count($refreshedToken->getRoleNames()) ||
-            \count($userRoles) !== \count(array_intersect($userRoles, $refreshedToken->getRoleNames()))
+            \count($userRoles) !== \count($tokenRoleNames)
+            || \count($userRoles) !== \count(array_intersect($userRoles, $tokenRoleNames))
         ) {
             return true;
         }
@@ -323,7 +347,7 @@ class ContextListener extends AbstractListener
     /**
      * @internal
      */
-    public static function handleUnserializeCallback(string $class)
+    public static function handleUnserializeCallback(string $class): never
     {
         throw new \ErrorException('Class not found: '.$class, 0x37313BC);
     }

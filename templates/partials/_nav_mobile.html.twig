@@ -27,6 +27,11 @@
         { url: path('app_conseiller_candidatures'), libelle: 'Dossiers', icone: 'fa-folder-open', routes: ['app_conseiller_candidature', 'app_conseiller_mes_analyses'] },
         { url: path('app_indicateurs'), libelle: 'Indicateurs', icone: 'fa-chart-column', routes: ['app_indicateurs'] }
     ] %}
+{% elseif is_granted('ROLE_JURY_LOCAL') %}
+    {% set onglets = [
+        { url: path('app_jury_local_dashboard'), libelle: 'À statuer', icone: 'fa-scale-balanced', routes: ['app_jury_local_'] },
+        { url: path('app_impressions'), libelle: 'Impressions', icone: 'fa-print', routes: ['app_impressions'] }
+    ] %}
 {% elseif is_granted('ROLE_AGENT_ACCEUIL') %}
     {% set onglets = [
         { url: path('app_accueil_dashboard'), libelle: 'Tableau', icone: 'fa-gauge-high', routes: ['app_accueil_dashboard'] },

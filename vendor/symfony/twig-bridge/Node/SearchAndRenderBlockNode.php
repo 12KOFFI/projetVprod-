@@ -12,6 +12,7 @@
 namespace Symfony\Bridge\Twig\Node;
 
 use Twig\Compiler;
+use Twig\Extension\CoreExtension;
 use Twig\Node\Expression\ArrayExpression;
 use Twig\Node\Expression\ConstantExpression;
 use Twig\Node\Expression\FunctionExpression;
@@ -36,6 +37,8 @@ final class SearchAndRenderBlockNode extends FunctionExpression
             $compiler->raw(', \''.$blockNameSuffix.'\'');
 
             if (isset($arguments[1])) {
+                $runtimeVariables = null;
+
                 if ('label' === $blockNameSuffix) {
                     // The "label" function expects the label in the second and
                     // the variables in the third argument
@@ -50,18 +53,21 @@ final class SearchAndRenderBlockNode extends FunctionExpression
                         $labelIsExpression = false;
 
                         // Only insert the label into the array if it is not empty
-                        if (!twig_test_empty($label->getAttribute('value'))) {
+                        if (null !== $label->getAttribute('value') && false !== $label->getAttribute('value') && '' !== (string) $label->getAttribute('value')) {
                             $originalVariables = $variables;
                             $variables = new ArrayExpression([], $lineno);
                             $labelKey = new ConstantExpression('label', $lineno);
 
-                            if (null !== $originalVariables) {
+                            if ($originalVariables instanceof ArrayExpression) {
                                 foreach ($originalVariables->getKeyValuePairs() as $pair) {
                                     // Don't copy the original label attribute over if it exists
                                     if ((string) $labelKey !== (string) $pair['key']) {
                                         $variables->addElement($pair['value'], $pair['key']);
                                     }
                                 }
+                            } elseif (null !== $originalVariables) {
+                                // Variables that are not a hash literal are merged at runtime, with the label argument taking precedence
+                                $runtimeVariables = $originalVariables;
                             }
 
                             // Insert the label argument into the array
@@ -90,6 +96,11 @@ final class SearchAndRenderBlockNode extends FunctionExpression
                         $compiler->subcompile($variables);
                     }
 
+                    if (null !== $runtimeVariables) {
+                        $compiler->raw(' + ');
+                        $compiler->subcompile($runtimeVariables);
+                    }
+
                     if ($labelIsExpression) {
                         if (null !== $variables) {
                             $compiler->raw(' + ');
@@ -97,7 +108,12 @@ final class SearchAndRenderBlockNode extends FunctionExpression
 
                         // Check at runtime whether the label is empty.
                         // If not, add it to the array at runtime.
-                        $compiler->raw('(twig_test_empty($_label_ = ');
+                        if (method_exists(CoreExtension::class, 'testEmpty')) {
+                            $compiler->raw('(CoreExtension::testEmpty($_label_ = ');
+                        } else {
+                            $compiler->raw('(twig_test_empty($_label_ = ');
+                        }
+
                         $compiler->subcompile($label);
                         $compiler->raw(') ? [] : ["label" => $_label_])');
                     }

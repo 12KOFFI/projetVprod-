@@ -7,7 +7,7 @@ use Symfony\Component\Config\Loader\LoaderInterface;
 use Symfony\Component\DependencyInjection\Alias;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\DependencyInjection\Extension\Extension;
-use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
+use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
@@ -44,6 +44,7 @@ class StofDoctrineExtensionsExtension extends Extension
         'softdeleteable' => array(
             'loadClassMetadata',
             'onFlush',
+            'postFlush',
         ),
         'sortable' => array(
             'onFlush',
@@ -92,14 +93,15 @@ class StofDoctrineExtensionsExtension extends Extension
     /**
      * @return void
      */
-    public function load(array $configs, ContainerBuilder $container)
+    public function load(array $configs, ContainerBuilder $container): void
     {
         $processor = new Processor();
         $configuration = new Configuration();
 
         $config = $processor->processConfiguration($configuration, $configs);
 
-        $loader = new XmlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
+        $loader = new PhpFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
+        $loader->load('tool.php');
 
         $loaded = array();
 
@@ -110,6 +112,12 @@ class StofDoctrineExtensionsExtension extends Extension
         $container->setParameter('stof_doctrine_extensions.translation_fallback', $config['translation_fallback']);
         $container->setParameter('stof_doctrine_extensions.persist_default_translation', $config['persist_default_translation']);
         $container->setParameter('stof_doctrine_extensions.skip_translation_on_load', $config['skip_translation_on_load']);
+
+        // Register the softdeleteable configuration if the listener is used
+        if (isset($loaded['softdeleteable'])) {
+            $container->getDefinition('stof_doctrine_extensions.listener.softdeleteable')
+                ->replaceArgument(0, $config['softdeleteable']['handle_post_flush_event']);
+        }
 
         // Register the uploadable configuration if the listener is used
         if (isset($loaded['uploadable'])) {
@@ -196,7 +204,7 @@ class StofDoctrineExtensionsExtension extends Extension
                 }
 
                 if (!isset($loaded[$ext])) {
-                    $loader->load($ext.'.xml');
+                    $loader->load($ext.'.php');
                     $loaded[$ext] = true;
                 }
 

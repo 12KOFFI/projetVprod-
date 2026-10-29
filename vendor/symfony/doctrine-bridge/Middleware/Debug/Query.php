@@ -21,29 +21,31 @@ use Doctrine\DBAL\ParameterType;
 class Query
 {
     private array $params = [];
+
+    /** @var array<ParameterType|int> */
     private array $types = [];
 
-    private ?float $start = null;
+    private int|float|null $start = null;
     private ?float $duration = null;
 
     public function __construct(
-        private string $sql,
+        private readonly string $sql,
     ) {
     }
 
     public function start(): void
     {
-        $this->start = microtime(true);
+        $this->start = hrtime(true);
     }
 
     public function stop(): void
     {
         if (null !== $this->start) {
-            $this->duration = microtime(true) - $this->start;
+            $this->duration = (hrtime(true) - $this->start) / 1e9;
         }
     }
 
-    public function setParam(string|int $param, mixed &$variable, int $type): void
+    public function setParam(string|int $param, mixed &$variable, ParameterType|int $type): void
     {
         // Numeric indexes start at 0 in profiler
         $idx = \is_int($param) ? $param - 1 : $param;
@@ -52,7 +54,7 @@ class Query
         $this->types[$idx] = $type;
     }
 
-    public function setValue(string|int $param, mixed $value, int $type): void
+    public function setValue(string|int $param, mixed $value, ParameterType|int $type): void
     {
         // Numeric indexes start at 0 in profiler
         $idx = \is_int($param) ? $param - 1 : $param;
@@ -85,7 +87,7 @@ class Query
     }
 
     /**
-     * @return array<int, int>
+     * @return array<int, int|ParameterType>
      */
     public function getTypes(): array
     {

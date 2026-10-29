@@ -52,7 +52,7 @@
         {% set icon = type == 'success' ? 'check-circle' : (type == 'error' ? 'exclamation-circle' : 'info-circle') %}
         <div class="flex items-center gap-3 px-5 py-4 rounded-xl border mb-4 text-sm font-medium {{ colors }}">
             <i class="fas fa-{{ icon }}"></i>
-            {{ message|raw }}
+            {{ message|message_flash }}
         </div>
     {% endfor %}
 {% endfor %}

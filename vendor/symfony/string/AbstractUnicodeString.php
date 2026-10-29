@@ -40,17 +40,16 @@ abstract class AbstractUnicodeString extends AbstractString
     private const FOLD_FROM = ['İ', 'µ', 'ſ', "\xCD\x85", 'ς', 'ϐ', 'ϑ', 'ϕ', 'ϖ', 'ϰ', 'ϱ', 'ϵ', 'ẛ', "\xE1\xBE\xBE", 'ß', 'ŉ', 'ǰ', 'ΐ', 'ΰ', 'և', 'ẖ', 'ẗ', 'ẘ', 'ẙ', 'ẚ', 'ẞ', 'ὐ', 'ὒ', 'ὔ', 'ὖ', 'ᾀ', 'ᾁ', 'ᾂ', 'ᾃ', 'ᾄ', 'ᾅ', 'ᾆ', 'ᾇ', 'ᾈ', 'ᾉ', 'ᾊ', 'ᾋ', 'ᾌ', 'ᾍ', 'ᾎ', 'ᾏ', 'ᾐ', 'ᾑ', 'ᾒ', 'ᾓ', 'ᾔ', 'ᾕ', 'ᾖ', 'ᾗ', 'ᾘ', 'ᾙ', 'ᾚ', 'ᾛ', 'ᾜ', 'ᾝ', 'ᾞ', 'ᾟ', 'ᾠ', 'ᾡ', 'ᾢ', 'ᾣ', 'ᾤ', 'ᾥ', 'ᾦ', 'ᾧ', 'ᾨ', 'ᾩ', 'ᾪ', 'ᾫ', 'ᾬ', 'ᾭ', 'ᾮ', 'ᾯ', 'ᾲ', 'ᾳ', 'ᾴ', 'ᾶ', 'ᾷ', 'ᾼ', 'ῂ', 'ῃ', 'ῄ', 'ῆ', 'ῇ', 'ῌ', 'ῒ', 'ῖ', 'ῗ', 'ῢ', 'ῤ', 'ῦ', 'ῧ', 'ῲ', 'ῳ', 'ῴ', 'ῶ', 'ῷ', 'ῼ', 'ﬀ', 'ﬁ', 'ﬂ', 'ﬃ', 'ﬄ', 'ﬅ', 'ﬆ', 'ﬓ', 'ﬔ', 'ﬕ', 'ﬖ', 'ﬗ'];
     private const FOLD_TO = ['i̇', 'μ', 's', 'ι', 'σ', 'β', 'θ', 'φ', 'π', 'κ', 'ρ', 'ε', 'ṡ', 'ι', 'ss', 'ʼn', 'ǰ', 'ΐ', 'ΰ', 'եւ', 'ẖ', 'ẗ', 'ẘ', 'ẙ', 'aʾ', 'ss', 'ὐ', 'ὒ', 'ὔ', 'ὖ', 'ἀι', 'ἁι', 'ἂι', 'ἃι', 'ἄι', 'ἅι', 'ἆι', 'ἇι', 'ἀι', 'ἁι', 'ἂι', 'ἃι', 'ἄι', 'ἅι', 'ἆι', 'ἇι', 'ἠι', 'ἡι', 'ἢι', 'ἣι', 'ἤι', 'ἥι', 'ἦι', 'ἧι', 'ἠι', 'ἡι', 'ἢι', 'ἣι', 'ἤι', 'ἥι', 'ἦι', 'ἧι', 'ὠι', 'ὡι', 'ὢι', 'ὣι', 'ὤι', 'ὥι', 'ὦι', 'ὧι', 'ὠι', 'ὡι', 'ὢι', 'ὣι', 'ὤι', 'ὥι', 'ὦι', 'ὧι', 'ὰι', 'αι', 'άι', 'ᾶ', 'ᾶι', 'αι', 'ὴι', 'ηι', 'ήι', 'ῆ', 'ῆι', 'ηι', 'ῒ', 'ῖ', 'ῗ', 'ῢ', 'ῤ', 'ῦ', 'ῧ', 'ὼι', 'ωι', 'ώι', 'ῶ', 'ῶι', 'ωι', 'ff', 'fi', 'fl', 'ffi', 'ffl', 'st', 'st', 'մն', 'մե', 'մի', 'վն', 'մխ'];
 
-    // the subset of upper case mappings that map one code point to many code points
-    private const UPPER_FROM = ['ß', 'ﬀ', 'ﬁ', 'ﬂ', 'ﬃ', 'ﬄ', 'ﬅ', 'ﬆ', 'և', 'ﬓ', 'ﬔ', 'ﬕ', 'ﬖ', 'ﬗ', 'ŉ', 'ΐ', 'ΰ', 'ǰ', 'ẖ', 'ẗ', 'ẘ', 'ẙ', 'ẚ', 'ὐ', 'ὒ', 'ὔ', 'ὖ', 'ᾶ', 'ῆ', 'ῒ', 'ΐ', 'ῖ', 'ῗ', 'ῢ', 'ΰ', 'ῤ', 'ῦ', 'ῧ', 'ῶ'];
-    private const UPPER_TO = ['SS', 'FF', 'FI', 'FL', 'FFI', 'FFL', 'ST', 'ST', 'ԵՒ', 'ՄՆ', 'ՄԵ', 'ՄԻ', 'ՎՆ', 'ՄԽ', 'ʼN', 'Ϊ́', 'Ϋ́', 'J̌', 'H̱', 'T̈', 'W̊', 'Y̊', 'Aʾ', 'Υ̓', 'Υ̓̀', 'Υ̓́', 'Υ̓͂', 'Α͂', 'Η͂', 'Ϊ̀', 'Ϊ́', 'Ι͂', 'Ϊ͂', 'Ϋ̀', 'Ϋ́', 'Ρ̓', 'Υ͂', 'Ϋ͂', 'Ω͂'];
-
     // the subset of https://github.com/unicode-org/cldr/blob/master/common/transforms/Latin-ASCII.xml that is not in NFKD
     private const TRANSLIT_FROM = ['Æ', 'Ð', 'Ø', 'Þ', 'ß', 'æ', 'ð', 'ø', 'þ', 'Đ', 'đ', 'Ħ', 'ħ', 'ı', 'ĸ', 'Ŀ', 'ŀ', 'Ł', 'ł', 'ŉ', 'Ŋ', 'ŋ', 'Œ', 'œ', 'Ŧ', 'ŧ', 'ƀ', 'Ɓ', 'Ƃ', 'ƃ', 'Ƈ', 'ƈ', 'Ɖ', 'Ɗ', 'Ƌ', 'ƌ', 'Ɛ', 'Ƒ', 'ƒ', 'Ɠ', 'ƕ', 'Ɩ', 'Ɨ', 'Ƙ', 'ƙ', 'ƚ', 'Ɲ', 'ƞ', 'Ƣ', 'ƣ', 'Ƥ', 'ƥ', 'ƫ', 'Ƭ', 'ƭ', 'Ʈ', 'Ʋ', 'Ƴ', 'ƴ', 'Ƶ', 'ƶ', 'Ǆ', 'ǅ', 'ǆ', 'Ǥ', 'ǥ', 'ȡ', 'Ȥ', 'ȥ', 'ȴ', 'ȵ', 'ȶ', 'ȷ', 'ȸ', 'ȹ', 'Ⱥ', 'Ȼ', 'ȼ', 'Ƚ', 'Ⱦ', 'ȿ', 'ɀ', 'Ƀ', 'Ʉ', 'Ɇ', 'ɇ', 'Ɉ', 'ɉ', 'Ɍ', 'ɍ', 'Ɏ', 'ɏ', 'ɓ', 'ɕ', 'ɖ', 'ɗ', 'ɛ', 'ɟ', 'ɠ', 'ɡ', 'ɢ', 'ɦ', 'ɧ', 'ɨ', 'ɪ', 'ɫ', 'ɬ', 'ɭ', 'ɱ', 'ɲ', 'ɳ', 'ɴ', 'ɶ', 'ɼ', 'ɽ', 'ɾ', 'ʀ', 'ʂ', 'ʈ', 'ʉ', 'ʋ', 'ʏ', 'ʐ', 'ʑ', 'ʙ', 'ʛ', 'ʜ', 'ʝ', 'ʟ', 'ʠ', 'ʣ', 'ʥ', 'ʦ', 'ʪ', 'ʫ', 'ᴀ', 'ᴁ', 'ᴃ', 'ᴄ', 'ᴅ', 'ᴆ', 'ᴇ', 'ᴊ', 'ᴋ', 'ᴌ', 'ᴍ', 'ᴏ', 'ᴘ', 'ᴛ', 'ᴜ', 'ᴠ', 'ᴡ', 'ᴢ', 'ᵫ', 'ᵬ', 'ᵭ', 'ᵮ', 'ᵯ', 'ᵰ', 'ᵱ', 'ᵲ', 'ᵳ', 'ᵴ', 'ᵵ', 'ᵶ', 'ᵺ', 'ᵻ', 'ᵽ', 'ᵾ', 'ᶀ', 'ᶁ', 'ᶂ', 'ᶃ', 'ᶄ', 'ᶅ', 'ᶆ', 'ᶇ', 'ᶈ', 'ᶉ', 'ᶊ', 'ᶌ', 'ᶍ', 'ᶎ', 'ᶏ', 'ᶑ', 'ᶒ', 'ᶓ', 'ᶖ', 'ᶙ', 'ẚ', 'ẜ', 'ẝ', 'ẞ', 'Ỻ', 'ỻ', 'Ỽ', 'ỽ', 'Ỿ', 'ỿ', '©', '®', '₠', '₢', '₣', '₤', '₧', '₺', '₹', 'ℌ', '℞', '㎧', '㎮', '㏆', '㏗', '㏞', '㏟', '¼', '½', '¾', '⅓', '⅔', '⅕', '⅖', '⅗', '⅘', '⅙', '⅚', '⅛', '⅜', '⅝', '⅞', '⅟', '〇', '‘', '’', '‚', '‛', '“', '”', '„', '‟', '′', '″', '〝', '〞', '«', '»', '‹', '›', '‐', '‑', '‒', '–', '—', '―', '︱', '︲', '﹘', '‖', '⁄', '⁅', '⁆', '⁎', '、', '。', '〈', '〉', '《', '》', '〔', '〕', '〘', '〙', '〚', '〛', '︑', '︒', '︹', '︺', '︽', '︾', '︿', '﹀', '﹑', '﹝', '﹞', '｟', '｠', '｡', '､', '×', '÷', '−', '∕', '∖', '∣', '∥', '≪', '≫', '⦅', '⦆'];
     private const TRANSLIT_TO = ['AE', 'D', 'O', 'TH', 'ss', 'ae', 'd', 'o', 'th', 'D', 'd', 'H', 'h', 'i', 'q', 'L', 'l', 'L', 'l', '\'n', 'N', 'n', 'OE', 'oe', 'T', 't', 'b', 'B', 'B', 'b', 'C', 'c', 'D', 'D', 'D', 'd', 'E', 'F', 'f', 'G', 'hv', 'I', 'I', 'K', 'k', 'l', 'N', 'n', 'OI', 'oi', 'P', 'p', 't', 'T', 't', 'T', 'V', 'Y', 'y', 'Z', 'z', 'DZ', 'Dz', 'dz', 'G', 'g', 'd', 'Z', 'z', 'l', 'n', 't', 'j', 'db', 'qp', 'A', 'C', 'c', 'L', 'T', 's', 'z', 'B', 'U', 'E', 'e', 'J', 'j', 'R', 'r', 'Y', 'y', 'b', 'c', 'd', 'd', 'e', 'j', 'g', 'g', 'G', 'h', 'h', 'i', 'I', 'l', 'l', 'l', 'm', 'n', 'n', 'N', 'OE', 'r', 'r', 'r', 'R', 's', 't', 'u', 'v', 'Y', 'z', 'z', 'B', 'G', 'H', 'j', 'L', 'q', 'dz', 'dz', 'ts', 'ls', 'lz', 'A', 'AE', 'B', 'C', 'D', 'D', 'E', 'J', 'K', 'L', 'M', 'O', 'P', 'T', 'U', 'V', 'W', 'Z', 'ue', 'b', 'd', 'f', 'm', 'n', 'p', 'r', 'r', 's', 't', 'z', 'th', 'I', 'p', 'U', 'b', 'd', 'f', 'g', 'k', 'l', 'm', 'n', 'p', 'r', 's', 'v', 'x', 'z', 'a', 'd', 'e', 'e', 'i', 'u', 'a', 's', 's', 'SS', 'LL', 'll', 'V', 'v', 'Y', 'y', '(C)', '(R)', 'CE', 'Cr', 'Fr.', 'L.', 'Pts', 'TL', 'Rs', 'x', 'Rx', 'm/s', 'rad/s', 'C/kg', 'pH', 'V/m', 'A/m', ' 1/4', ' 1/2', ' 3/4', ' 1/3', ' 2/3', ' 1/5', ' 2/5', ' 3/5', ' 4/5', ' 1/6', ' 5/6', ' 1/8', ' 3/8', ' 5/8', ' 7/8', ' 1/', '0', '\'', '\'', ',', '\'', '"', '"', ',,', '"', '\'', '"', '"', '"', '<<', '>>', '<', '>', '-', '-', '-', '-', '-', '-', '-', '-', '-', '||', '/', '[', ']', '*', ',', '.', '<', '>', '<<', '>>', '[', ']', '[', ']', '[', ']', ',', '.', '[', ']', '<<', '>>', '<', '>', ',', '[', ']', '((', '))', '.', ',', '*', '/', '-', '/', '\\', '|', '||', '<<', '>>', '((', '))'];
 
-    private static $transliterators = [];
-    private static $tableZero;
-    private static $tableWide;
+    // \p{ExtPict} requires PCRE2 10.40; U+1F1E6-1F1FF are regional indicators, #*0-9 keycap bases
+    private const EMOJI_REGEX = \PCRE_VERSION_MAJOR < 10 || \PCRE_VERSION_MAJOR === 10 && \PCRE_VERSION_MINOR < 40 ? '/[\p{So}#*0-9]/u' : '/[\p{ExtPict}\x{1F1E6}-\x{1F1FF}#*0-9]/u';
+
+    private static array $transliterators = [];
+    private static array $tableZero;
+    private static array $tableWide;
 
     public static function fromCodePoints(int ...$codes): static
     {
@@ -128,7 +127,7 @@ abstract class AbstractUnicodeString extends AbstractString
                         }
 
                         if (null === $transliterator) {
-                            throw new InvalidArgumentException(sprintf('Unknown transliteration rule "%s".', $rule));
+                            throw new InvalidArgumentException(\sprintf('Unknown transliteration rule "%s".', $rule));
                         }
 
                         self::$transliterators['any-latin/bgn'] = $transliterator;
@@ -139,15 +138,21 @@ abstract class AbstractUnicodeString extends AbstractString
             } elseif (!\function_exists('iconv')) {
                 $s = preg_replace('/[^\x00-\x7F]/u', '?', $s);
             } else {
-                $s = @preg_replace_callback('/[^\x00-\x7F]/u', static function ($c) {
-                    $c = (string) iconv('UTF-8', 'ASCII//TRANSLIT', $c[0]);
+                $previousLocale = setlocale(\LC_CTYPE, 0);
+                try {
+                    setlocale(\LC_CTYPE, 'C');
+                    $s = @preg_replace_callback('/[^\x00-\x7F]/u', static function ($c) {
+                        $c = (string) iconv('UTF-8', 'ASCII//TRANSLIT', $c[0]);
 
-                    if ('' === $c && '' === iconv('UTF-8', 'ASCII//TRANSLIT', '²')) {
-                        throw new \LogicException(sprintf('"%s" requires a translit-able iconv implementation, try installing "gnu-libiconv" if you\'re using Alpine Linux.', static::class));
-                    }
+                        if ('' === $c && '' === iconv('UTF-8', 'ASCII//TRANSLIT', '²')) {
+                            throw new \LogicException(\sprintf('"%s" requires a translit-able iconv implementation, try installing "gnu-libiconv" if you\'re using Alpine Linux.', static::class));
+                        }
 
-                    return 1 < \strlen($c) ? ltrim($c, '\'`"^~') : ('' !== $c ? $c : '?');
-                }, $s);
+                        return 1 < \strlen($c) ? ltrim($c, '\'`"^~') : ('' !== $c ? $c : '?');
+                    }, $s);
+                } finally {
+                    setlocale(\LC_CTYPE, $previousLocale);
+                }
             }
         }
 
@@ -159,7 +164,9 @@ abstract class AbstractUnicodeString extends AbstractString
     public function camel(): static
     {
         $str = clone $this;
-        $str->string = str_replace(' ', '', preg_replace_callback('/\b.(?![A-Z]{2,})/u', static function ($m) use (&$i) {
+        $str->string = str_replace(' ', '', preg_replace_callback('/\b.(?!\p{Lu})/u', static function ($m) {
+            static $i = 0;
+
             return 1 === ++$i ? ('İ' === $m[0] ? 'i̇' : mb_strtolower($m[0], 'UTF-8')) : mb_convert_case($m[0], \MB_CASE_TITLE, 'UTF-8');
         }, preg_replace('/[^\pL0-9]++/u', ' ', $this->string)));
 
@@ -192,7 +199,7 @@ abstract class AbstractUnicodeString extends AbstractString
 
         if (!$compat || !\defined('Normalizer::NFKC_CF')) {
             $str->string = normalizer_normalize($str->string, $compat ? \Normalizer::NFKC : \Normalizer::NFC);
-            $str->string = mb_strtolower(str_replace(self::FOLD_FROM, self::FOLD_TO, $this->string), 'UTF-8');
+            $str->string = mb_strtolower(str_replace(self::FOLD_FROM, self::FOLD_TO, $str->string), 'UTF-8');
         } else {
             $str->string = normalizer_normalize($str->string, \Normalizer::NFKC_CF);
         }
@@ -200,7 +207,7 @@ abstract class AbstractUnicodeString extends AbstractString
         return $str;
     }
 
-    public function join(array $strings, string $lastGlue = null): static
+    public function join(array $strings, ?string $lastGlue = null): static
     {
         $str = clone $this;
 
@@ -230,7 +237,7 @@ abstract class AbstractUnicodeString extends AbstractString
             $regexp .= 'i';
         }
 
-        set_error_handler(static function ($t, $m) { throw new InvalidArgumentException($m); });
+        set_error_handler(static fn ($t, $m) => throw new InvalidArgumentException($m));
 
         try {
             if (false === $match($regexp.'u', $this->string, $matches, $flags | \PREG_UNMATCHED_AS_NULL, $offset)) {
@@ -314,7 +321,7 @@ abstract class AbstractUnicodeString extends AbstractString
             $replace = 'preg_replace';
         }
 
-        set_error_handler(static function ($t, $m) { throw new InvalidArgumentException($m); });
+        set_error_handler(static fn ($t, $m) => throw new InvalidArgumentException($m));
 
         try {
             if (null === $string = $replace($fromRegexp.'u', $to, $this->string)) {
@@ -360,19 +367,23 @@ abstract class AbstractUnicodeString extends AbstractString
 
         $limit = $allWords ? -1 : 1;
 
-        $str->string = preg_replace_callback('/\b./u', static function (array $m): string {
-            return mb_convert_case($m[0], \MB_CASE_TITLE, 'UTF-8');
-        }, $str->string, $limit);
+        $str->string = preg_replace_callback('/\b./u', static fn (array $m): string => mb_convert_case($m[0], \MB_CASE_TITLE, 'UTF-8'), $str->string, $limit);
 
         return $str;
     }
 
     public function trim(string $chars = " \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}"): static
     {
-        if (" \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}" !== $chars && !preg_match('//u', $chars)) {
-            throw new InvalidArgumentException('Invalid UTF-8 chars.');
+        if ('' === $chars) {
+            return clone $this;
         }
-        $chars = preg_quote($chars);
+        if (" \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}" === $chars) {
+            $chars = preg_quote($chars);
+        } elseif (false === $ranges = preg_match('/\.\./u', $chars)) {
+            throw new InvalidArgumentException('Invalid UTF-8 chars.');
+        } else {
+            $chars = $ranges ? self::quoteCharRanges($chars) : preg_quote($chars);
+        }
 
         $str = clone $this;
         $str->string = preg_replace("{^[$chars]++|[$chars]++$}uD", '', $str->string);
@@ -382,10 +393,16 @@ abstract class AbstractUnicodeString extends AbstractString
 
     public function trimEnd(string $chars = " \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}"): static
     {
-        if (" \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}" !== $chars && !preg_match('//u', $chars)) {
-            throw new InvalidArgumentException('Invalid UTF-8 chars.');
+        if ('' === $chars) {
+            return clone $this;
         }
-        $chars = preg_quote($chars);
+        if (" \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}" === $chars) {
+            $chars = preg_quote($chars);
+        } elseif (false === $ranges = preg_match('/\.\./u', $chars)) {
+            throw new InvalidArgumentException('Invalid UTF-8 chars.');
+        } else {
+            $chars = $ranges ? self::quoteCharRanges($chars) : preg_quote($chars);
+        }
 
         $str = clone $this;
         $str->string = preg_replace("{[$chars]++$}uD", '', $str->string);
@@ -415,10 +432,16 @@ abstract class AbstractUnicodeString extends AbstractString
 
     public function trimStart(string $chars = " \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}"): static
     {
-        if (" \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}" !== $chars && !preg_match('//u', $chars)) {
-            throw new InvalidArgumentException('Invalid UTF-8 chars.');
+        if ('' === $chars) {
+            return clone $this;
         }
-        $chars = preg_quote($chars);
+        if (" \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}" === $chars) {
+            $chars = preg_quote($chars);
+        } elseif (false === $ranges = preg_match('/\.\./u', $chars)) {
+            throw new InvalidArgumentException('Invalid UTF-8 chars.');
+        } else {
+            $chars = $ranges ? self::quoteCharRanges($chars) : preg_quote($chars);
+        }
 
         $str = clone $this;
         $str->string = preg_replace("{^[$chars]++}uD", '', $str->string);
@@ -457,7 +480,14 @@ abstract class AbstractUnicodeString extends AbstractString
     public function width(bool $ignoreAnsiDecoration = true): int
     {
         $width = 0;
-        $s = str_replace(["\x00", "\x05", "\x07"], '', $this->string);
+        $s = $this->string;
+
+        if ($ignoreAnsiDecoration && str_contains($s, "\x07")) {
+            // BEL can terminate an OSC sequence instead of ST: strip such sequences before BEL is removed
+            $s = preg_replace('/\x1B\][^\x07\x1B\n\r]*+\x07/', '', $s);
+        }
+
+        $s = str_replace(["\x00", "\x05", "\x07"], '', $s);
 
         if (str_contains($s, "\r")) {
             $s = str_replace(["\r\n", "\r"], "\n", $s);
@@ -472,7 +502,7 @@ abstract class AbstractUnicodeString extends AbstractString
                 $s = preg_replace('/(?:\x1B(?:
                     \[ [\x30-\x3F]*+ [\x20-\x2F]*+ [\x40-\x7E]
                     | [P\]X^_] .*? \x1B\\\\
-                    | [\x41-\x7E]
+                    | [\x20-\x2F]*+ [\x30-\x7E]?
                 )|[\p{Cc}\x7F]++)/xu', '', $s);
             }
 
@@ -484,6 +514,27 @@ abstract class AbstractUnicodeString extends AbstractString
         }
 
         return $width;
+    }
+
+    /**
+     * Quotes $chars for a character class, reading "x..y" as a range of code points like trim() does with bytes.
+     */
+    private static function quoteCharRanges(string $chars): string
+    {
+        $chars = preg_split('//u', $chars, -1, \PREG_SPLIT_NO_EMPTY);
+        $n = \count($chars);
+        $class = '';
+
+        for ($i = 0; $i < $n; ++$i) {
+            if ($i + 3 < $n && '.' === $chars[$i + 1] && '.' === $chars[$i + 2] && ($from = mb_ord($chars[$i], 'UTF-8')) <= ($to = mb_ord($chars[$i + 3], 'UTF-8'))) {
+                $class .= \sprintf('\x{%X}-\x{%X}', $from, $to);
+                $i += 3;
+            } elseif ('.' !== $chars[$i] || '.' !== ($chars[$i + 1] ?? '')) {
+                $class .= preg_quote($chars[$i]);
+            }
+        }
+
+        return $class;
     }
 
     private function pad(int $len, self $pad, int $type): static
@@ -528,26 +579,80 @@ abstract class AbstractUnicodeString extends AbstractString
     private function wcswidth(string $string): int
     {
         $width = 0;
+        $lastChar = null;
+        $lastWidth = null;
+        $joined = false;
 
         foreach (preg_split('//u', $string, -1, \PREG_SPLIT_NO_EMPTY) as $c) {
+            if ($joined) {
+                $joined = false;
+
+                if ("\x7F" < $c[0] && preg_match(self::EMOJI_REGEX, $c)) {
+                    continue;
+                }
+            }
+
             $codePoint = mb_ord($c, 'UTF-8');
+
+            if (0x7F > $codePoint && 0x20 <= $codePoint) { // printable ASCII
+                ++$width;
+                $lastChar = $c;
+                $lastWidth = 1;
+
+                continue;
+            }
 
             if (0 === $codePoint // NULL
                 || 0x034F === $codePoint // COMBINING GRAPHEME JOINER
+                || 0x061C === $codePoint // ARABIC LETTER MARK
+                || (0x1160 <= $codePoint && 0x11FF >= $codePoint) // HANGUL JUNGSEONG FILLER to HANGUL JONGSEONG SSANGNIEUN
+                || 0x180E === $codePoint // MONGOLIAN VOWEL SEPARATOR
                 || (0x200B <= $codePoint && 0x200F >= $codePoint) // ZERO WIDTH SPACE to RIGHT-TO-LEFT MARK
                 || 0x2028 === $codePoint // LINE SEPARATOR
                 || 0x2029 === $codePoint // PARAGRAPH SEPARATOR
                 || (0x202A <= $codePoint && 0x202E >= $codePoint) // LEFT-TO-RIGHT EMBEDDING to RIGHT-TO-LEFT OVERRIDE
-                || (0x2060 <= $codePoint && 0x2063 >= $codePoint) // WORD JOINER to INVISIBLE SEPARATOR
+                || (0x2060 <= $codePoint && 0x206F >= $codePoint) // WORD JOINER to NOMINAL DIGIT SHAPES
+                || (0xD7B0 <= $codePoint && 0xD7FF >= $codePoint) // HANGUL JAMO EXTENDED-B
+                || 0xFEFF === $codePoint // ZERO WIDTH NO-BREAK SPACE
+                || (0xFFF0 <= $codePoint && 0xFFFB >= $codePoint) // INTERLINEAR ANNOTATION ANCHOR to TERMINATOR, and the unassigned code points before them
             ) {
+                // after an emoji, a ZERO WIDTH JOINER makes the next character part of it
+                $joined = 0x200D === $codePoint && null !== $lastChar && 1 < \strlen($lastChar) && preg_match(self::EMOJI_REGEX, $lastChar);
+
                 continue;
             }
 
-            // Non printable characters
-            if (32 > $codePoint // C0 control characters
-                || (0x07F <= $codePoint && 0x0A0 > $codePoint) // C1 control characters and DEL
-            ) {
+            if (0x0A0 > $codePoint) { // C0 and C1 control characters and DEL
                 return -1;
+            }
+
+            if (0xFE0F === $codePoint) {
+                if (null !== $lastChar && 1 === $lastWidth && preg_match(self::EMOJI_REGEX, $lastChar)) {
+                    ++$width;
+                    $lastWidth = 2;
+                }
+
+                continue;
+            }
+
+            if (0xFFFF < $codePoint) {
+                if ((0x13430 <= $codePoint && 0x1343F >= $codePoint) // EGYPTIAN HIEROGLYPH VERTICAL JOINER to EGYPTIAN HIEROGLYPH END WALLED ENCLOSURE
+                    || (0x1BCA0 <= $codePoint && 0x1BCA3 >= $codePoint) // SHORTHAND FORMAT LETTER OVERLAP to SHORTHAND FORMAT UP STEP
+                    || (0x1D173 <= $codePoint && 0x1D17A >= $codePoint) // MUSICAL SYMBOL BEGIN BEAM to MUSICAL SYMBOL END PHRASE
+                    || (0xE0000 <= $codePoint && 0xE0FFF >= $codePoint) // TAGS and the default ignorable code points around them
+                ) {
+                    continue;
+                }
+
+                if (0x1F3FB <= $codePoint && 0x1F3FF >= $codePoint && null !== $lastChar && 1 < \strlen($lastChar) && preg_match(self::EMOJI_REGEX, $lastChar)) { // EMOJI MODIFIER FITZPATRICK TYPE-1-2 to TYPE-6, not after a keycap base
+                    // like VS16, a skin tone gives a text-default emoji its emoji presentation
+                    if (1 === $lastWidth) {
+                        ++$width;
+                        $lastWidth = 2;
+                    }
+
+                    continue;
+                }
             }
 
             self::$tableZero ??= require __DIR__.'/Resources/data/wcswidth_table_zero.php';
@@ -580,6 +685,8 @@ abstract class AbstractUnicodeString extends AbstractString
                         $ubound = $mid - 1;
                     } else {
                         $width += 2;
+                        $lastChar = $c;
+                        $lastWidth = 2;
 
                         continue 2;
                     }
@@ -587,6 +694,8 @@ abstract class AbstractUnicodeString extends AbstractString
             }
 
             ++$width;
+            $lastChar = $c;
+            $lastWidth = 1;
         }
 
         return $width;

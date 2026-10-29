@@ -37,16 +37,17 @@ class Url extends Constraint
     public $message = 'This value is not a valid URL.';
     public $protocols = ['http', 'https'];
     public $relativeProtocol = false;
+    /** @var callable|null */
     public $normalizer;
 
     public function __construct(
-        array $options = null,
-        string $message = null,
-        array $protocols = null,
-        bool $relativeProtocol = null,
-        callable $normalizer = null,
-        array $groups = null,
-        mixed $payload = null
+        ?array $options = null,
+        ?string $message = null,
+        ?array $protocols = null,
+        ?bool $relativeProtocol = null,
+        ?callable $normalizer = null,
+        ?array $groups = null,
+        mixed $payload = null,
     ) {
         parent::__construct($options, $groups, $payload);
 
@@ -56,7 +57,7 @@ class Url extends Constraint
         $this->normalizer = $normalizer ?? $this->normalizer;
 
         if (null !== $this->normalizer && !\is_callable($this->normalizer)) {
-            throw new InvalidArgumentException(sprintf('The "normalizer" option must be a valid callable ("%s" given).', get_debug_type($this->normalizer)));
+            throw new InvalidArgumentException(\sprintf('The "normalizer" option must be a valid callable ("%s" given).', get_debug_type($this->normalizer)));
         }
     }
 }

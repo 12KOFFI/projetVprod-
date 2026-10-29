@@ -39,19 +39,22 @@ class SetupTransportsCommand extends Command
         parent::__construct();
     }
 
+    /**
+     * @return void
+     */
     protected function configure()
     {
         $this
             ->addArgument('transport', InputArgument::OPTIONAL, 'Name of the transport to setup', null)
             ->setHelp(<<<EOF
-The <info>%command.name%</info> command setups the transports:
+                The <info>%command.name%</info> command setups the transports:
 
-    <info>php %command.full_name%</info>
+                    <info>php %command.full_name%</info>
 
-Or a specific transport only:
+                Or a specific transport only:
 
-    <info>php %command.full_name% <transport></info>
-EOF
+                    <info>php %command.full_name% <transport></info>
+                EOF
             )
         ;
     }
@@ -64,18 +67,23 @@ EOF
         // do we want to set up only one transport?
         if ($transport = $input->getArgument('transport')) {
             if (!$this->transportLocator->has($transport)) {
-                throw new \RuntimeException(sprintf('The "%s" transport does not exist.', $transport));
+                throw new \RuntimeException(\sprintf('The "%s" transport does not exist.', $transport));
             }
             $transportNames = [$transport];
         }
 
         foreach ($transportNames as $id => $transportName) {
             $transport = $this->transportLocator->get($transportName);
-            if ($transport instanceof SetupableTransportInterface) {
+            if (!$transport instanceof SetupableTransportInterface) {
+                $io->note(\sprintf('The "%s" transport does not support setup.', $transportName));
+                continue;
+            }
+
+            try {
                 $transport->setup();
-                $io->success(sprintf('The "%s" transport was set up successfully.', $transportName));
-            } else {
-                $io->note(sprintf('The "%s" transport does not support setup.', $transportName));
+                $io->success(\sprintf('The "%s" transport was set up successfully.', $transportName));
+            } catch (\Exception $e) {
+                throw new \RuntimeException(\sprintf('An error occurred while setting up the "%s" transport: ', $transportName).$e->getMessage(), 0, $e);
             }
         }
 

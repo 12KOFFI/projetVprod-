@@ -25,7 +25,7 @@ class StaticVersionStrategy implements VersionStrategyInterface
      * @param string $version Version number
      * @param string $format  Url format
      */
-    public function __construct(string $version, string $format = null)
+    public function __construct(string $version, ?string $format = null)
     {
         $this->version = $version;
         $this->format = $format ?: '%s?%s';
@@ -38,7 +38,7 @@ class StaticVersionStrategy implements VersionStrategyInterface
 
     public function applyVersion(string $path): string
     {
-        $versionized = sprintf($this->format, ltrim($path, '/'), $this->getVersion($path));
+        $versionized = \sprintf($this->format, ltrim($path, '/'), $this->getVersion($path));
 
         if ($path && '/' === $path[0]) {
             return '/'.$versionized;

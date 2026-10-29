@@ -38,16 +38,28 @@ class UserType extends AbstractType
         $isRegister = $options['is_register'];
 
         $builder
-            ->add('nom', TextType::class, ['required' => !$isRegister, 'constraints' => [new Length(max: 150)]])
+            ->add('nom', TextType::class, [
+                'required' => true,
+                'constraints' => [
+                    new NotBlank(message: 'Le nom est obligatoire.'),
+                    new Length(max: 150),
+                ],
+            ])
             ->add('prenoms', TextType::class, [
                 'label' => 'Prénoms',
-                'required' => !$isRegister,
-                'constraints' => [new Length(max: 150)],
+                'required' => true,
+                'constraints' => [
+                    new NotBlank(message: 'Les prénoms sont obligatoires.'),
+                    new Length(max: 150),
+                ],
             ])
             ->add('sexe', ChoiceType::class, [
                 'choices' => ['Féminin' => 'F', 'Masculin' => 'M'],
                 'placeholder' => 'Sélectionnez',
-                'required' => !$isRegister,
+                'required' => true,
+                'constraints' => [
+                    new NotBlank(message: 'Le sexe est obligatoire.'),
+                ],
             ])
             ->add('situationmat', ChoiceType::class, [
                 'label' => 'Situation matrimoniale',
@@ -69,21 +81,30 @@ class UserType extends AbstractType
                     'input' => 'datetime',
                     'html5' => false,
                     'format' => 'dd/MM/yyyy',
-                    'required' => false,
+                    'required' => true,
                     'invalid_message' => 'Saisissez une date valide au format jj/mm/aaaa, par exemple 15/03/1985.',
                     'attr' => ['placeholder' => 'jj/mm/aaaa', 'inputmode' => 'numeric', 'maxlength' => 10, 'autocomplete' => 'bday'],
-                    'constraints' => [new LessThanOrEqual(value: 'today', message: 'La date de naissance ne peut pas être dans le futur.')],
+                    'constraints' => [
+                        new NotBlank(message: 'La date de naissance est obligatoire.'),
+                        new LessThanOrEqual(value: 'today', message: 'La date de naissance ne peut pas être dans le futur.'),
+                    ],
                 ]
                 : [
                     'label' => 'Date de naissance',
                     'widget' => 'single_text',
                     'input' => 'datetime',
                     'required' => true,
+                    'constraints' => [
+                        new NotBlank(message: 'La date de naissance est obligatoire.'),
+                    ],
                 ])
             ->add('lieunaissance', TextType::class, [
                 'label' => 'Lieu de naissance',
-                'required' => !$isRegister,
-                'constraints' => [new Length(max: 150)],
+                'required' => true,
+                'constraints' => [
+                    new NotBlank(message: 'Le lieu de naissance est obligatoire.'),
+                    new Length(max: 150),
+                ],
             ])
             ->add('nationalite', ChoiceType::class, $isRegister
                 ? [
@@ -110,8 +131,11 @@ class UserType extends AbstractType
                 ])
             ->add('residence', TextType::class, [
                 'label' => 'Ville de résidence',
-                'required' => !$isRegister,
-                'constraints' => [new Length(max: 255)],
+                'required' => true,
+                'constraints' => [
+                    new NotBlank(message: 'La ville de résidence est obligatoire.'),
+                    new Length(max: 255),
+                ],
             ])
             ->add('boitePostale', TextType::class, [
                 'label' => 'Boîte postale',
@@ -119,12 +143,19 @@ class UserType extends AbstractType
                 'constraints' => [new Length(max: 50)],
             ])
             ->add('contact', TelephoneType::class, [
-                'label' => $isRegister ? 'Contact 1' : 'Téléphone portable',
-                'required' => !$isRegister,
+                'label' => $isRegister ? 'Contact 1 (de préférence WhatsApp)' : 'Téléphone portable',
+                'required' => true,
+                'constraints' => [
+                    new NotBlank(message: 'Saisissez votre numéro de téléphone.'),
+                ],
             ])
             ->add('email', EmailType::class, [
-                'required' => !$isRegister,
-                'constraints' => [new Email(), new Length(max: 150)],
+                'required' => true,
+                'constraints' => [
+                    new NotBlank(message: "L'adresse email est obligatoire."),
+                    new Email(message: "L'adresse email n'est pas valide."),
+                    new Length(max: 150),
+                ],
             ])
         ;
 

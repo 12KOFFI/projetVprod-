@@ -48,7 +48,7 @@ class WebDebugToolbarListener implements EventSubscriberInterface
     private ?ContentSecurityPolicyHandler $cspHandler;
     private ?DumpDataCollector $dumpDataCollector;
 
-    public function __construct(Environment $twig, bool $interceptRedirects = false, int $mode = self::ENABLED, UrlGeneratorInterface $urlGenerator = null, string $excludedAjaxPaths = '^/bundles|^/_wdt', ContentSecurityPolicyHandler $cspHandler = null, DumpDataCollector $dumpDataCollector = null)
+    public function __construct(Environment $twig, bool $interceptRedirects = false, int $mode = self::ENABLED, ?UrlGeneratorInterface $urlGenerator = null, string $excludedAjaxPaths = '^/bundles|^/_wdt', ?ContentSecurityPolicyHandler $cspHandler = null, ?DumpDataCollector $dumpDataCollector = null)
     {
         $this->twig = $twig;
         $this->urlGenerator = $urlGenerator;
@@ -67,13 +67,13 @@ class WebDebugToolbarListener implements EventSubscriberInterface
     public function setMode(int $mode): void
     {
         if (self::DISABLED !== $mode && self::ENABLED !== $mode) {
-            throw new \InvalidArgumentException(sprintf('Invalid value provided for mode, use one of "%s::DISABLED" or "%s::ENABLED".', self::class, self::class));
+            throw new \InvalidArgumentException(\sprintf('Invalid value provided for mode, use one of "%s::DISABLED" or "%s::ENABLED".', self::class, self::class));
         }
 
         $this->mode = $mode;
     }
 
-    public function onKernelResponse(ResponseEvent $event)
+    public function onKernelResponse(ResponseEvent $event): void
     {
         $response = $event->getResponse();
         $request = $event->getRequest();
@@ -107,7 +107,7 @@ class WebDebugToolbarListener implements EventSubscriberInterface
             return;
         }
 
-        if ($response->headers->has('X-Debug-Token') && $response->isRedirect() && $this->interceptRedirects && 'html' === $request->getRequestFormat()) {
+        if ($response->headers->has('X-Debug-Token') && $response->isRedirect() && $this->interceptRedirects && 'html' === $request->getRequestFormat() && $response->headers->has('Location')) {
             if ($request->hasSession() && ($session = $request->getSession())->isStarted() && $session->getFlashBag() instanceof AutoExpireFlashBag) {
                 // keep current flashes for one more request if using AutoExpireFlashBag
                 $session->getFlashBag()->setAll($session->getFlashBag()->peekAll());
@@ -134,7 +134,7 @@ class WebDebugToolbarListener implements EventSubscriberInterface
     /**
      * Injects the web debug toolbar into the given Response.
      */
-    protected function injectToolbar(Response $response, Request $request, array $nonces)
+    protected function injectToolbar(Response $response, Request $request, array $nonces): void
     {
         $content = $response->getContent();
         $pos = strripos($content, '</body>');

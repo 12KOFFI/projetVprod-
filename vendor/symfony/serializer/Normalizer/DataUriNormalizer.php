@@ -22,6 +22,8 @@ use Symfony\Component\Serializer\Exception\NotNormalizableValueException;
  * Denormalizes a data URI to a {@see \SplFileObject} object.
  *
  * @author Kévin Dunglas <dunglas@gmail.com>
+ *
+ * @final since Symfony 6.3
  */
 class DataUriNormalizer implements NormalizerInterface, DenormalizerInterface, CacheableSupportsMethodInterface
 {
@@ -31,12 +33,9 @@ class DataUriNormalizer implements NormalizerInterface, DenormalizerInterface, C
         File::class => true,
     ];
 
-    /**
-     * @var MimeTypeGuesserInterface|null
-     */
-    private $mimeTypeGuesser;
+    private readonly ?MimeTypeGuesserInterface $mimeTypeGuesser;
 
-    public function __construct(MimeTypeGuesserInterface $mimeTypeGuesser = null)
+    public function __construct(?MimeTypeGuesserInterface $mimeTypeGuesser = null)
     {
         if (!$mimeTypeGuesser && class_exists(MimeTypes::class)) {
             $mimeTypeGuesser = MimeTypes::getDefault();
@@ -45,7 +44,18 @@ class DataUriNormalizer implements NormalizerInterface, DenormalizerInterface, C
         $this->mimeTypeGuesser = $mimeTypeGuesser;
     }
 
-    public function normalize(mixed $object, string $format = null, array $context = []): string
+    public function getSupportedTypes(?string $format): array
+    {
+        $isCacheable = __CLASS__ === static::class || $this->hasCacheableSupportsMethod();
+
+        return [
+            \SplFileInfo::class => $isCacheable,
+            \SplFileObject::class => $isCacheable,
+            File::class => $isCacheable,
+        ];
+    }
+
+    public function normalize(mixed $object, ?string $format = null, array $context = []): string
     {
         if (!$object instanceof \SplFileInfo) {
             throw new InvalidArgumentException('The object must be an instance of "\SplFileInfo".');
@@ -62,16 +72,16 @@ class DataUriNormalizer implements NormalizerInterface, DenormalizerInterface, C
         }
 
         if ('text' === explode('/', $mimeType, 2)[0]) {
-            return sprintf('data:%s,%s', $mimeType, rawurlencode($data));
+            return \sprintf('data:%s,%s', $mimeType, rawurlencode($data));
         }
 
-        return sprintf('data:%s;base64,%s', $mimeType, base64_encode($data));
+        return \sprintf('data:%s;base64,%s', $mimeType, base64_encode($data));
     }
 
     /**
      * @param array $context
      */
-    public function supportsNormalization(mixed $data, string $format = null /* , array $context = [] */): bool
+    public function supportsNormalization(mixed $data, ?string $format = null /* , array $context = [] */): bool
     {
         return $data instanceof \SplFileInfo;
     }
@@ -84,7 +94,7 @@ class DataUriNormalizer implements NormalizerInterface, DenormalizerInterface, C
      * @throws InvalidArgumentException
      * @throws NotNormalizableValueException
      */
-    public function denormalize(mixed $data, string $type, string $format = null, array $context = []): \SplFileInfo
+    public function denormalize(mixed $data, string $type, ?string $format = null, array $context = []): \SplFileInfo
     {
         if (null === $data || !preg_match('/^data:([a-z0-9][a-z0-9\!\#\$\&\-\^\_\+\.]{0,126}\/[a-z0-9][a-z0-9\!\#\$\&\-\^\_\+\.]{0,126}(;[a-z0-9\-]+\=[a-z0-9\-]+)?)?(;base64)?,[a-z0-9\!\$\&\\\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*$/i', $data)) {
             throw NotNormalizableValueException::createForUnexpectedDataType('The provided "data:" URI is not valid.', $data, ['string'], $context['deserialization_path'] ?? null, true);
@@ -94,7 +104,7 @@ class DataUriNormalizer implements NormalizerInterface, DenormalizerInterface, C
             switch ($type) {
                 case File::class:
                     if (!class_exists(File::class)) {
-                        throw new InvalidArgumentException(sprintf('Cannot denormalize to a "%s" without the HttpFoundation component installed. Try running "composer require symfony/http-foundation".', File::class));
+                        throw new InvalidArgumentException(\sprintf('Cannot denormalize to a "%s" without the HttpFoundation component installed. Try running "composer require symfony/http-foundation".', File::class));
                     }
 
                     return new File($data, false);
@@ -107,19 +117,24 @@ class DataUriNormalizer implements NormalizerInterface, DenormalizerInterface, C
             throw NotNormalizableValueException::createForUnexpectedDataType($exception->getMessage(), $data, ['string'], $context['deserialization_path'] ?? null, false, $exception->getCode(), $exception);
         }
 
-        throw new InvalidArgumentException(sprintf('The class parameter "%s" is not supported. It must be one of "SplFileInfo", "SplFileObject" or "Symfony\Component\HttpFoundation\File\File".', $type));
+        throw new InvalidArgumentException(\sprintf('The class parameter "%s" is not supported. It must be one of "SplFileInfo", "SplFileObject" or "Symfony\Component\HttpFoundation\File\File".', $type));
     }
 
     /**
      * @param array $context
      */
-    public function supportsDenormalization(mixed $data, string $type, string $format = null /* , array $context = [] */): bool
+    public function supportsDenormalization(mixed $data, string $type, ?string $format = null /* , array $context = [] */): bool
     {
         return isset(self::SUPPORTED_TYPES[$type]);
     }
 
+    /**
+     * @deprecated since Symfony 6.3, use "getSupportedTypes()" instead
+     */
     public function hasCacheableSupportsMethod(): bool
     {
+        trigger_deprecation('symfony/serializer', '6.3', 'The "%s()" method is deprecated, implement "%s::getSupportedTypes()" instead.', __METHOD__, get_debug_type($this));
+
         return __CLASS__ === static::class;
     }
 
@@ -128,15 +143,19 @@ class DataUriNormalizer implements NormalizerInterface, DenormalizerInterface, C
      */
     private function getMimeType(\SplFileInfo $object): string
     {
-        if ($object instanceof File) {
-            return $object->getMimeType();
-        }
+        try {
+            if ($object instanceof File) {
+                return $object->getMimeType();
+            }
 
-        if ($this->mimeTypeGuesser && $mimeType = $this->mimeTypeGuesser->guessMimeType($object->getPathname())) {
-            return $mimeType;
-        }
+            return $this->mimeTypeGuesser?->guessMimeType($object->getPathname()) ?: 'application/octet-stream';
+        } catch (\LogicException $e) {
+            if (!preg_match('{^data:(?://)?([^,]*?)(?:;base64)?,}', $object->getPathname(), $m)) {
+                throw $e;
+            }
 
-        return 'application/octet-stream';
+            return $m[1] ?: 'text/plain';
+        }
     }
 
     /**

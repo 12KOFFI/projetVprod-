@@ -27,7 +27,8 @@ use function sprintf;
  */
 class ServiceEntityRepositoryProxy extends EntityRepository implements ServiceEntityRepositoryInterface
 {
-    private ?EntityRepository $repository = null;
+    /** @var EntityRepository<T> */
+    private EntityRepository|null $repository = null;
 
     /** @param class-string<T> $entityClass The class name of the entity this repository manages */
     public function __construct(
@@ -41,7 +42,7 @@ class ServiceEntityRepositoryProxy extends EntityRepository implements ServiceEn
         $this->repository = $this->resolveRepository();
     }
 
-    public function createQueryBuilder(string $alias, ?string $indexBy = null): QueryBuilder
+    public function createQueryBuilder(string $alias, string|null $indexBy = null): QueryBuilder
     {
         return ($this->repository ??= $this->resolveRepository())
             ->createQueryBuilder($alias, $indexBy);
@@ -55,9 +56,17 @@ class ServiceEntityRepositoryProxy extends EntityRepository implements ServiceEn
 
     public function find(mixed $id, LockMode|int|null $lockMode = null, int|null $lockVersion = null): object|null
     {
+        $repository = $this->repository ??= $this->resolveRepository();
+
+        // Let the ORM apply its own default: before ORM 3.7, LockMode::NONE refreshes an entity
+        // that is already managed, and since ORM 3.7, passing null is deprecated.
+        if ($lockMode === null) {
+            /** @psalm-suppress InvalidReturnStatement This proxy is used only in combination with newer parent class */
+            return $repository->find($id, lockVersion: $lockVersion);
+        }
+
         /** @psalm-suppress InvalidReturnStatement This proxy is used only in combination with newer parent class */
-        return ($this->repository ??= $this->resolveRepository())
-            ->find($id, $lockMode, $lockVersion);
+        return $repository->find($id, $lockMode, $lockVersion);
     }
 
     /**
@@ -66,14 +75,14 @@ class ServiceEntityRepositoryProxy extends EntityRepository implements ServiceEn
      * @psalm-suppress InvalidReturnStatement This proxy is used only in combination with newer parent class
      * @psalm-suppress InvalidReturnType This proxy is used only in combination with newer parent class
      */
-    public function findBy(array $criteria, ?array $orderBy = null, ?int $limit = null, ?int $offset = null): array
+    public function findBy(array $criteria, array|null $orderBy = null, int|null $limit = null, int|null $offset = null): array
     {
         return ($this->repository ??= $this->resolveRepository())
             ->findBy($criteria, $orderBy, $limit, $offset);
     }
 
     /** {@inheritDoc} */
-    public function findOneBy(array $criteria, ?array $orderBy = null): object|null
+    public function findOneBy(array $criteria, array|null $orderBy = null): object|null
     {
         /** @psalm-suppress InvalidReturnStatement This proxy is used only in combination with newer parent class */
         return ($this->repository ??= $this->resolveRepository())
@@ -111,22 +120,27 @@ class ServiceEntityRepositoryProxy extends EntityRepository implements ServiceEn
         return ($this->repository ??= $this->resolveRepository())->getClassMetadata();
     }
 
+    /** @phpstan-return AbstractLazyCollection<int, T>&Selectable<int, T> */
     public function matching(Criteria $criteria): AbstractLazyCollection&Selectable
     {
         return ($this->repository ??= $this->resolveRepository())->matching($criteria);
     }
 
+    /** @return EntityRepository<T> */
     private function resolveRepository(): EntityRepository
     {
         $manager = $this->registry->getManagerForClass($this->entityClass);
 
-        if ($manager === null) {
+        if (! $manager instanceof EntityManagerInterface) {
             throw new LogicException(sprintf(
                 'Could not find the entity manager for class "%s". Check your Doctrine configuration to make sure it is configured to load this entity’s metadata.',
                 $this->entityClass,
             ));
         }
 
-        return new EntityRepository($manager, $manager->getClassMetadata($this->entityClass));
+        /** @var ClassMetadata<T> $classMetadata */
+        $classMetadata = $manager->getClassMetadata($this->entityClass);
+
+        return new EntityRepository($manager, $classMetadata);
     }
 }

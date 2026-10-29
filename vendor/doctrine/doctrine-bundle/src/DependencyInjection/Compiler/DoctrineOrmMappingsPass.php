@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Doctrine\Bundle\DoctrineBundle\DependencyInjection\Compiler;
 
+use Doctrine\Deprecations\Deprecation;
 use Doctrine\ORM\Mapping\Driver\AnnotationDriver;
 use Doctrine\ORM\Mapping\Driver\AttributeDriver;
 use Doctrine\ORM\Mapping\Driver\XmlDriver;
@@ -12,6 +15,8 @@ use Doctrine\Persistence\Mapping\Driver\SymfonyFileLocator;
 use Symfony\Bridge\Doctrine\DependencyInjection\CompilerPass\RegisterMappingsPass;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
+
+use function method_exists;
 
 /**
  * Class for Symfony bundles to configure mappings for model classes not in the
@@ -74,6 +79,8 @@ class DoctrineOrmMappingsPass extends RegisterMappingsPass
     }
 
     /**
+     * @deprecated no replacement planned
+     *
      * @param string[]     $namespaces        Hashmap of directory path to namespace
      * @param string[]     $managerParameters List of parameters that could which object manager name
      *                                        your bundle uses. This compiler pass will automatically
@@ -88,8 +95,15 @@ class DoctrineOrmMappingsPass extends RegisterMappingsPass
      */
     public static function createYamlMappingDriver(array $namespaces, array $managerParameters = [], $enabledParameter = false, array $aliasMap = [])
     {
+        Deprecation::trigger(
+            'doctrine/doctrine-bundle',
+            'https://github.com/doctrine/DoctrineBundle/pull/2088',
+            'The "%s()" method is deprecated and will be removed in DoctrineBundle 3.0.',
+            __METHOD__,
+        );
         $locator = new Definition(SymfonyFileLocator::class, [$namespaces, '.orm.yml']);
-        $driver  = new Definition(YamlDriver::class, [$locator]);
+        /* @phpstan-ignore class.notFound */
+        $driver = new Definition(YamlDriver::class, [$locator]);
 
         return new DoctrineOrmMappingsPass($driver, $namespaces, $managerParameters, $enabledParameter, $aliasMap);
     }
@@ -116,6 +130,8 @@ class DoctrineOrmMappingsPass extends RegisterMappingsPass
     }
 
     /**
+     * @deprecated no replacement planned
+     *
      * @param string[]     $namespaces                List of namespaces that are handled with annotation mapping
      * @param string[]     $directories               List of directories to look for annotated classes
      * @param string[]     $managerParameters         List of parameters that could which object manager name
@@ -132,7 +148,15 @@ class DoctrineOrmMappingsPass extends RegisterMappingsPass
      */
     public static function createAnnotationMappingDriver(array $namespaces, array $directories, array $managerParameters = [], $enabledParameter = false, array $aliasMap = [], bool $reportFieldsWhereDeclared = false)
     {
+        Deprecation::trigger(
+            'doctrine/doctrine-bundle',
+            'https://github.com/doctrine/DoctrineBundle/pull/2088',
+            'The "%s()" method is deprecated and will be removed in DoctrineBundle 3.0.',
+            __METHOD__,
+        );
+
         $reader = new Reference('annotation_reader');
+        /* @phpstan-ignore class.notFound */
         $driver = new Definition(AnnotationDriver::class, [$reader, $directories, $reportFieldsWhereDeclared]);
 
         return new DoctrineOrmMappingsPass($driver, $namespaces, $managerParameters, $enabledParameter, $aliasMap);
@@ -155,7 +179,14 @@ class DoctrineOrmMappingsPass extends RegisterMappingsPass
      */
     public static function createAttributeMappingDriver(array $namespaces, array $directories, array $managerParameters = [], $enabledParameter = false, array $aliasMap = [], bool $reportFieldsWhereDeclared = false)
     {
-        $driver = new Definition(AttributeDriver::class, [$directories, $reportFieldsWhereDeclared]);
+        $driverArgs = [$directories];
+
+        // Add additional args for ORM <3.0
+        if (method_exists(AttributeDriver::class, 'getReader')) {
+            $driverArgs[] = $reportFieldsWhereDeclared;
+        }
+
+        $driver = new Definition(AttributeDriver::class, $driverArgs);
 
         return new DoctrineOrmMappingsPass($driver, $namespaces, $managerParameters, $enabledParameter, $aliasMap);
     }

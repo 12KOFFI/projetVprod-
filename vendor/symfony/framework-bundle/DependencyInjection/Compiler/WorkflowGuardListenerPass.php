@@ -15,12 +15,19 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Exception\LogicException;
 
+trigger_deprecation('symfony/framework-bundle', '6.4', 'The "%s" class is deprecated, use "%s" instead.', WorkflowGuardListenerPass::class, \Symfony\Component\Workflow\DependencyInjection\WorkflowGuardListenerPass::class);
+
 /**
  * @author Christian Flothmann <christian.flothmann@sensiolabs.de>
  * @author Grégoire Pineau <lyrixx@lyrixx.info>
+ *
+ * @deprecated since Symfony 6.4, use Symfony\Component\Workflow\DependencyInjection\WorkflowGuardListenerPass instead.
  */
 class WorkflowGuardListenerPass implements CompilerPassInterface
 {
+    /**
+     * @return void
+     */
     public function process(ContainerBuilder $container)
     {
         if (!$container->hasParameter('workflow.has_guard_listeners')) {
@@ -38,7 +45,7 @@ class WorkflowGuardListenerPass implements CompilerPassInterface
 
         foreach ($servicesNeeded as $service) {
             if (!$container->has($service)) {
-                throw new LogicException(sprintf('The "%s" service is needed to be able to use the workflow guard listener.', $service));
+                throw new LogicException(\sprintf('The "%s" service is needed to be able to use the workflow guard listener.', $service));
             }
         }
     }

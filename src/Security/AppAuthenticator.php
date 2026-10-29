@@ -12,6 +12,8 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
 use Symfony\Component\Security\Core\Security;
 use Symfony\Component\Security\Http\Authenticator\AbstractLoginFormAuthenticator;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
@@ -31,17 +33,20 @@ class AppAuthenticator extends AbstractLoginFormAuthenticator
     private AuthorizationCheckerInterface $authorization;
     private RouterInterface $router;
     private EntityManagerInterface $entityManager;
+    private LimiteurTentatives $limiteur;
 
     public function __construct(
         UrlGeneratorInterface $urlGenerator,
         AuthorizationCheckerInterface $authorization,
         RouterInterface $router,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
+        LimiteurTentatives $limiteur
     ) {
         $this->urlGenerator = $urlGenerator;
         $this->authorization = $authorization;
         $this->router = $router;
         $this->entityManager = $entityManager;
+        $this->limiteur = $limiteur;
     }
 
     public function supports(Request $request): bool
@@ -56,6 +61,16 @@ class AppAuthenticator extends AbstractLoginFormAuthenticator
         $csrfToken = $request->request->get('_csrf_token');
 
         $request->getSession()->set(Security::LAST_USERNAME, $identifier);
+
+        // Force brute : au-delà du seuil, le mot de passe n'est même pas vérifié.
+        $attente = $this->limiteur->minutesDAttente(LimiteurTentatives::CONNEXION, $identifier, $request->getClientIp());
+        if ($attente !== null) {
+            throw new CustomUserMessageAuthenticationException(sprintf(
+                'Trop de tentatives de connexion. Réessayez dans %d minute%s.',
+                $attente,
+                $attente > 1 ? 's' : ''
+            ));
+        }
 
         return new Passport(
             new UserBadge($identifier, function (string $identifier): User {
@@ -84,16 +99,19 @@ class AppAuthenticator extends AbstractLoginFormAuthenticator
 
     public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
     {
+        $this->limiteur->reinitialiser(
+            LimiteurTentatives::CONNEXION,
+            trim((string) $request->request->get('email', ''))
+        );
+
         // 1. Vérifier le target_path envoyé par le formulaire
-        $targetPathPost = $request->request->get('_target_path');
-        if ($targetPathPost && $this->isSafeTarget($targetPathPost)) {
-            return new RedirectResponse(urldecode($targetPathPost));
+        if ($cible = CibleRedirection::sure($request->request->get('_target_path'))) {
+            return new RedirectResponse($cible);
         }
 
         // 2. Vérifier redirect dans l'URL
-        $redirect = $request->query->get('redirect');
-        if ($redirect && $this->isSafeTarget($redirect)) {
-            return new RedirectResponse($redirect);
+        if ($cible = CibleRedirection::sure($request->query->get('redirect'))) {
+            return new RedirectResponse($cible);
         }
 
         // 3. Vérifier targetPath stocké dans la session
@@ -105,6 +123,20 @@ class AppAuthenticator extends AbstractLoginFormAuthenticator
         return new RedirectResponse($this->router->generate('app_dashboard'));
     }
 
+    public function onAuthenticationFailure(Request $request, AuthenticationException $exception): Response
+    {
+        // Le refus pour cause de limite atteinte ne prolonge pas le blocage.
+        if (!$exception instanceof CustomUserMessageAuthenticationException) {
+            $this->limiteur->enregistrerEchec(
+                LimiteurTentatives::CONNEXION,
+                trim((string) $request->request->get('email', '')),
+                $request->getClientIp()
+            );
+        }
+
+        return parent::onAuthenticationFailure($request, $exception);
+    }
+
     protected function getLoginUrl(Request $request): string
     {
         $parametres = [];
@@ -113,17 +145,10 @@ class AppAuthenticator extends AbstractLoginFormAuthenticator
             $parametres['profil'] = 'professionnel';
         }
 
-        $redirect = $request->query->get('redirect');
-
-        if ($redirect && $this->isSafeTarget($redirect)) {
+        if ($redirect = CibleRedirection::sure($request->query->get('redirect'))) {
             $parametres['redirect'] = $redirect;
         }
 
         return $this->urlGenerator->generate(self::LOGIN_ROUTE, $parametres);
-    }
-
-    private function isSafeTarget(string $target): bool
-    {
-        return str_starts_with($target, '/') && !str_starts_with($target, '//');
     }
 }

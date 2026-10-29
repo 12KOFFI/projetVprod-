@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Doctrine\Bundle\DoctrineBundle\Command;
 
 use Doctrine\DBAL\DriverManager;
@@ -33,7 +35,7 @@ class DropDatabaseDoctrineCommand extends DoctrineCommand
         $this
             ->setName('doctrine:database:drop')
             ->setDescription('Drops the configured database')
-            ->addOption('connection', 'c', InputOption::VALUE_OPTIONAL, 'The connection to use for this command')
+            ->addOption('connection', 'c', InputOption::VALUE_REQUIRED, 'The connection to use for this command')
             ->addOption('if-exists', null, InputOption::VALUE_NONE, 'Don\'t trigger an error, when the database doesn\'t exist')
             ->addOption('force', 'f', InputOption::VALUE_NONE, 'Set this parameter to execute this action')
             ->setHelp(<<<'EOT'
@@ -73,11 +75,11 @@ EOT);
             throw new InvalidArgumentException("Connection does not contain a 'path' or 'dbname' parameter and cannot be dropped.");
         }
 
-        /** @psalm-suppress InvalidArrayOffset Need to be compatible with DBAL < 4, which still has `$params['url']` */
+        /* @phpstan-ignore unset.offset (Need to be compatible with DBAL < 4, which still has `$params['url']`) */
         unset($params['dbname'], $params['url']);
 
         if ($connection->getDatabasePlatform() instanceof PostgreSQLPlatform) {
-            /** @psalm-suppress InvalidArrayOffset It's still available in DBAL 3.x that we need to support */
+            /** @phpstan-ignore nullCoalesce.offset (for DBAL < 4) */
             $params['dbname'] = $params['default_dbname'] ?? 'postgres';
         }
 

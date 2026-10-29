@@ -25,8 +25,10 @@ use Symfony\Component\DependencyInjection\Reference;
  */
 class DefinitionErrorExceptionPass extends AbstractRecursivePass
 {
-    private $erroredDefinitions = [];
-    private $sourceReferences = [];
+    protected bool $skipScalars = true;
+
+    private array $erroredDefinitions = [];
+    private array $sourceReferences = [];
 
     /**
      * @return void
@@ -63,20 +65,23 @@ class DefinitionErrorExceptionPass extends AbstractRecursivePass
         }
 
         if ($value instanceof Reference && $this->currentId !== $targetId = (string) $value) {
-            if (ContainerInterface::RUNTIME_EXCEPTION_ON_INVALID_REFERENCE === $value->getInvalidBehavior()) {
-                $this->sourceReferences[$targetId][$this->currentId] ??= true;
+            if (
+                ContainerInterface::RUNTIME_EXCEPTION_ON_INVALID_REFERENCE === $value->getInvalidBehavior()
+                || ContainerInterface::IGNORE_ON_UNINITIALIZED_REFERENCE === $value->getInvalidBehavior()
+            ) {
+                $this->sourceReferences[$targetId][$this->currentId ?? ''] ??= true;
             } else {
-                $this->sourceReferences[$targetId][$this->currentId] = false;
+                $this->sourceReferences[$targetId][$this->currentId ?? ''] = false;
             }
 
             return $value;
         }
 
-        if (!$value instanceof Definition || !$value->hasErrors()) {
+        if (!$value instanceof Definition || !$value->hasErrors() || $value->hasTag('container.error')) {
             return parent::processValue($value, $isRoot);
         }
 
-        $this->erroredDefinitions[$this->currentId] = $value;
+        $this->erroredDefinitions[$this->currentId ?? ''] = $value;
 
         return parent::processValue($value);
     }

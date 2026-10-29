@@ -28,7 +28,7 @@ abstract class AbstractRememberMeHandler implements RememberMeHandlerInterface
     protected $options;
     protected $logger;
 
-    public function __construct(UserProviderInterface $userProvider, RequestStack $requestStack, array $options = [], LoggerInterface $logger = null)
+    public function __construct(UserProviderInterface $userProvider, RequestStack $requestStack, array $options = [], ?LoggerInterface $logger = null)
     {
         $this->userProvider = $userProvider;
         $this->requestStack = $requestStack;
@@ -66,7 +66,7 @@ abstract class AbstractRememberMeHandler implements RememberMeHandlerInterface
         }
 
         if (!$user instanceof UserInterface) {
-            throw new \LogicException(sprintf('The UserProviderInterface implementation must return an instance of UserInterface, but returned "%s".', get_debug_type($user)));
+            throw new \LogicException(\sprintf('The UserProviderInterface implementation must return an instance of UserInterface, but returned "%s".', get_debug_type($user)));
         }
 
         $this->processRememberMe($rememberMeDetails, $user);
@@ -87,6 +87,8 @@ abstract class AbstractRememberMeHandler implements RememberMeHandlerInterface
      * Creates the remember-me cookie using the correct configuration.
      *
      * @param RememberMeDetails|null $rememberMeDetails The details for the cookie, or null to clear the remember-me cookie
+     *
+     * @return void
      */
     protected function createCookie(?RememberMeDetails $rememberMeDetails)
     {

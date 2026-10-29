@@ -1,0 +1,20 @@
+{#
+    Repli lorsqu'un membre du jury local n'est rattaché à aucun centre.
+
+    Le périmètre de données étant porté par le centre, un compte sans
+    rattachement ne doit rien voir plutôt que tout voir (règle métier R9.2).
+#}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Jury local — Côte d'Ivoire VAE{% endblock %}
+
+{% block body %}
+<div class="mx-auto max-w-lg overflow-hidden rounded-lg border border-slate-200 bg-white">
+    {{ ui.etat_vide(
+        'triangle-exclamation',
+        'Aucun centre de rattachement',
+        'Votre compte n\'est rattaché à aucun centre : la recevabilité des dossiers est indisponible. Contactez l\'administrateur pour qu\'il complète votre rattachement.'
+    ) }}
+</div>
+{% endblock %}

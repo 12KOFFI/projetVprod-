@@ -11,7 +11,8 @@
 
 namespace Symfony\Component\VarDumper\Dumper\ContextProvider;
 
-use Symfony\Component\HttpKernel\Debug\FileLinkFormatter;
+use Symfony\Component\ErrorHandler\ErrorRenderer\FileLinkFormatter;
+use Symfony\Component\HttpKernel\Debug\FileLinkFormatter as LegacyFileLinkFormatter;
 use Symfony\Component\VarDumper\Cloner\VarCloner;
 use Symfony\Component\VarDumper\Dumper\HtmlDumper;
 use Symfony\Component\VarDumper\VarDumper;
@@ -28,9 +29,9 @@ final class SourceContextProvider implements ContextProviderInterface
     private int $limit;
     private ?string $charset;
     private ?string $projectDir;
-    private ?FileLinkFormatter $fileLinkFormatter;
+    private FileLinkFormatter|LegacyFileLinkFormatter|null $fileLinkFormatter;
 
-    public function __construct(string $charset = null, string $projectDir = null, FileLinkFormatter $fileLinkFormatter = null, int $limit = 9)
+    public function __construct(?string $charset = null, ?string $projectDir = null, FileLinkFormatter|LegacyFileLinkFormatter|null $fileLinkFormatter = null, int $limit = 9)
     {
         $this->charset = $charset;
         $this->projectDir = $projectDir;
@@ -71,7 +72,7 @@ final class SourceContextProvider implements ContextProviderInterface
                             $file = method_exists($template, 'getSourceContext') ? $template->getSourceContext()->getPath() : null;
 
                             if ($src) {
-                                $src = explode("\n", $src);
+                                $src = explode("\n", str_replace(["\r\n", "\r"], "\n", $src));
                                 $fileExcerpt = [];
 
                                 for ($i = max($line - 3, 1), $max = min($line + 3, \count($src)); $i <= $max; ++$i) {
@@ -114,7 +115,7 @@ final class SourceContextProvider implements ContextProviderInterface
     {
         $html = '';
 
-        $dumper = new HtmlDumper(function ($line) use (&$html) { $html .= $line; }, $this->charset);
+        $dumper = new HtmlDumper(static function ($line) use (&$html) { $html .= $line; }, $this->charset);
         $dumper->setDumpHeader('');
         $dumper->setDumpBoundaries('', '');
 

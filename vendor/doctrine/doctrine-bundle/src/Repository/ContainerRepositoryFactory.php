@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Doctrine\Bundle\DoctrineBundle\Repository;
 
 use Doctrine\Bundle\DoctrineBundle\DependencyInjection\Compiler\ServiceRepositoryCompilerPass;
+use Doctrine\Deprecations\Deprecation;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Mapping\ClassMetadata;
@@ -14,9 +17,8 @@ use RuntimeException;
 use function class_exists;
 use function get_debug_type;
 use function is_a;
-use function spl_object_hash;
+use function spl_object_id;
 use function sprintf;
-use function trigger_deprecation;
 
 /**
  * Fetches repositories from the container or falls back to normal creation.
@@ -28,19 +30,17 @@ final class ContainerRepositoryFactory implements RepositoryFactory
     /** @var array<string, ObjectRepository> */
     private array $managedRepositories = [];
 
-    private ContainerInterface $container;
-
     /** @param ContainerInterface $container A service locator containing the repositories */
-    public function __construct(ContainerInterface $container)
-    {
-        $this->container = $container;
+    public function __construct(
+        private readonly ContainerInterface $container,
+    ) {
     }
 
     /**
      * @param class-string<T> $entityName
      *
      * @return ObjectRepository<T>
-     * @psalm-return ($strictTypeCheck is true ? EntityRepository<T> : ObjectRepository<T>)
+     * @phpstan-return ($strictTypeCheck is true ? EntityRepository<T> : ObjectRepository<T>)
      *
      * @template T of object
      */
@@ -64,10 +64,17 @@ final class ContainerRepositoryFactory implements RepositoryFactory
                 }
 
                 if (! $repository instanceof EntityRepository) {
-                    trigger_deprecation('doctrine/doctrine-bundle', '2.11', 'The service "%s" of type "%s" should extend "%s", not doing so is deprecated.', $repositoryServiceId, get_debug_type($repository), EntityRepository::class);
+                    Deprecation::trigger(
+                        'doctrine/doctrine-bundle',
+                        'https://github.com/doctrine/DoctrineBundle/pull/1722',
+                        'The service "%s" of type "%s" should extend "%s", not doing so is deprecated.',
+                        $repositoryServiceId,
+                        get_debug_type($repository),
+                        EntityRepository::class,
+                    );
                 }
 
-                /** @psalm-var ObjectRepository<T> */
+                /** @phpstan-var ObjectRepository<T> */
                 return $repository;
             }
 
@@ -95,17 +102,17 @@ final class ContainerRepositoryFactory implements RepositoryFactory
      */
     private function getOrCreateRepository(
         EntityManagerInterface $entityManager,
-        ClassMetadata $metadata
+        ClassMetadata $metadata,
     ): ObjectRepository {
-        $repositoryHash = $metadata->getName() . spl_object_hash($entityManager);
+        $repositoryHash = $metadata->getName() . '#' . spl_object_id($entityManager);
         if (isset($this->managedRepositories[$repositoryHash])) {
-            /** @psalm-var ObjectRepository<TEntity> */
+            /** @phpstan-var ObjectRepository<TEntity> */
             return $this->managedRepositories[$repositoryHash];
         }
 
         $repositoryClassName = $metadata->customRepositoryClassName ?: $entityManager->getConfiguration()->getDefaultRepositoryClassName();
 
-        /** @psalm-var ObjectRepository<TEntity> */
+        /** @phpstan-var ObjectRepository<TEntity> */
         return $this->managedRepositories[$repositoryHash] = new $repositoryClassName($entityManager, $metadata);
     }
 }

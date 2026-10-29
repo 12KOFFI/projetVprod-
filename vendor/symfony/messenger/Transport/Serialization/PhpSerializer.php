@@ -13,6 +13,7 @@ namespace Symfony\Component\Messenger\Transport\Serialization;
 
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Exception\MessageDecodingFailedException;
+use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Messenger\Stamp\MessageDecodingFailedStamp;
 use Symfony\Component\Messenger\Stamp\NonSendableStampInterface;
 
@@ -58,6 +59,11 @@ class PhpSerializer implements SerializerInterface
     {
         $envelope = $envelope->withoutStampsOfType(NonSendableStampInterface::class);
 
+        // handler results are for synchronous callers: retries only need the names of the handlers that already ran
+        if ($handledStamps = $envelope->all(HandledStamp::class)) {
+            $envelope = $envelope->withoutAll(HandledStamp::class)->with(...array_map(static fn (HandledStamp $stamp) => new HandledStamp(null, $stamp->getHandlerName()), $handledStamps));
+        }
+
         $body = addslashes(serialize($envelope));
 
         if (!preg_match('//u', $body)) {
@@ -75,16 +81,14 @@ class PhpSerializer implements SerializerInterface
             throw new MessageDecodingFailedException('Could not decode an empty message using PHP serialization.');
         }
 
-        $signalingException = new MessageDecodingFailedException(sprintf('Could not decode message using PHP serialization: %s.', $contents));
-
         if ($this->acceptPhpIncompleteClass) {
             $prevUnserializeHandler = ini_set('unserialize_callback_func', null);
         } else {
             $prevUnserializeHandler = ini_set('unserialize_callback_func', self::class.'::handleUnserializeCallback');
         }
-        $prevErrorHandler = set_error_handler(function ($type, $msg, $file, $line, $context = []) use (&$prevErrorHandler, $signalingException) {
-            if (__FILE__ === $file) {
-                throw $signalingException;
+        $prevErrorHandler = set_error_handler(static function ($type, $msg, $file, $line, $context = []) use (&$prevErrorHandler) {
+            if (__FILE__ === $file && !\in_array($type, [\E_DEPRECATED, \E_USER_DEPRECATED], true)) {
+                throw new \ErrorException($msg, 0, $type, $file, $line);
             }
 
             return $prevErrorHandler ? $prevErrorHandler($type, $msg, $file, $line, $context) : false;
@@ -92,15 +96,24 @@ class PhpSerializer implements SerializerInterface
 
         try {
             /** @var Envelope */
-            $envelope = unserialize($contents);
+            $envelope = unserialize($contents, ['allowed_classes' => true]);
+        } catch (\Throwable $e) {
+            if ($e instanceof MessageDecodingFailedException) {
+                throw $e;
+            }
+
+            throw new MessageDecodingFailedException('Could not decode Envelope: '.$e->getMessage(), 0, $e);
         } finally {
             restore_error_handler();
             ini_set('unserialize_callback_func', $prevUnserializeHandler);
         }
 
         if (!$envelope instanceof Envelope) {
-            throw $signalingException;
+            throw new MessageDecodingFailedException('Could not decode message into an Envelope.');
         }
+
+        // encoding strips these stamps, so they never come from a transport
+        $envelope = $envelope->withoutStampsOfType(NonSendableStampInterface::class);
 
         if ($envelope->getMessage() instanceof \__PHP_Incomplete_Class) {
             $envelope = $envelope->with(new MessageDecodingFailedStamp());
@@ -112,8 +125,8 @@ class PhpSerializer implements SerializerInterface
     /**
      * @internal
      */
-    public static function handleUnserializeCallback(string $class)
+    public static function handleUnserializeCallback(string $class): never
     {
-        throw new MessageDecodingFailedException(sprintf('Message class "%s" not found during decoding.', $class));
+        throw new MessageDecodingFailedException(\sprintf('Message class "%s" not found during decoding.', $class));
     }
 }

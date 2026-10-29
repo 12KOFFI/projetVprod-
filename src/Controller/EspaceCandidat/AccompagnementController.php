@@ -18,12 +18,14 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Accompagnement côté candidat : choix de l'accompagnateur après
  * l'éligibilité, puis livret de preuves une fois l'accompagnateur affecté.
  */
 #[Route('/espace-candidat', name: 'app_candidat_')]
+#[IsGranted('ROLE_CANDIDAT')]
 class AccompagnementController extends AbstractController
 {
     public function __construct(

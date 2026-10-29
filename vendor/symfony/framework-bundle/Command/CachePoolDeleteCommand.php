@@ -35,7 +35,7 @@ final class CachePoolDeleteCommand extends Command
     /**
      * @param string[]|null $poolNames
      */
-    public function __construct(Psr6CacheClearer $poolClearer, array $poolNames = null)
+    public function __construct(Psr6CacheClearer $poolClearer, ?array $poolNames = null)
     {
         parent::__construct();
 
@@ -43,7 +43,7 @@ final class CachePoolDeleteCommand extends Command
         $this->poolNames = $poolNames;
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setDefinition([
@@ -51,10 +51,10 @@ final class CachePoolDeleteCommand extends Command
                 new InputArgument('key', InputArgument::REQUIRED, 'The cache key to delete from the pool'),
             ])
             ->setHelp(<<<'EOF'
-The <info>%command.name%</info> deletes an item from a given cache pool.
+                The <info>%command.name%</info> deletes an item from a given cache pool.
 
-    %command.full_name% <pool> <key>
-EOF
+                    %command.full_name% <pool> <key>
+                EOF
             )
         ;
     }
@@ -67,16 +67,16 @@ EOF
         $cachePool = $this->poolClearer->getPool($pool);
 
         if (!$cachePool->hasItem($key)) {
-            $io->note(sprintf('Cache item "%s" does not exist in cache pool "%s".', $key, $pool));
+            $io->note(\sprintf('Cache item "%s" does not exist in cache pool "%s".', $key, $pool));
 
             return 0;
         }
 
         if (!$cachePool->deleteItem($key)) {
-            throw new \Exception(sprintf('Cache item "%s" could not be deleted.', $key));
+            throw new \Exception(\sprintf('Cache item "%s" could not be deleted.', $key));
         }
 
-        $io->success(sprintf('Cache item "%s" was successfully deleted.', $key));
+        $io->success(\sprintf('Cache item "%s" was successfully deleted.', $key));
 
         return 0;
     }

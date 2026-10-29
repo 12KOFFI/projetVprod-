@@ -1,0 +1,105 @@
+{#
+    Fiche d'un dossier pour le jury local : consultation en lecture seule et,
+    tant que le dossier est inscrit, décision de recevabilité.
+
+    La décision reste dans la colonne de droite, visible pendant toute la
+    lecture du dossier (en bas de page sur mobile, après les pièces).
+#}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'candidature/_fiche.html.twig' as fiche %}
+
+{% block title %}Dossier {{ candidature.numero }} — Jury local{% endblock %}
+
+{% block body %}
+<a href="{{ path('app_jury_local_dashboard') }}"
+   class="mb-4 inline-flex min-h-[44px] items-center gap-2 rounded-lg text-sm font-medium text-slate-700
+          transition duration-150 motion-reduce:transition-none hover:text-indigo-700
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+    <i class="fas fa-arrow-left text-xs" aria-hidden="true"></i>Retour aux dossiers à statuer
+</a>
+
+{{ fiche.entete(candidature) }}
+
+{% if form_recevabilite is not null %}
+    {% set valeur_initiale = form_recevabilite.statut.vars.value ?: null %}
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div class="space-y-6 lg:col-span-2 lg:row-start-1">
+            {{ fiche.decisions(candidature) }}
+            {{ fiche.identite(candidature.user) }}
+            {{ fiche.pieces(candidature, documents, pieces_attendues) }}
+            {{ fiche.informations(candidature) }}
+        </div>
+
+        <aside class="lg:col-start-3 lg:row-span-2 lg:row-start-1">
+            <section id="decision" aria-labelledby="titre-decision"
+                     class="overflow-hidden rounded-lg border border-slate-200 bg-white lg:sticky lg:top-6"
+                     x-data="decisionDossier({{ valeur_initiale|json_encode|e('html_attr') }})">
+                {{ fiche.titre_panneau('Décision de recevabilité', 'Votre décision est définitive.', 'titre-decision') }}
+
+                {{ form_start(form_recevabilite, {attr: {novalidate: 'novalidate', class: 'space-y-5 px-5 py-5 sm:px-6'}}) }}
+                    <p class="text-sm text-slate-700">
+                        Ce dossier a été étudié et accepté par le conseiller VAE, et les frais de dossier sont réglés.
+                        Vérifiez les pièces, puis dites si le dossier est recevable.
+                    </p>
+
+                    {{ fiche.choix_decision(form_recevabilite.statut, '1') }}
+
+                    <p class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700" x-show="statut === '2'" x-cloak>
+                        Le dossier poursuit son parcours VAE.
+                    </p>
+                    <p class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800" x-show="statut === '1'" x-cloak>
+                        Le parcours du candidat s'arrête à cette étape.
+                    </p>
+
+                    <div x-show="!confirmation">
+                        <button type="submit" x-ref="enregistrer" @click.prevent="enregistrer($el)"
+                                class="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white
+                                       transition duration-150 motion-reduce:transition-none hover:bg-indigo-700
+                                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                            <i class="fas fa-scale-balanced text-xs" aria-hidden="true"></i>Enregistrer la décision
+                        </button>
+                    </div>
+
+                    <div class="space-y-3 rounded-lg border border-indigo-200 bg-indigo-50 p-4" x-show="confirmation" x-cloak role="group" aria-labelledby="confirmation-titre">
+                        <p id="confirmation-titre" class="text-sm text-slate-900">
+                            Déclarer le dossier <span class="font-mono font-semibold tabular-nums">{{ candidature.numero }}</span>
+                            <strong x-text="statut === '2' ? 'recevable' : 'non recevable'"></strong> ?
+                            Cette décision ne pourra plus être modifiée.
+                        </p>
+                        <div class="flex flex-col gap-2 sm:flex-row lg:flex-col 2xl:flex-row">
+                            <button type="submit" x-ref="confirmer"
+                                    class="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white
+                                           transition duration-150 motion-reduce:transition-none hover:bg-indigo-700
+                                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                                <i class="fas fa-check text-xs" aria-hidden="true"></i>Confirmer
+                            </button>
+                            <button type="button" @click="annuler()"
+                                    class="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700
+                                           transition duration-150 motion-reduce:transition-none hover:bg-slate-50
+                                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                                Revenir
+                            </button>
+                        </div>
+                    </div>
+                {{ form_end(form_recevabilite) }}
+            </section>
+        </aside>
+
+        <div class="lg:col-span-2 lg:row-start-2">
+            {{ fiche.historique(historique) }}
+        </div>
+    </div>
+{% else %}
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div class="space-y-6 lg:col-span-2">
+            {{ fiche.identite(candidature.user) }}
+            {{ fiche.pieces(candidature, documents, pieces_attendues) }}
+            {{ fiche.informations(candidature) }}
+        </div>
+        <div class="space-y-6">
+            {{ fiche.decisions(candidature) }}
+            {{ fiche.historique(historique) }}
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

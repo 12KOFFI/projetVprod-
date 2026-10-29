@@ -15,6 +15,7 @@ use Symfony\Component\Form\Exception\UnexpectedTypeException;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\RequestHandlerInterface;
+use Symfony\Component\Form\Util\FormUtil;
 use Symfony\Component\Form\Util\ServerParams;
 use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -30,11 +31,14 @@ class HttpFoundationRequestHandler implements RequestHandlerInterface
 {
     private ServerParams $serverParams;
 
-    public function __construct(ServerParams $serverParams = null)
+    public function __construct(?ServerParams $serverParams = null)
     {
         $this->serverParams = $serverParams ?? new ServerParams();
     }
 
+    /**
+     * @return void
+     */
     public function handleRequest(FormInterface $form, mixed $request = null)
     {
         if (!$request instanceof Request) {
@@ -70,11 +74,10 @@ class HttpFoundationRequestHandler implements RequestHandlerInterface
                 // Submit the form, but don't clear the default values
                 $form->submit(null, false);
 
-                $form->addError(new FormError(
-                    $form->getConfig()->getOption('upload_max_size_message')(),
-                    null,
-                    ['{{ max }}' => $this->serverParams->getNormalizedIniPostMaxSize()]
-                ));
+                $messageTemplate = $form->getConfig()->getOption('upload_max_size_message')();
+                $messageParameters = ['{{ max }}' => $this->serverParams->getNormalizedIniPostMaxSize()];
+
+                $form->addError(new FormError(strtr($messageTemplate, $messageParameters), $messageTemplate, $messageParameters));
 
                 return;
             }
@@ -92,14 +95,14 @@ class HttpFoundationRequestHandler implements RequestHandlerInterface
             }
 
             if (\is_array($params) && \is_array($files)) {
-                $data = array_replace_recursive($params, $files);
+                $data = FormUtil::mergeParamsAndFiles($params, $files);
             } else {
                 $data = $params ?: $files;
             }
         }
 
         // Don't auto-submit the form unless at least one field is present.
-        if ('' === $name && \count(array_intersect_key($data, $form->all())) <= 0) {
+        if ('' === $name && !array_intersect_key($data, $form->all())) {
             return;
         }
 

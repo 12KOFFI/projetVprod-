@@ -28,6 +28,7 @@ final class ProfilProfessionnel
     ];
 
     public const DIPLOMES = [
+        'AUCUN' => 'Aucun',
         'CEPE' => 'CEPE',
         'BEPC' => 'BEPC',
         'BAC' => 'BAC',

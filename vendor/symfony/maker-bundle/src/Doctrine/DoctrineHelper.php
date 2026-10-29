@@ -12,12 +12,12 @@
 namespace Symfony\Bundle\MakerBundle\Doctrine;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Types\Type;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\Driver\AttributeDriver;
 use Doctrine\ORM\Mapping\MappingException as ORMMappingException;
 use Doctrine\ORM\Mapping\NamingStrategy;
-use Doctrine\ORM\Tools\DisconnectedClassMetadataFactory;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Persistence\Mapping\AbstractClassMetadataFactory;
 use Doctrine\Persistence\Mapping\ClassMetadata;
@@ -88,7 +88,7 @@ final class DoctrineHelper
         }
 
         if (null === $em) {
-            throw new \InvalidArgumentException(sprintf('Cannot find the entity manager for class "%s"', $className));
+            throw new \InvalidArgumentException(\sprintf('Cannot find the entity manager for class "%s". Ensure entity uses attribute mapping.', $className));
         }
 
         if (null === $this->mappingDriversByPrefix) {
@@ -147,7 +147,7 @@ final class DoctrineHelper
         return $entities;
     }
 
-    public function getMetadata(string $classOrNamespace = null, bool $disconnected = false): array|ClassMetadata
+    public function getMetadata(?string $classOrNamespace = null, bool $disconnected = false): array|ClassMetadata
     {
         // Invalidating the cached AttributeDriver::$classNames to find new Entity classes
         foreach ($this->mappingDriversByPrefix ?? [] as $managerName => $prefixes) {
@@ -155,7 +155,6 @@ final class DoctrineHelper
                 if ($attributeDriver instanceof AttributeDriver) {
                     $classNames = (new \ReflectionClass(AttributeDriver::class))->getProperty('classNames');
 
-                    $classNames->setAccessible(true);
                     $classNames->setValue($attributeDriver, null);
                 }
             }
@@ -174,8 +173,8 @@ final class DoctrineHelper
                     $loaded = $this->isInstanceOf($cmf, AbstractClassMetadataFactory::class) ? $cmf->getLoadedMetadata() : [];
                 }
 
-                $cmf = new DisconnectedClassMetadataFactory();
-                $cmf->setEntityManager($em);
+                // Set the reflection service that was used in the now removed DisconnectedClassMetadataFactory::class
+                $cmf->setReflectionService(new StaticReflectionService());
 
                 foreach ($loaded as $m) {
                     $cmf->setMetadataFor($m->getName(), $m);
@@ -257,20 +256,37 @@ final class DoctrineHelper
 
     public static function getPropertyTypeForColumn(string $columnType): ?string
     {
-        return match ($columnType) {
+        $propertyType = match ($columnType) {
             Types::STRING, Types::TEXT, Types::GUID, Types::BIGINT, Types::DECIMAL => 'string',
-            Types::ARRAY, Types::SIMPLE_ARRAY, Types::JSON => 'array',
+            'array', Types::SIMPLE_ARRAY, Types::JSON => 'array',
             Types::BOOLEAN => 'bool',
             Types::INTEGER, Types::SMALLINT => 'int',
             Types::FLOAT => 'float',
-            Types::DATETIME_MUTABLE, Types::DATETIMETZ_MUTABLE, Types::DATE_MUTABLE, Types::TIME_MUTABLE => '\\'.\DateTimeInterface::class,
+            Types::DATETIME_MUTABLE, Types::DATETIMETZ_MUTABLE, Types::DATE_MUTABLE, Types::TIME_MUTABLE => '\\'.\DateTime::class,
             Types::DATETIME_IMMUTABLE, Types::DATETIMETZ_IMMUTABLE, Types::DATE_IMMUTABLE, Types::TIME_IMMUTABLE => '\\'.\DateTimeImmutable::class,
             Types::DATEINTERVAL => '\\'.\DateInterval::class,
-            Types::OBJECT => 'object',
+            'object' => 'object',
             'uuid' => '\\'.Uuid::class,
             'ulid' => '\\'.Ulid::class,
             default => null,
         };
+
+        if (null !== $propertyType || !($registry = Type::getTypeRegistry())->has($columnType)) {
+            return $propertyType;
+        }
+
+        $reflection = new \ReflectionClass(($registry->get($columnType))::class);
+
+        $returnType = $reflection->getMethod('convertToPHPValue')->getReturnType();
+
+        /*
+         * we do not support union and intersection types
+         */
+        if (!$returnType instanceof \ReflectionNamedType) {
+            return null;
+        }
+
+        return $returnType->isBuiltin() ? $returnType->getName() : '\\'.$returnType->getName();
     }
 
     /**
@@ -288,7 +304,7 @@ final class DoctrineHelper
             return null;
         }
 
-        return sprintf('Types::%s', $constants[$columnType]);
+        return \sprintf('Types::%s', $constants[$columnType]);
     }
 
     private function isInstanceOf($object, string $class): bool

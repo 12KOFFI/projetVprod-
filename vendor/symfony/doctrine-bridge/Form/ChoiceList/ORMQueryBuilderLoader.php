@@ -16,6 +16,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\ConversionException;
 use Doctrine\DBAL\Types\Type;
 use Doctrine\ORM\QueryBuilder;
+use Symfony\Bridge\Doctrine\Types\AbstractUidType;
 use Symfony\Component\Form\Exception\TransformationFailedException;
 
 /**
@@ -26,17 +27,9 @@ use Symfony\Component\Form\Exception\TransformationFailedException;
  */
 class ORMQueryBuilderLoader implements EntityLoaderInterface
 {
-    /**
-     * Contains the query builder that builds the query for fetching the
-     * entities.
-     *
-     * This property should only be accessed through queryBuilder.
-     */
-    private QueryBuilder $queryBuilder;
-
-    public function __construct(QueryBuilder $queryBuilder)
-    {
-        $this->queryBuilder = $queryBuilder;
+    public function __construct(
+        private readonly QueryBuilder $queryBuilder,
+    ) {
     }
 
     public function getEntities(): array
@@ -70,31 +63,30 @@ class ORMQueryBuilderLoader implements EntityLoaderInterface
         // Guess type
         $entity = current($qb->getRootEntities());
         $metadata = $qb->getEntityManager()->getClassMetadata($entity);
+        // doctrine/dbal 4.5 deprecates the static registry for a provider on the configuration
+        $config = $qb->getEntityManager()->getConnection()->getConfiguration();
+        $types = method_exists($config, 'getTypeProvider') ? $config->getTypeProvider() : Type::getTypeRegistry();
         if (\in_array($type = $metadata->getTypeOfField($identifier), ['integer', 'bigint', 'smallint'])) {
             $parameterType = class_exists(ArrayParameterType::class) ? ArrayParameterType::INTEGER : Connection::PARAM_INT_ARRAY;
 
             // Filter out non-integer values (e.g. ""). If we don't, some
             // databases such as PostgreSQL fail.
-            $values = array_values(array_filter($values, function ($v) {
-                return (string) $v === (string) (int) $v || ctype_digit($v);
-            }));
-        } elseif (\in_array($type, ['ulid', 'uuid', 'guid'])) {
+            $values = array_values(array_filter($values, static fn ($v) => \is_string($v) && ctype_digit($v) || (string) $v === (string) (int) $v));
+        } elseif (null !== $type && (\in_array($type, ['ulid', 'uuid', 'guid']) || ($types->has($type) && is_subclass_of($types->get($type), AbstractUidType::class)))) {
             $parameterType = class_exists(ArrayParameterType::class) ? ArrayParameterType::STRING : Connection::PARAM_STR_ARRAY;
 
             // Like above, but we just filter out empty strings.
-            $values = array_values(array_filter($values, function ($v) {
-                return '' !== (string) $v;
-            }));
+            $values = array_values(array_filter($values, static fn ($v) => '' !== (string) $v));
 
             // Convert values into right type
-            if (Type::hasType($type)) {
-                $doctrineType = Type::getType($type);
+            if ($types->has($type)) {
+                $doctrineType = $types->get($type);
                 $platform = $qb->getEntityManager()->getConnection()->getDatabasePlatform();
                 foreach ($values as &$value) {
                     try {
                         $value = $doctrineType->convertToDatabaseValue($value, $platform);
                     } catch (ConversionException $e) {
-                        throw new TransformationFailedException(sprintf('Failed to transform "%s" into "%s".', $value, $type), 0, $e);
+                        throw new TransformationFailedException(\sprintf('Failed to transform "%s" into "%s".', $value, $type), 0, $e);
                     }
                 }
                 unset($value);

@@ -13,7 +13,9 @@ class UtilService
         $charactersLength = strlen($characters);
         $randomString = '';
         for ($i = 0; $i < $length; $i++) {
-            $randomString .= $characters[rand(0, $charactersLength - 1)];
+            // random_int (générateur cryptographique) : cette chaîne sert de mot
+            // de passe initial ; rand() serait prévisible.
+            $randomString .= $characters[random_int(0, $charactersLength - 1)];
         }
         return $randomString;
     }

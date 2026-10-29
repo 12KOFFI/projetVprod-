@@ -48,6 +48,7 @@ class CandidatureDepotType extends AbstractType
                     . ($centre->getLocalite() ? ' · ' . $centre->getLocalite()->getLibelle() : ''),
                 'label' => 'Centre de dépôt',
                 'placeholder' => 'Sélectionnez un centre',
+                'required' => true,
                 'query_builder' => static fn (CentreRepository $repository) => $repository
                     ->createQueryBuilder('c')
                     ->addSelect('l')
@@ -63,10 +64,12 @@ class CandidatureDepotType extends AbstractType
                 'label' => 'Métier visé',
                 'placeholder' => 'Sélectionnez d\'abord un centre',
                 'choices' => $options['metiers_disponibles'],
+                'required' => true,
             ])
             // Le minimum (5 ans) est bloqué à la saisie comme au serveur.
             ->add('nbAnneesExperience', IntegerType::class, [
                 'label' => "Années d'expérience dans le métier",
+                'required' => true,
                 'attr' => ['min' => ProfilProfessionnel::ANNEES_CQP, 'max' => 60, 'inputmode' => 'numeric'],
             ])
             // La liste dépend du couple (centre, métier) : elle est donc vide au
@@ -81,10 +84,12 @@ class CandidatureDepotType extends AbstractType
                 'label' => 'Diplôme de certification visé',
                 'placeholder' => 'Sélectionnez d\'abord un métier',
                 'choices' => $options['certifications_disponibles'],
+                'required' => true,
             ])
             ->add('situationPro', ChoiceType::class, [
                 'label' => 'Situation professionnelle',
                 'placeholder' => 'Sélectionnez',
+                'required' => true,
                 'choices' => ProfilProfessionnel::choix(ProfilProfessionnel::SITUATIONS),
             ])
             // Les précisions « Autre » ne s'affichent qu'avec ce choix ; elles
@@ -96,8 +101,8 @@ class CandidatureDepotType extends AbstractType
             ])
             ->add('diplome', ChoiceType::class, [
                 'label' => 'Diplôme académique obtenu(e)',
-                'placeholder' => 'Aucun',
-                'required' => false,
+                'placeholder' => 'Sélectionnez',
+                'required' => true,
                 'choices' => ProfilProfessionnel::choix(ProfilProfessionnel::DIPLOMES),
             ])
             ->add('diplomePrecision', TextType::class, [
@@ -107,29 +112,27 @@ class CandidatureDepotType extends AbstractType
             ])
             ->add('nomEntreprise', TextType::class, [
                 'label' => 'Entreprise, organisme ou administration d\'attache',
-                'required' => false,
+                'required' => true,
             ])
             ->add('refentreprise', TextType::class, [
                 'label' => 'Références de l\'entreprise',
-                'required' => false,
-                
+                'required' => true,
             ])
             ->add('lieuExercice', TextType::class, [
                 'label' => 'Lieu d\'exercice (Région, Département, Sous-préfecture)',
-                'required' => false,
+                'required' => true,
                 'attr' => ['placeholder' => 'Ex. : Gbêkê, Bouaké, Bouaké'],
-            ])
-            ->add('fonction', TextType::class, [
-                'label' => 'Poste de travail',
-                'required' => false,
-            ])
-            ->add('refContrat', TextType::class, [
-                'label' => 'Référence du contrat de travail',
-                'required' => false,
-                
             ])
             ->add('directionService', TextType::class, [
                 'label' => 'Direction ou service',
+                'required' => true,
+            ])
+            ->add('fonction', TextType::class, [
+                'label' => 'Poste de travail',
+                'required' => true,
+            ])
+            ->add('refContrat', TextType::class, [
+                'label' => 'Référence du contrat de travail',
                 'required' => false,
             ])
             ->add('contactemployeur', TelephoneType::class, [
@@ -139,7 +142,7 @@ class CandidatureDepotType extends AbstractType
             ->add('langue', ChoiceType::class, [
                 'label' => 'Langue d\'évaluation',
                 'placeholder' => 'Sélectionnez',
-                'required' => false,
+                'required' => true,
                 'choices' => ProfilProfessionnel::choix(ProfilProfessionnel::LANGUES),
             ])
             ->add('preciserlangue', TextType::class, [

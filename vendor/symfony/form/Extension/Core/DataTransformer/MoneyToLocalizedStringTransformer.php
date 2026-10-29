@@ -23,7 +23,7 @@ class MoneyToLocalizedStringTransformer extends NumberToLocalizedStringTransform
 {
     private int $divisor;
 
-    public function __construct(?int $scale = 2, ?bool $grouping = true, ?int $roundingMode = \NumberFormatter::ROUND_HALFUP, ?int $divisor = 1, string $locale = null)
+    public function __construct(?int $scale = 2, ?bool $grouping = true, ?int $roundingMode = \NumberFormatter::ROUND_HALFUP, ?int $divisor = 1, ?string $locale = null)
     {
         parent::__construct($scale ?? 2, $grouping ?? true, $roundingMode, $locale);
 
@@ -33,14 +33,14 @@ class MoneyToLocalizedStringTransformer extends NumberToLocalizedStringTransform
     /**
      * Transforms a normalized format into a localized money string.
      *
-     * @param int|float|null $value Normalized number
+     * @param int|float|string|null $value Normalized number
      *
      * @throws TransformationFailedException if the given value is not numeric or
      *                                       if the value cannot be transformed
      */
     public function transform(mixed $value): string
     {
-        if (null !== $value && 1 !== $this->divisor) {
+        if (null !== $value && '' !== $value && 1 !== $this->divisor) {
             if (!is_numeric($value)) {
                 throw new TransformationFailedException('Expected a numeric.');
             }

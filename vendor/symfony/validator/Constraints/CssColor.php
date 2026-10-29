@@ -49,7 +49,7 @@ class CssColor extends Constraint
     /**
      * @var string[]
      */
-    private static $validationModes = [
+    private static array $validationModes = [
         self::HEX_LONG,
         self::HEX_LONG_WITH_ALPHA,
         self::HEX_SHORT,
@@ -70,7 +70,7 @@ class CssColor extends Constraint
     /**
      * @param array|string $formats The types of CSS colors allowed (e.g. hexadecimal only, RGB and HSL only, etc.).
      */
-    public function __construct($formats = [], string $message = null, array $groups = null, $payload = null, array $options = null)
+    public function __construct($formats = [], ?string $message = null, ?array $groups = null, $payload = null, ?array $options = null)
     {
         $validationModesAsString = implode(', ', self::$validationModes);
 
@@ -80,13 +80,13 @@ class CssColor extends Constraint
             $options = array_merge($formats, $options ?? []);
         } elseif (\is_array($formats)) {
             if ([] === array_intersect(self::$validationModes, $formats)) {
-                throw new InvalidArgumentException(sprintf('The "formats" parameter value is not valid. It must contain one or more of the following values: "%s".', $validationModesAsString));
+                throw new InvalidArgumentException(\sprintf('The "formats" parameter value is not valid. It must contain one or more of the following values: "%s".', $validationModesAsString));
             }
 
             $options['value'] = $formats;
         } elseif (\is_string($formats)) {
             if (!\in_array($formats, self::$validationModes)) {
-                throw new InvalidArgumentException(sprintf('The "formats" parameter value is not valid. It must contain one or more of the following values: "%s".', $validationModesAsString));
+                throw new InvalidArgumentException(\sprintf('The "formats" parameter value is not valid. It must contain one or more of the following values: "%s".', $validationModesAsString));
             }
 
             $options['value'] = [$formats];

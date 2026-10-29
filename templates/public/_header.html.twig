@@ -7,31 +7,28 @@
         <div class="max-w-6xl mx-auto px-4 sm:px-6">
             <div class="flex items-center justify-between h-16 sm:h-[72px] gap-2 sm:gap-3 xl:gap-4">
 
-                {# Bloc d'identité : emblème METFPA + logo DAIP, un filet vertical, puis
-                   le nom du service. Le logo DAIP est un bandeau très large (150×43) :
-                   il est nettement réduit sur téléphone, sinon il ne reste rien pour le
-                   titre. Celui-ci ne comporte qu'une coupure possible (« Côte d'Ivoire »
-                   est insécable) : une seule ligne dès ~360 px, deux lignes en dessous. #}
-                <a href="{{ path('app_home') }}" class="flex min-w-0 items-center gap-2 sm:gap-3 rounded-lg" aria-label="Côte d'Ivoire VAE — accueil">
-                    <img src="{{ asset('image/metfpa.png') }}" alt="" class="h-7 sm:h-9 w-auto shrink-0" aria-hidden="true">
-                    <img src="{{ asset('image/logo.png') }}" alt="" class="h-5 sm:h-8 w-auto shrink-0" aria-hidden="true">
+                {# Bloc d'identité de marque : emblème METFPA + logo DAIP, filet vertical,
+                   puis le logotype officiel « Côte d'Ivoire VAE » (non cliquable, l'accueil
+                   étant assuré par le bouton de navigation). #}
+                <div class="flex min-w-0 items-center gap-2 sm:gap-3 select-none cursor-default" role="img" aria-label="Côte d'Ivoire VAE">
+                    <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+                        <img src="{{ asset('image/metfpa.png') }}" alt="METFPA" class="h-7 sm:h-9 w-auto shrink-0" aria-hidden="true">
+                        <img src="{{ asset('image/logo.png') }}" alt="DAIP" class="h-5 sm:h-8 w-auto shrink-0" aria-hidden="true">
+                    </div>
                     <span class="w-px h-7 sm:h-9 bg-slate-200 shrink-0" aria-hidden="true"></span>
-                    <span class="min-w-0 overflow-hidden">
-                        <span class="block text-sm sm:text-[0.95rem] font-extrabold leading-tight tracking-tight text-slate-800">Côte&nbsp;d'Ivoire VAE</span>
-                        {# Dès 1024 px, la navigation (4 liens + 2 boutons) occupe la ligne :
-                           le sous-titre ne s'affiche que sur tablette, sinon il pousse le nom
-                           du service jusqu'à le tronquer. #}
-                        <span class="hidden md:block lg:hidden text-xs font-medium leading-tight text-slate-600 mt-1 whitespace-nowrap">Validation des Acquis de l'Expérience</span>
-                    </span>
-                </a>
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span class="text-sm sm:text-base font-extrabold tracking-tight text-slate-900 whitespace-nowrap">Côte&nbsp;d'Ivoire</span>
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-primary-700 text-white text-[0.6875rem] sm:text-xs font-black tracking-wider uppercase shadow-xs">VAE</span>
+                    </div>
+                </div>
 
                 {# Ordre fixé par la DAIP, qui suit le parcours de l'accueil :
-                   Déroulement · Vérifier les conditions · Dossier de candidature ·
+                   Accueil · Vérifier les conditions · Dossier de candidature ·
                    Contact. Ancres absolues : elles fonctionnent depuis toutes les
                    pages publiques ; le pied de page (#contact) est sur chacune. #}
                 {% set route = app.request.attributes.get('_route') %}
                 {% set liens = [
-                    { libelle: 'Déroulement', url: path('app_home') ~ '#deroulement', actif: route == 'app_session_deroulement' },
+                    { libelle: 'Accueil', url: path('app_home') ~ '#hero', actif: route == 'app_home' },
                     { libelle: 'Vérifier les conditions', url: path('app_home') ~ '#conditions-candidature', actif: false },
                     { libelle: 'Dossier de candidature', url: path('app_home') ~ '#dossier-candidature', actif: false },
                     { libelle: 'Contact', url: '#contact', actif: false }

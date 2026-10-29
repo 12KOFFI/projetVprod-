@@ -141,4 +141,170 @@ class StatistiqueService
     {
         return $this->suivi->tableauCroise();
     }
+
+    /**
+     * Le parcours VAE, décision par décision : une seule table de chiffres
+     * pour tout l'écran de pilotage.
+     *
+     * Chaque étape porte trois nombres, chacun affiché une seule fois :
+     *   - `en_attente` : dossiers arrêtés devant cette décision aujourd'hui,
+     *     et l'acteur qui doit la rendre ;
+     *   - `franchie` : dossiers que cette décision a laissés passer, quelle
+     *     que soit la suite de leur parcours (cumul) ;
+     *   - `refuse` : décisions défavorables rendues à cette étape, ou null
+     *     quand l'étape n'en comporte pas (le règlement des frais de dossier
+     *     ne se refuse pas : le candidat paie ou il attend).
+     *
+     * `taux` est le taux d'acceptation de l'étape : franchie / (franchie +
+     * refusé), donc toujours rapporté aux décisions RENDUES. Les dossiers
+     * encore en attente n'entrent jamais dans ce calcul, sans quoi une file
+     * d'attente ferait chuter un taux de décision.
+     *
+     * @return array{
+     *     deposes: int,
+     *     en_cours: int,
+     *     admis: int,
+     *     arretes: int,
+     *     etapes: list<array{cle: string, libelle: string, acteur: string, en_attente: int, franchie: int, refuse: ?int, taux: ?int}>
+     * }
+     */
+    public function parcours(User $user): array
+    {
+        $parStatut = $this->candidatures->compterParStatut($user);
+        $etude = $this->candidatures->compterPreinscritsParEtude($user);
+        $cumul = $this->cumul($parStatut);
+        $n = static fn (StatutCandidature $statut): int => $parStatut[$statut->value] ?? 0;
+
+        // Une étude acceptée se lit sur les préinscrits qui attendent leur
+        // paiement PLUS tous les dossiers inscrits ou au-delà : on ne s'inscrit
+        // qu'après une étude acceptée.
+        $acceptees = $etude[CandidatureRepository::ETUDE_ACCEPTEE] + $cumul(StatutCandidature::INSCRIT);
+
+        $etapes = [
+            [
+                'cle' => 'preinscrits',
+                'libelle' => 'Étude du dossier',
+                'acteur' => 'Conseiller VAE',
+                'en_attente' => $etude[CandidatureRepository::ETUDE_A_RENDRE],
+                'franchie' => $acceptees,
+                'refuse' => $etude[CandidatureRepository::ETUDE_REFUSEE],
+            ],
+            [
+                'cle' => 'acceptes',
+                'libelle' => 'Frais de dossier',
+                'acteur' => 'Candidat',
+                'en_attente' => $etude[CandidatureRepository::ETUDE_ACCEPTEE],
+                'franchie' => $cumul(StatutCandidature::INSCRIT),
+                'refuse' => null,
+            ],
+            [
+                'cle' => 'inscrits',
+                'libelle' => 'Recevabilité',
+                'acteur' => 'Jury local',
+                'en_attente' => $n(StatutCandidature::INSCRIT),
+                'franchie' => $cumul(StatutCandidature::DOSSIER_RECEVABLE),
+                'refuse' => $n(StatutCandidature::DOSSIER_NON_RECEVABLE),
+            ],
+            [
+                'cle' => 'recevables',
+                'libelle' => 'Éligibilité',
+                'acteur' => 'Jury',
+                'en_attente' => $n(StatutCandidature::DOSSIER_RECEVABLE),
+                'franchie' => $cumul(StatutCandidature::ELIGIBLE),
+                'refuse' => $n(StatutCandidature::NON_ELIGIBLE),
+            ],
+            [
+                'cle' => 'eligibles',
+                'libelle' => 'Admissibilité',
+                'acteur' => 'Jury',
+                'en_attente' => $n(StatutCandidature::ELIGIBLE),
+                'franchie' => $cumul(StatutCandidature::ADMISSIBLE),
+                'refuse' => $n(StatutCandidature::NON_ADMISSIBLE),
+            ],
+            [
+                'cle' => 'admissibles',
+                'libelle' => 'Admission définitive',
+                'acteur' => 'Jury',
+                'en_attente' => $n(StatutCandidature::ADMISSIBLE),
+                'franchie' => $n(StatutCandidature::ADMIS_DEFINITIF),
+                'refuse' => $n(StatutCandidature::NON_ADMIS_DEFINITIF),
+            ],
+        ];
+
+        $etapes = array_map(fn (array $etape): array => $etape + [
+            // Sans décision défavorable possible, un taux d'acceptation de
+            // 100 % ne voudrait rien dire : l'étape n'en affiche pas.
+            'taux' => $etape['refuse'] === null
+                ? null
+                : $this->pourcentage($etape['franchie'], $etape['franchie'] + $etape['refuse']),
+        ], $etapes);
+
+        return [
+            'deposes' => array_sum($parStatut),
+            'en_cours' => array_sum(array_column($etapes, 'en_attente')),
+            'admis' => $n(StatutCandidature::ADMIS_DEFINITIF),
+            'arretes' => array_sum(array_map(static fn (?int $refuse): int => $refuse ?? 0, array_column($etapes, 'refuse'))),
+            'etapes' => $etapes,
+        ];
+    }
+
+    /**
+     * Dépôts par semaine (du lundi au dimanche) sur les dernières semaines,
+     * semaine en cours comprise, semaines sans dépôt incluses.
+     *
+     * @return array<string, int> « semaine du jj/mm » => nombre de dépôts
+     */
+    public function depotsParSemaine(User $user, int $semaines = 12): array
+    {
+        $aujourdhui = new \DateTimeImmutable('today');
+        $lundi = $aujourdhui->modify(sprintf('-%d days', (int) $aujourdhui->format('N') - 1));
+        $debut = $lundi->modify(sprintf('-%d weeks', $semaines - 1));
+
+        $effectifs = [];
+        for ($i = 0; $i < $semaines; ++$i) {
+            $effectifs[$debut->modify(sprintf('+%d weeks', $i))->format('Y-m-d')] = 0;
+        }
+
+        foreach ($this->candidatures->findDatesDeDepotDepuis($user, $debut) as $date) {
+            $jour = \DateTimeImmutable::createFromInterface($date)->setTime(0, 0);
+            $lundiDuDepot = $jour->modify(sprintf('-%d days', (int) $jour->format('N') - 1))->format('Y-m-d');
+            if (isset($effectifs[$lundiDuDepot])) {
+                ++$effectifs[$lundiDuDepot];
+            }
+        }
+
+        $parLibelle = [];
+        foreach ($effectifs as $semaine => $effectif) {
+            $parLibelle[(new \DateTimeImmutable($semaine))->format('d/m')] = $effectif;
+        }
+
+        return $parLibelle;
+    }
+
+    /**
+     * Effectif des dossiers ayant atteint au moins un statut, d'après la
+     * numérotation de l'énumération (voir synthese()).
+     *
+     * @param array<int, int> $parStatut
+     *
+     * @return callable(StatutCandidature): int
+     */
+    private function cumul(array $parStatut): callable
+    {
+        return static function (StatutCandidature $seuil) use ($parStatut): int {
+            $total = 0;
+            foreach ($parStatut as $statut => $effectif) {
+                if ($statut >= $seuil->value) {
+                    $total += $effectif;
+                }
+            }
+
+            return $total;
+        };
+    }
+
+    private function pourcentage(int $partie, int $tout): ?int
+    {
+        return $tout > 0 ? (int) round($partie * 100 / $tout) : null;
+    }
 }

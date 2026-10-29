@@ -36,6 +36,9 @@ abstract class ConstraintValidator implements ConstraintValidatorInterface
      */
     protected $context;
 
+    /**
+     * @return void
+     */
     public function initialize(ExecutionContextInterface $context)
     {
         $this->context = $context;
@@ -79,8 +82,8 @@ abstract class ConstraintValidator implements ConstraintValidatorInterface
             if (class_exists(\IntlDateFormatter::class)) {
                 $formatter = new \IntlDateFormatter(\Locale::getDefault(), \IntlDateFormatter::MEDIUM, \IntlDateFormatter::SHORT, 'UTC');
 
-                return $formatter->format(new \DateTime(
-                    $value->format('Y-m-d H:i:s.u'),
+                return $formatter->format(new \DateTimeImmutable(
+                    ($value->format('y') > 0 ? '+' : '').$value->format('Y-m-d H:i:s.u'),
                     new \DateTimeZone('UTC')
                 ));
             }
@@ -122,6 +125,10 @@ abstract class ConstraintValidator implements ConstraintValidatorInterface
 
         if (true === $value) {
             return 'true';
+        }
+
+        if (is_nan($value)) {
+            return 'NAN';
         }
 
         return (string) $value;

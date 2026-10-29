@@ -41,6 +41,8 @@ class TokenStream
 
     /**
      * Sets the pointer to the next token and returns the old one.
+     *
+     * @return void
      */
     public function next()
     {
@@ -55,12 +57,14 @@ class TokenStream
 
     /**
      * @param string|null $message The syntax error message
+     *
+     * @return void
      */
-    public function expect(string $type, string $value = null, string $message = null)
+    public function expect(string $type, ?string $value = null, ?string $message = null)
     {
         $token = $this->current;
         if (!$token->test($type, $value)) {
-            throw new SyntaxError(sprintf('%sUnexpected token "%s" of value "%s" ("%s" expected%s).', $message ? $message.'. ' : '', $token->type, $token->value, $type, $value ? sprintf(' with value "%s"', $value) : ''), $token->cursor, $this->expression);
+            throw new SyntaxError(\sprintf('%sUnexpected token "%s" of value "%s" ("%s" expected%s).', $message ? $message.'. ' : '', $token->type, $token->value, $type, $value ? \sprintf(' with value "%s"', $value) : ''), $token->cursor, $this->expression);
         }
         $this->next();
     }

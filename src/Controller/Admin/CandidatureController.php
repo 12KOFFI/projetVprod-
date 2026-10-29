@@ -31,16 +31,21 @@ class CandidatureController extends AbstractController
      * admis restent atteignables : sans lui, les seuls onglets d'étape les
      * rendraient invisibles.
      *
-     * Les deux onglets de préinscrits se distinguent par l'étude (etu_statut),
-     * qui ne porte plus de statut officiel propre.
+     * Les trois onglets de préinscrits (à étudier, acceptés, refusés) se
+     * distinguent par l'étude (etu_statut), qui ne porte pas de statut
+     * officiel propre. Chaque onglet répond à un chiffre du tableau de bord.
      *
      * @var array<string, array{libelle: string, statuts: list<StatutCandidature>|null, etude?: string}>
      */
     private const ONGLETS = [
         'toutes' => ['libelle' => 'Tous les dossiers', 'statuts' => null],
-        'preinscrits' => ['libelle' => 'Préinscrits à étudier', 'statuts' => null, 'etude' => CandidatureRepository::ETUDE_A_RENDRE],
-        'acceptes' => ['libelle' => 'Acceptés, attente paiement', 'statuts' => null, 'etude' => CandidatureRepository::ETUDE_ACCEPTEE],
+        'preinscrits' => ['libelle' => 'À étudier', 'statuts' => null, 'etude' => CandidatureRepository::ETUDE_A_RENDRE],
+        'acceptes' => ['libelle' => 'Acceptés, frais à payer', 'statuts' => null, 'etude' => CandidatureRepository::ETUDE_ACCEPTEE],
         'inscrits' => ['libelle' => 'Inscrits', 'statuts' => [StatutCandidature::INSCRIT]],
+        'recevables' => ['libelle' => 'Recevables', 'statuts' => [StatutCandidature::DOSSIER_RECEVABLE]],
+        'eligibles' => ['libelle' => 'Éligibles', 'statuts' => [StatutCandidature::ELIGIBLE]],
+        'admissibles' => ['libelle' => 'Admissibles', 'statuts' => [StatutCandidature::ADMISSIBLE]],
+        'refuses' => ['libelle' => 'Études refusées', 'statuts' => null, 'etude' => CandidatureRepository::ETUDE_REFUSEE],
     ];
 
     public function __construct(

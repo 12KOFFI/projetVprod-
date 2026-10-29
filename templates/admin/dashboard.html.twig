@@ -1,83 +1,295 @@
-{# Tableau de bord national de l'administration : synthèse, répartitions, entonnoir. #}
+{#
+    Tableau de bord national de l'administration.
+
+    Lecture de haut en bas : un en-tête compact, quatre indicateurs, le
+    parcours VAE décision par décision (une ligne par décision : en attente,
+    franchie, refusée, acceptation), puis les dépôts par semaine. Chaque nombre
+    n'apparaît qu'une fois sur l'écran. Les ventilations par centre, sexe,
+    métier ou direction régionale restent sur l'écran Indicateurs.
+
+    Mouvement : les blocs apparaissent l'un après l'autre (animate-apparition,
+    tailwind.config.js), uniquement si l'utilisateur n'a pas demandé de réduire
+    les animations (motion-safe). Les couleurs sont celles de la charte DAIP.
+#}
 {% extends 'base_dashboard.html.twig' %}
 {% import 'partials/_ui.html.twig' as ui %}
+
+{# Nombre en attente : la seule valeur cliquable d'une ligne du parcours. #}
+{% macro attente(cle, effectif, libelle, taille = 'text-2xl') %}
+{% if effectif > 0 %}
+    <a href="{{ path('app_admin_candidature_index', {onglet: cle}) }}"
+       class="inline-flex min-h-[44px] min-w-[44px] items-center justify-end rounded-md px-2 font-bold tabular-nums text-indigo-700 underline decoration-indigo-200 decoration-2 underline-offset-4
+              transition-colors duration-150 ease-expo motion-reduce:transition-none hover:bg-indigo-50 hover:text-indigo-900 hover:decoration-indigo-500
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 {{ taille }}">
+        {{ effectif }}<span class="sr-only"> dossiers en attente — {{ libelle }}, voir la liste</span>
+    </a>
+{% else %}
+    <span class="inline-flex min-h-[44px] min-w-[44px] items-center justify-end px-2 {{ taille }} font-normal tabular-nums text-slate-500">0</span>
+{% endif %}
+{% endmacro %}
+
+{#
+  Indicateur de tête : libellé, valeur, icône dans une pastille de la même
+  famille de couleur que celles des écrans de pilotage (ui.stat).
+#}
+{% macro indicateur(libelle, valeur, icone, ton, delai) %}
+<div class="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 motion-safe:animate-apparition {{ delai }}">
+    <div class="flex items-start justify-between gap-3">
+        <p class="text-sm font-medium text-slate-600">{{ libelle }}</p>
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg
+                     {% if ton == 'green' %}bg-green-50 text-green-600
+                     {% elseif ton == 'red' %}bg-red-50 text-red-600
+                     {% elseif ton == 'amber' %}bg-amber-50 text-amber-600
+                     {% else %}bg-indigo-50 text-indigo-600{% endif %}" aria-hidden="true">
+            <i class="fas fa-{{ icone }} text-sm"></i>
+        </span>
+    </div>
+    <p class="mt-2 text-3xl font-bold leading-none tabular-nums text-slate-900">{{ valeur }}</p>
+</div>
+{% endmacro %}
 
 {% block title %}Tableau de bord — Administration VAE{% endblock %}
 
 {% block body %}
-{{ ui.bandeau(
-    'Administration VAE',
-    'Vue nationale du dispositif, tous centres confondus.',
-    'gauge',
-    synthese.total,
-    'dossier(s)',
-    [
-        { url: path('app_admin_candidature_index'), libelle: 'Voir les dossiers', icone: 'folder-open', principal: true },
-        { url: path('app_indicateurs'), libelle: 'Indicateurs', icone: 'chart-column' }
-    ]
-) }}
+{% import _self as page %}
 
-{# ===== Compteurs : étapes franchies, en cumulé ===== #}
-<div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-5 mb-8">
-    {{ ui.stat('Total dossiers', synthese.total, 'folder-open', 'indigo') }}
-    {{ ui.stat('Inscrits', synthese.inscrits, 'user-check', 'indigo') }}
-    {{ ui.stat('Recevables', synthese.recevables, 'circle-check', 'blue') }}
-    {{ ui.stat('Éligibles', synthese.eligibles, 'clipboard-check', 'blue') }}
-    {{ ui.stat('Admis définitifs', synthese.admis, 'award', 'green') }}
-</div>
+{# Icône de chaque décision du parcours, dans l'ordre des étapes. #}
+{% set icones = {
+    preinscrits: 'folder-open',
+    acceptes: 'money-bill-wave',
+    inscrits: 'scale-balanced',
+    recevables: 'clipboard-check',
+    eligibles: 'gavel',
+    admissibles: 'award'
+} %}
 
-{# ===== Répartitions ===== #}
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
-    {{ ui.graphique('Répartition par statut', 'chart-pie', par_statut, null, 'Étape où se trouve chaque dossier') }}
-    {{ ui.graphique('Répartition par sexe', 'venus-mars', par_sexe) }}
-    {{ ui.graphique('Cinq premiers centres', 'building', par_centre, null, 'Centres aux plus forts effectifs') }}
-</div>
-
-{# ===== Entonnoir du parcours ===== #}
-<div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
-    <div class="px-6 py-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-            <h2 class="text-sm font-bold text-slate-800">Entonnoir du parcours</h2>
-            <p class="text-xs text-slate-600 mt-0.5">Effectifs nationaux, étape par étape</p>
+{# ===== En-tête compact ===== #}
+<header class="relative mb-6 overflow-hidden rounded-2xl border border-primary-200 bg-primary-100 px-4 py-4 text-primary-900 sm:px-6 sm:py-5 motion-safe:animate-apparition">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex min-w-0 items-center gap-3 sm:gap-4">
+            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary-200 bg-white text-lg text-primary-700" aria-hidden="true">
+                <i class="fas fa-gauge"></i>
+            </span>
+            <div class="min-w-0">
+                <h1 class="text-xl font-bold tracking-tight text-primary-900 sm:text-2xl">Administration VAE</h1>
+                <p class="mt-0.5 text-sm text-primary-800">
+                    Vue nationale <span aria-hidden="true">·</span> au <time datetime="{{ 'now'|date('Y-m-d\\TH:i') }}" class="tabular-nums">{{ 'now'|date('d/m/Y à H\\hi') }}</time>
+                </p>
+            </div>
         </div>
-        <a href="{{ path('app_indicateurs') }}"
-           class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium
-                  text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition duration-200 shrink-0">
-            <i class="fas fa-chart-column text-xs" aria-hidden="true"></i>Ventilation détaillée
-        </a>
+        <div class="flex flex-col gap-2 sm:flex-row">
+            <a href="{{ path('app_admin_candidature_index') }}"
+               class="inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary-700 px-4 text-sm font-semibold text-white
+                      transition-colors duration-150 ease-expo motion-reduce:transition-none hover:bg-primary-800
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-primary-100">
+                <i class="fas fa-folder-open text-xs" aria-hidden="true"></i>Voir les dossiers
+            </a>
+            <a href="{{ path('app_indicateurs') }}"
+               class="inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-primary-300 bg-white px-4 text-sm font-semibold text-primary-800
+                      transition-colors duration-150 ease-expo motion-reduce:transition-none hover:border-primary-400 hover:bg-primary-50
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-primary-100">
+                <i class="fas fa-chart-column text-xs" aria-hidden="true"></i>Indicateurs et répartitions
+            </a>
+        </div>
+    </div>
+    <div class="absolute inset-x-0 bottom-0 h-1 bg-[#ED8F33]" aria-hidden="true"></div>
+</header>
+
+{# ===== Indicateurs de tête =====
+   Trois chiffres que le tableau ne donne pas : le volume, le résultat final et
+   le total des refus. Les dossiers en attente n'y figurent pas : le tableau les
+   donne étape par étape, avec un lien vers chaque liste. #}
+<section aria-label="Indicateurs clés" class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+    {{ page.indicateur('Dossiers déposés', parcours.deposes, 'folder-open', 'indigo', '[animation-delay:60ms]') }}
+    {{ page.indicateur('Admis définitifs', parcours.admis, 'award', 'green', '[animation-delay:120ms]') }}
+    {{ page.indicateur('Parcours arrêtés', parcours.arretes, 'circle-xmark', 'red', '[animation-delay:180ms]') }}
+</section>
+
+{# ===== Le parcours, en deux tableaux ===== #}
+{#
+  Seules les étapes qui se concluent par une décision (acceptée ou refusée)
+  sont affichées. Le règlement des frais de dossier, qui ne se refuse pas
+  (`refuse` à null dans StatistiqueService::parcours()), est retiré de
+  l'écran pour l'instant.
+
+  Le nombre « en attente » est la seule valeur cliquable ; une valeur nulle
+  s'affiche en gris normal, une valeur active en gras.
+#}
+{% set etapes_decision = parcours.etapes|filter(e => e.refuse is not null) %}
+{% set attente_etude = parcours.etapes[0].en_attente %}
+{% set groupes_decision = {
+    preinscrits: {libelle: 'Préinscrits', total: attente_etude, precision: "d'étude"},
+    inscrits: {libelle: 'Inscrits et suite du parcours', total: etapes_decision|filter(e => e.cle != 'preinscrits')|reduce((t, e) => t + e.en_attente, 0), precision: "d'une décision du jury"}
+} %}
+
+{% set th_classe = 'whitespace-nowrap px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600' %}
+
+<section aria-labelledby="titre-parcours" class="mb-6 overflow-hidden rounded-lg border border-slate-200 bg-white motion-safe:animate-apparition [animation-delay:300ms]">
+    <div class="flex items-center gap-3 border-b border-slate-200 px-4 py-3.5 sm:px-6">
+        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600" aria-hidden="true">
+            <i class="fas fa-route text-xs"></i>
+        </span>
+        <h2 id="titre-parcours" class="text-base font-semibold text-slate-900">Parcours des dossiers</h2>
     </div>
 
-    {% set maximum = 1 %}
-    {% for etape in entonnoir %}
-        {% set maximum = etape.effectif > maximum ? etape.effectif : maximum %}
-    {% endfor %}
+    {% if parcours.deposes > 0 %}
+        {# ----- Étapes avec décision ----- #}
+        <h3 id="titre-decisions" class="sr-only">Étapes avec décision</h3>
 
-    {% if synthese.total > 0 %}
-        <div class="p-4 sm:p-6 space-y-3">
-            {% for etape in entonnoir %}
-                {% set largeur = maximum > 0 ? (etape.effectif * 100 / maximum)|round : 0 %}
-                <div>
-                    <div class="flex items-center justify-between gap-3 mb-1.5">
-                        <span class="text-xs font-medium text-slate-600">{{ etape.statut.libelle }}</span>
-                        <span class="text-xs font-bold text-slate-700 tabular-nums">{{ etape.effectif }}</span>
+        <table class="hidden w-full lg:table" aria-labelledby="titre-decisions">
+            <thead>
+                <tr class="border-b border-slate-200 bg-slate-50">
+                    <th scope="col" class="{{ th_classe }} pl-6 text-left">Décision</th>
+                    <th scope="col" class="{{ th_classe }} w-36 text-right">En attente</th>
+                    <th scope="col" class="{{ th_classe }} w-36 text-right">Acceptée</th>
+                    <th scope="col" class="{{ th_classe }} w-36 pr-6 text-right">Refusée</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for etape in etapes_decision %}
+                    {% if groupes_decision[etape.cle] is defined %}
+                        {% set groupe = groupes_decision[etape.cle] %}
+                        <tr class="border-y border-primary-100 bg-primary-50">
+                            <th scope="colgroup" colspan="4" class="py-2 pl-6 pr-6 text-left font-normal">
+                                <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <span class="text-sm font-semibold text-primary-900">{{ groupe.libelle }}</span>
+                                    <span class="inline-flex min-w-[1.75rem] justify-center rounded-full border border-primary-200 bg-white px-2 py-0.5 text-xs font-semibold tabular-nums text-primary-800">{{ groupe.total }}</span>
+                                    <span class="text-xs text-slate-600">dossiers en attente {{ groupe.precision }}</span>
+                                </span>
+                            </th>
+                        </tr>
+                    {% endif %}
+                    <tr class="border-b border-slate-100 transition-colors duration-150 ease-expo motion-reduce:transition-none last:border-b-0 hover:bg-slate-50">
+                        <th scope="row" class="py-1.5 pl-6 pr-4 text-left font-normal">
+                            <span class="flex items-center gap-3">
+                                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500" aria-hidden="true">
+                                    <i class="fas fa-{{ icones[etape.cle] }} text-xs"></i>
+                                </span>
+                                <span class="text-sm font-medium text-slate-900">{{ etape.libelle }}</span>
+                            </span>
+                        </th>
+                        <td class="px-4 py-0.5 text-right">{{ page.attente(etape.cle, etape.en_attente, etape.libelle, 'text-lg') }}</td>
+                        <td class="px-4 py-1.5 text-right text-sm tabular-nums {{ etape.franchie > 0 ? 'font-semibold text-slate-900' : 'text-slate-500' }}">{{ etape.franchie }}</td>
+                        <td class="py-1.5 pl-4 pr-6 text-right text-sm tabular-nums {{ etape.refuse > 0 ? 'font-semibold text-red-700' : 'text-slate-500' }}">{{ etape.refuse }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <ul class="lg:hidden" aria-labelledby="titre-decisions">
+            {% for etape in etapes_decision %}
+                {% if groupes_decision[etape.cle] is defined %}
+                    {% set groupe = groupes_decision[etape.cle] %}
+                    <li class="border-y border-primary-100 bg-primary-50 px-4 py-2">
+                        <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span class="text-sm font-semibold text-primary-900">{{ groupe.libelle }}</span>
+                            <span class="inline-flex min-w-[1.75rem] justify-center rounded-full border border-primary-200 bg-white px-2 py-0.5 text-xs font-semibold tabular-nums text-primary-800">{{ groupe.total }}</span>
+                            <span class="text-xs text-slate-600">dossiers en attente<span class="hidden sm:inline"> {{ groupe.precision }}</span></span>
+                        </p>
+                    </li>
+                {% endif %}
+                <li class="border-b border-slate-100 px-4 py-3 last:border-b-0">
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex min-w-0 items-center gap-3">
+                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500" aria-hidden="true">
+                                <i class="fas fa-{{ icones[etape.cle] }} text-xs"></i>
+                            </span>
+                            <p class="text-sm font-medium text-slate-900">{{ etape.libelle }}</p>
+                        </div>
+                        {{ page.attente(etape.cle, etape.en_attente, etape.libelle, 'text-lg') }}
                     </div>
-                    <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
-                        <div class="h-full rounded-full
-                                    {% if etape.statut.couleur == 'green' %}bg-green-500
-                                    {% elseif etape.statut.couleur == 'red' %}bg-red-400
-                                    {% elseif etape.statut.couleur == 'amber' %}bg-amber-500
-                                    {% else %}bg-indigo-500{% endif %}"
-                             style="width: {{ largeur }}%"></div>
-                    </div>
-                </div>
+                    <dl class="mt-1 flex flex-wrap gap-x-5 gap-y-1 pl-10 text-sm">
+                        <div class="flex gap-1.5">
+                            <dt class="text-slate-600">Acceptée</dt>
+                            <dd class="tabular-nums {{ etape.franchie > 0 ? 'font-semibold text-slate-900' : 'text-slate-500' }}">{{ etape.franchie }}</dd>
+                        </div>
+                        <div class="flex gap-1.5">
+                            <dt class="text-slate-600">Refusée</dt>
+                            <dd class="tabular-nums {{ etape.refuse > 0 ? 'font-semibold text-red-700' : 'text-slate-500' }}">{{ etape.refuse }}</dd>
+                        </div>
+                    </dl>
+                </li>
             {% endfor %}
+        </ul>
+
+        {# Motifs des refus, repliés : utiles au cas par cas, pas au pilotage. #}
+        {% if derniers_refus is not empty %}
+            <details class="group border-t border-slate-200">
+                <summary class="flex min-h-[44px] cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-indigo-700 sm:px-6
+                                transition-colors duration-150 ease-expo motion-reduce:transition-none hover:bg-slate-50 hover:text-indigo-900
+                                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600">
+                    <i class="fas fa-chevron-right text-xs transition-transform duration-200 ease-expo motion-reduce:transition-none group-open:rotate-90" aria-hidden="true"></i>
+                    Motifs des derniers refus d'étude
+                </summary>
+                <ul class="divide-y divide-slate-200 border-t border-slate-200 motion-safe:group-open:animate-apparition">
+                    {% for dossier in derniers_refus %}
+                        <li class="px-4 py-3 sm:px-6">
+                            <p class="flex flex-wrap items-baseline gap-x-3 text-sm text-slate-600">
+                                <span class="font-mono font-semibold tabular-nums text-slate-900">{{ dossier.numero }}</span>
+                                {{ dossier.user ? dossier.user.nomComplet|title : '' }}
+                                <span class="tabular-nums">{{ dossier.etuDate ? dossier.etuDate|date('d/m/Y') : '' }}</span>
+                            </p>
+                            <p class="mt-0.5 text-sm text-slate-900">{{ dossier.etuCom ?: 'Motif non renseigné' }}</p>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </details>
+        {% endif %}
+    {% else %}
+        {{ ui.etat_vide('folder-open', 'Aucun dossier déposé', 'Les chiffres du parcours apparaîtront ici dès le premier dépôt de candidature.') }}
+    {% endif %}
+</section>
+
+{# ===== Dépôts par semaine ===== #}
+{% set semaines = depots_par_semaine|keys %}
+{% set total_periode = depots_par_semaine|reduce((total, n) => total + n, 0) %}
+<section aria-labelledby="titre-depots" class="overflow-hidden rounded-lg border border-slate-200 bg-white motion-safe:animate-apparition [animation-delay:360ms]">
+    <div class="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div class="flex items-center gap-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600" aria-hidden="true">
+                <i class="fas fa-chart-line text-sm"></i>
+            </span>
+            <div>
+                <h2 id="titre-depots" class="text-base font-semibold text-slate-900">Dépôts par semaine</h2>
+                <p class="text-sm text-slate-600">
+                    Semaines du <span class="tabular-nums">{{ semaines|first }}</span> au <span class="tabular-nums">{{ semaines|last }}</span>
+                </p>
+            </div>
+        </div>
+        <dl class="flex gap-6 pl-12 sm:pl-0">
+            <div>
+                <dt class="text-xs text-slate-600">Sur la période</dt>
+                <dd class="text-lg font-bold tabular-nums text-slate-900">{{ total_periode }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-slate-600">Cette semaine</dt>
+                <dd class="text-lg font-bold tabular-nums text-slate-900">{{ depots_par_semaine|last }}</dd>
+            </div>
+        </dl>
+    </div>
+
+    {% if total_periode > 0 %}
+        <div class="p-4 sm:p-6">
+            <div class="relative h-64 w-full">
+                <canvas data-valeurs="{{ depots_par_semaine|json_encode }}"
+                        data-graphique="courbe"
+                        data-prefixe="Semaine du "
+                        data-axe-y="Dossiers déposés"
+                        role="img"
+                        aria-label="Dépôts par semaine, du {{ semaines|first }} au {{ semaines|last }} : {{ total_periode }} dossiers. Détail dans le tableau qui suit."></canvas>
+            </div>
+            <table class="sr-only">
+                <caption>Dépôts par semaine</caption>
+                <thead><tr><th scope="col">Semaine du</th><th scope="col">Dossiers déposés</th></tr></thead>
+                <tbody>
+                    {% for semaine, effectif in depots_par_semaine %}
+                        <tr><th scope="row">{{ semaine }}</th><td>{{ effectif }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     {% else %}
-        {{ ui.etat_vide(
-            'chart-column',
-            'Aucun dossier enregistré',
-            'Les effectifs apparaîtront ici dès le premier dépôt de candidature.'
-        ) }}
+        {{ ui.etat_vide('chart-line', 'Aucun dépôt sur la période', 'La courbe apparaîtra dès le prochain dépôt de candidature.') }}
     {% endif %}
-</div>
+</section>
 {% endblock %}

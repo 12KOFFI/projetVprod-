@@ -37,7 +37,7 @@ class MailgunApiTransport extends AbstractApiTransport
     private string $domain;
     private ?string $region;
 
-    public function __construct(string $key, string $domain, string $region = null, HttpClientInterface $client = null, EventDispatcherInterface $dispatcher = null, LoggerInterface $logger = null)
+    public function __construct(string $key, string $domain, ?string $region = null, ?HttpClientInterface $client = null, ?EventDispatcherInterface $dispatcher = null, ?LoggerInterface $logger = null)
     {
         $this->key = $key;
         $this->domain = $domain;
@@ -48,7 +48,7 @@ class MailgunApiTransport extends AbstractApiTransport
 
     public function __toString(): string
     {
-        return sprintf('mailgun+api://%s?domain=%s', $this->getEndpoint(), $this->domain);
+        return \sprintf('mailgun+api://%s?domain=%s', $this->getEndpoint(), $this->domain);
     }
 
     protected function doSendApi(SentMessage $sentMessage, Email $email, Envelope $envelope): ResponseInterface
@@ -59,8 +59,9 @@ class MailgunApiTransport extends AbstractApiTransport
             $headers[] = $header->toString();
         }
 
-        $endpoint = sprintf('%s/v3/%s/messages', $this->getEndpoint(), urlencode($this->domain));
+        $endpoint = \sprintf('%s/v3/%s/messages', $this->getEndpoint(), urlencode($this->domain));
         $response = $this->client->request('POST', 'https://'.$endpoint, [
+            'http_version' => '1.1',
             'auth_basic' => 'api:'.$this->key,
             'headers' => $headers,
             'body' => $body->bodyToIterable(),
@@ -70,13 +71,13 @@ class MailgunApiTransport extends AbstractApiTransport
             $statusCode = $response->getStatusCode();
             $result = $response->toArray(false);
         } catch (DecodingExceptionInterface) {
-            throw new HttpTransportException('Unable to send an email: '.$response->getContent(false).sprintf(' (code %d).', $statusCode), $response);
+            throw new HttpTransportException('Unable to send an email: '.$response->getContent(false).\sprintf(' (code %d).', $statusCode), $response);
         } catch (TransportExceptionInterface $e) {
             throw new HttpTransportException('Could not reach the remote Mailgun server.', $response, 0, $e);
         }
 
         if (200 !== $statusCode) {
-            throw new HttpTransportException('Unable to send an email: '.$result['message'].sprintf(' (code %d).', $statusCode), $response);
+            throw new HttpTransportException('Unable to send an email: '.$result['message'].\sprintf(' (code %d).', $statusCode), $response);
         }
 
         $sentMessage->setMessageId($result['id']);
@@ -87,6 +88,7 @@ class MailgunApiTransport extends AbstractApiTransport
     private function getPayload(Email $email, Envelope $envelope): array
     {
         $headers = $email->getHeaders();
+        $headers->addMailboxHeader('h:Sender', $envelope->getSender());
         $html = $email->getHtmlBody();
         if (null !== $html && \is_resource($html)) {
             if (stream_get_meta_data($html)['seekable'] ?? false) {
@@ -150,7 +152,7 @@ class MailgunApiTransport extends AbstractApiTransport
 
     private function prepareAttachments(Email $email, ?string $html): array
     {
-        $attachments = $inlines = [];
+        $attachments = $inlines = $replacements = [];
         foreach ($email->getAttachments() as $attachment) {
             $headers = $attachment->getPreparedHeaders();
             if ('inline' === $headers->getHeaderBody('Content-Disposition')) {
@@ -158,7 +160,7 @@ class MailgunApiTransport extends AbstractApiTransport
                 if ($html) {
                     $filename = $headers->getHeaderParameter('Content-Disposition', 'filename');
                     $new = basename($filename);
-                    $html = str_replace('cid:'.$filename, 'cid:'.$new, $html);
+                    $replacements['cid:'.$filename] = 'cid:'.$new;
                     $p = new \ReflectionProperty($attachment, 'filename');
                     $p->setValue($attachment, $new);
                 }
@@ -168,7 +170,8 @@ class MailgunApiTransport extends AbstractApiTransport
             }
         }
 
-        return [$attachments, $inlines, $html];
+        // strtr() replaces the longest match first and never rewrites what it already replaced
+        return [$attachments, $inlines, $replacements ? strtr($html, $replacements) : $html];
     }
 
     private function getEndpoint(): ?string

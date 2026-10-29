@@ -95,6 +95,7 @@ class ChargerComptesDemoCommand extends Command
         return [
             ['email' => 'agent@vae.test', 'role' => Role::AGENT_ACCUEIL, 'centre' => $centre, 'nom' => 'KONE', 'prenoms' => 'Awa'],
             ['email' => 'conseiller@vae.test', 'role' => Role::CONSEILLER, 'centre' => $centre, 'nom' => 'BAMBA', 'prenoms' => 'Ibrahim'],
+            ['email' => 'jury@vae.test', 'role' => Role::JURY_LOCAL, 'centre' => $centre, 'nom' => 'KOFFI', 'prenoms' => 'Adjoa'],
             ['email' => 'candidat@vae.test', 'role' => Role::CANDIDAT, 'centre' => null, 'nom' => 'KOUASSI', 'prenoms' => 'Yao'],
             ['email' => 'candidat2@vae.test', 'role' => Role::CANDIDAT, 'centre' => null, 'nom' => 'TRAORE', 'prenoms' => 'Aminata'],
         ];

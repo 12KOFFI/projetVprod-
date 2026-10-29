@@ -21,6 +21,9 @@ use Symfony\Component\Validator\Exception\UnexpectedValueException;
  */
 class CountValidator extends ConstraintValidator
 {
+    /**
+     * @return void
+     */
     public function validate(mixed $value, Constraint $constraint)
     {
         if (!$constraint instanceof Count) {
@@ -73,6 +76,8 @@ class CountValidator extends ConstraintValidator
                     new DivisibleBy([
                         'value' => $constraint->divisibleBy,
                         'message' => $constraint->divisibleByMessage,
+                        'groups' => $constraint->groups,
+                        'payload' => $constraint->payload,
                     ]),
                 ], $this->context->getGroup());
         }

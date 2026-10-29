@@ -31,8 +31,10 @@ class ResizeFormListener implements EventSubscriberInterface
     protected $allowDelete;
 
     private \Closure|bool $deleteEmpty;
+    /** @var \WeakMap<FormInterface, array<int|string, bool>> */
+    private \WeakMap $initialKeys;
 
-    public function __construct(string $type, array $options = [], bool $allowAdd = false, bool $allowDelete = false, bool|callable $deleteEmpty = false, array $prototypeOptions = null)
+    public function __construct(string $type, array $options = [], bool $allowAdd = false, bool $allowDelete = false, bool|callable $deleteEmpty = false, ?array $prototypeOptions = null)
     {
         $this->type = $type;
         $this->allowAdd = $allowAdd;
@@ -40,6 +42,7 @@ class ResizeFormListener implements EventSubscriberInterface
         $this->options = $options;
         $this->deleteEmpty = \is_bool($deleteEmpty) ? $deleteEmpty : $deleteEmpty(...);
         $this->prototypeOptions = $prototypeOptions ?? $options;
+        $this->initialKeys = new \WeakMap();
     }
 
     public static function getSubscribedEvents(): array
@@ -52,6 +55,9 @@ class ResizeFormListener implements EventSubscriberInterface
         ];
     }
 
+    /**
+     * @return void
+     */
     public function preSetData(FormEvent $event)
     {
         $form = $event->getForm();
@@ -74,10 +80,22 @@ class ResizeFormListener implements EventSubscriberInterface
         }
     }
 
+    /**
+     * @return void
+     */
     public function preSubmit(FormEvent $event)
     {
         $form = $event->getForm();
         $data = $event->getData();
+
+        if ($this->deleteEmpty) {
+            $previousData = $form->getData() ?? [];
+            $keys = [];
+            foreach ($previousData as $key => $value) {
+                $keys[$key] = isset($previousData[$key]);
+            }
+            $this->initialKeys[$form] = $keys;
+        }
 
         if (!\is_array($data)) {
             $data = [];
@@ -104,6 +122,9 @@ class ResizeFormListener implements EventSubscriberInterface
         }
     }
 
+    /**
+     * @return void
+     */
     public function onSubmit(FormEvent $event)
     {
         $form = $event->getForm();
@@ -118,18 +139,16 @@ class ResizeFormListener implements EventSubscriberInterface
         }
 
         if ($this->deleteEmpty) {
-            $previousData = $form->getData();
+            $initialKeys = $this->initialKeys[$form] ?? [];
             /** @var FormInterface $child */
             foreach ($form as $name => $child) {
                 if (!$child->isValid() || !$child->isSynchronized()) {
                     continue;
                 }
 
-                $isNew = !isset($previousData[$name]);
+                $isNew = !($initialKeys[$name] ?? false);
                 $isEmpty = \is_callable($this->deleteEmpty) ? ($this->deleteEmpty)($child->getData()) : $child->isEmpty();
 
-                // $isNew can only be true if allowAdd is true, so we don't
-                // need to check allowAdd again
                 if ($isEmpty && ($isNew || $this->allowDelete)) {
                     unset($data[$name]);
                     $form->remove($name);

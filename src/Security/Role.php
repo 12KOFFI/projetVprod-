@@ -7,11 +7,12 @@ use App\Entity\User;
 /**
  * Vocabulaire centralisé des rôles de la plateforme VAE.
  *
- * Les 5 rôles métier proviennent de specifications_vae.txt, section 2.
- * Les chaînes reprennent exactement celles déjà déclarées dans la
- * role_hierarchy de config/packages/security.yaml — y compris
- * ROLE_AGENT_ACCEUIL, dont l'orthographe historique est conservée pour
- * ne pas invalider les rôles déjà stockés en base.
+ * Les 5 premiers rôles métier proviennent de specifications_vae.txt,
+ * section 2 ; le jury local, rattaché à un centre, prononce la recevabilité
+ * des dossiers inscrits de ce centre. Les chaînes reprennent exactement
+ * celles déclarées dans la role_hierarchy de config/packages/security.yaml —
+ * y compris ROLE_AGENT_ACCEUIL, dont l'orthographe historique est conservée
+ * pour ne pas invalider les rôles déjà stockés en base.
  */
 final class Role
 {
@@ -19,6 +20,7 @@ final class Role
     public const AGENT_ACCUEIL  = 'ROLE_AGENT_ACCEUIL';
     public const CONSEILLER     = 'ROLE_CONSEILLER';
     public const ACCOMPAGNATEUR = 'ROLE_ACCOMPAGNATEUR';
+    public const JURY_LOCAL     = 'ROLE_JURY_LOCAL';
     public const ADMIN          = 'ROLE_ADMIN';
 
     /**
@@ -30,6 +32,7 @@ final class Role
     private const PRIORITE = [
         self::ADMIN,
         self::CONSEILLER,
+        self::JURY_LOCAL,
         self::ACCOMPAGNATEUR,
         self::AGENT_ACCUEIL,
         self::CANDIDAT,
@@ -44,6 +47,7 @@ final class Role
         self::AGENT_ACCUEIL,
         self::CONSEILLER,
         self::ACCOMPAGNATEUR,
+        self::JURY_LOCAL,
     ];
 
     /**
@@ -56,6 +60,7 @@ final class Role
             self::AGENT_ACCUEIL  => 'Agent d\'accueil',
             self::CONSEILLER     => 'Conseiller VAE',
             self::ACCOMPAGNATEUR => 'Accompagnateur',
+            self::JURY_LOCAL     => 'Jury local',
             self::ADMIN          => 'Administrateur',
         ];
     }
@@ -100,6 +105,7 @@ final class Role
             self::ADMIN          => 'app_admin_dashboard',
             self::CONSEILLER     => 'app_conseiller_dashboard',
             self::ACCOMPAGNATEUR => 'app_accompagnement_dashboard',
+            self::JURY_LOCAL     => 'app_jury_local_dashboard',
             self::AGENT_ACCUEIL  => 'app_accueil_dashboard',
             self::CANDIDAT       => 'app_candidat_dashboard',
             default              => null,

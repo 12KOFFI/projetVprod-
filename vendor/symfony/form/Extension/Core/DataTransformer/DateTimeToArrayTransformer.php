@@ -33,7 +33,7 @@ class DateTimeToArrayTransformer extends BaseDateTimeTransformer
      * @param string[]|null $fields         The date fields
      * @param bool          $pad            Whether to use padding
      */
-    public function __construct(string $inputTimezone = null, string $outputTimezone = null, array $fields = null, bool $pad = false, \DateTimeInterface $referenceDate = null)
+    public function __construct(?string $inputTimezone = null, ?string $outputTimezone = null, ?array $fields = null, bool $pad = false, ?\DateTimeInterface $referenceDate = null)
     {
         parent::__construct($inputTimezone, $outputTimezone);
 
@@ -67,10 +67,7 @@ class DateTimeToArrayTransformer extends BaseDateTimeTransformer
         }
 
         if ($this->inputTimezone !== $this->outputTimezone) {
-            if (!$dateTime instanceof \DateTimeImmutable) {
-                $dateTime = clone $dateTime;
-            }
-
+            $dateTime = \DateTimeImmutable::createFromInterface($dateTime);
             $dateTime = $dateTime->setTimezone(new \DateTimeZone($this->outputTimezone));
         }
 
@@ -125,8 +122,8 @@ class DateTimeToArrayTransformer extends BaseDateTimeTransformer
             }
         }
 
-        if (\count($emptyFields) > 0) {
-            throw new TransformationFailedException(sprintf('The fields "%s" should not be empty.', implode('", "', $emptyFields)));
+        if ($emptyFields) {
+            throw new TransformationFailedException(\sprintf('The fields "%s" should not be empty.', implode('", "', $emptyFields)));
         }
 
         if (isset($value['month']) && !ctype_digit((string) $value['month'])) {
@@ -141,7 +138,7 @@ class DateTimeToArrayTransformer extends BaseDateTimeTransformer
             throw new TransformationFailedException('This year is invalid.');
         }
 
-        if (!empty($value['month']) && !empty($value['day']) && !empty($value['year']) && false === checkdate($value['month'], $value['day'], $value['year'])) {
+        if (!empty($value['month']) && !empty($value['day']) && !empty($value['year']) && !checkdate($value['month'], $value['day'], $value['year'])) {
             throw new TransformationFailedException('This is an invalid date.');
         }
 
@@ -158,7 +155,7 @@ class DateTimeToArrayTransformer extends BaseDateTimeTransformer
         }
 
         try {
-            $dateTime = new \DateTime(sprintf(
+            $dateTime = new \DateTime(\sprintf(
                 '%s-%s-%s %s:%s:%s',
                 empty($value['year']) ? $this->referenceDate->format('Y') : $value['year'],
                 empty($value['month']) ? $this->referenceDate->format('m') : $value['month'],

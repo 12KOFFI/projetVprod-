@@ -18,6 +18,7 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+use Symfony\Contracts\Translation\TranslatableInterface;
 
 /**
  * Encapsulates common logic of {@link FormType} and {@link ButtonType}.
@@ -29,12 +30,18 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  */
 abstract class BaseType extends AbstractType
 {
+    /**
+     * @return void
+     */
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
         $builder->setDisabled($options['disabled']);
         $builder->setAutoInitialize($options['auto_initialize']);
     }
 
+    /**
+     * @return void
+     */
     public function buildView(FormView $view, FormInterface $form, array $options)
     {
         $name = $form->getName();
@@ -46,9 +53,9 @@ abstract class BaseType extends AbstractType
 
         if ($view->parent) {
             if ('' !== ($parentFullName = $view->parent->vars['full_name'])) {
-                $id = sprintf('%s_%s', $view->parent->vars['id'], $name);
-                $fullName = sprintf('%s[%s]', $parentFullName, $name);
-                $uniqueBlockPrefix = sprintf('%s_%s', $view->parent->vars['unique_block_prefix'], $blockName);
+                $id = \sprintf('%s_%s', $view->parent->vars['id'], $name);
+                $fullName = \sprintf('%s[%s]', $parentFullName, $name);
+                $uniqueBlockPrefix = \sprintf('%s_%s', $view->parent->vars['unique_block_prefix'], $blockName);
             } else {
                 $id = $name;
                 $fullName = $name;
@@ -57,7 +64,10 @@ abstract class BaseType extends AbstractType
 
             $translationDomain ??= $view->parent->vars['translation_domain'];
 
-            $labelTranslationParameters = array_merge($view->parent->vars['label_translation_parameters'], $labelTranslationParameters);
+            if (!$options['label'] instanceof TranslatableInterface) {
+                $labelTranslationParameters = array_merge($view->parent->vars['label_translation_parameters'], $labelTranslationParameters);
+            }
+
             $attrTranslationParameters = array_merge($view->parent->vars['attr_translation_parameters'], $attrTranslationParameters);
 
             if (!$labelFormat) {
@@ -119,6 +129,9 @@ abstract class BaseType extends AbstractType
         ]);
     }
 
+    /**
+     * @return void
+     */
     public function configureOptions(OptionsResolver $resolver)
     {
         $resolver->setDefaults([

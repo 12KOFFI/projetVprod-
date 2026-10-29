@@ -20,7 +20,7 @@ class TagAwareMarshaller implements MarshallerInterface
 {
     private MarshallerInterface $marshaller;
 
-    public function __construct(MarshallerInterface $marshaller = null)
+    public function __construct(?MarshallerInterface $marshaller = null)
     {
         $this->marshaller = $marshaller ?? new DefaultMarshaller();
     }
@@ -40,7 +40,7 @@ class TagAwareMarshaller implements MarshallerInterface
                     $f = [];
                     $failed[] = $id;
                 } else {
-                    if ([] === $value['tags']) {
+                    if (!$value['tags']) {
                         $v['tags'] = '';
                     }
 

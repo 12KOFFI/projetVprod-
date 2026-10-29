@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Doctrine\Bundle\DoctrineBundle\DependencyInjection\Compiler;
 
 use Doctrine\Common\Cache\Psr6\CacheAdapter;
+use Doctrine\Deprecations\Deprecation;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\DependencyInjection\ChildDefinition;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
@@ -14,7 +17,6 @@ use function array_keys;
 use function assert;
 use function in_array;
 use function is_a;
-use function trigger_deprecation;
 
 /** @internal  */
 final class CacheCompatibilityPass implements CompilerPassInterface
@@ -63,11 +65,11 @@ final class CacheCompatibilityPass implements CompilerPassInterface
                     continue;
                 }
 
-                $regionDefinition = $container->getDefinition($factoryMethodCall[1][0]);
+                $regionDefinition = $container->getDefinition((string) $factoryMethodCall[1][0]);
 
                 // Get inner service for FileLock
                 if ($regionDefinition->getClass() === '%doctrine.orm.second_level_cache.filelock_region.class%') {
-                    $regionDefinition = $container->getDefinition($regionDefinition->getArgument(0));
+                    $regionDefinition = $container->getDefinition((string) $regionDefinition->getArgument(0));
                 }
 
                 // We don't know how to adjust custom region classes
@@ -87,7 +89,7 @@ final class CacheCompatibilityPass implements CompilerPassInterface
         }
     }
 
-    private function createCompatibilityLayerDefinition(ContainerBuilder $container, string $definitionId): ?Definition
+    private function createCompatibilityLayerDefinition(ContainerBuilder $container, string $definitionId): Definition|null
     {
         $definition = $container->getDefinition($definitionId);
 
@@ -99,9 +101,9 @@ final class CacheCompatibilityPass implements CompilerPassInterface
             return null;
         }
 
-        trigger_deprecation(
+        Deprecation::trigger(
             'doctrine/doctrine-bundle',
-            '2.4',
+            'https://github.com/doctrine/DoctrineBundle/pull/1365',
             'Configuring doctrine/cache is deprecated. Please update the cache service "%s" to use a PSR-6 cache.',
             $definitionId,
         );

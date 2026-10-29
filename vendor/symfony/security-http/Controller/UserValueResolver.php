@@ -12,7 +12,6 @@
 namespace Symfony\Component\Security\Http\Controller;
 
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Controller\ArgumentValueResolverInterface;
 use Symfony\Component\HttpKernel\Controller\ValueResolverInterface;
 use Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadata;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
@@ -25,7 +24,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
  *
  * @author Iltar van der Berg <kjarli@gmail.com>
  */
-final class UserValueResolver implements ArgumentValueResolverInterface, ValueResolverInterface
+final class UserValueResolver implements ValueResolverInterface
 {
     private TokenStorageInterface $tokenStorage;
 
@@ -66,7 +65,7 @@ final class UserValueResolver implements ArgumentValueResolverInterface, ValueRe
             }
 
             if (!$argument->isNullable()) {
-                throw new AccessDeniedException(sprintf('There is no logged-in user to pass to $%s, make the argument nullable if you want to allow anonymous access to the action.', $argument->getName()));
+                throw new AccessDeniedException(\sprintf('There is no logged-in user to pass to $%s, make the argument nullable if you want to allow anonymous access to the action.', $argument->getName()));
             }
 
             return [null];
@@ -76,6 +75,6 @@ final class UserValueResolver implements ArgumentValueResolverInterface, ValueRe
             return [$user];
         }
 
-        throw new AccessDeniedException(sprintf('The logged-in user is an instance of "%s" but a user of type "%s" is expected.', $user::class, $argument->getType()));
+        throw new AccessDeniedException(\sprintf('The logged-in user is an instance of "%s" but a user of type "%s" is expected.', $user::class, $argument->getType()));
     }
 }

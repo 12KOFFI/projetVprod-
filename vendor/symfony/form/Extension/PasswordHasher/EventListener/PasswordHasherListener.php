@@ -35,6 +35,9 @@ class PasswordHasherListener
         $this->propertyAccessor ??= PropertyAccess::createPropertyAccessor();
     }
 
+    /**
+     * @return void
+     */
     public function registerPassword(FormEvent $event)
     {
         if (null === $event->getData() || '' === $event->getData()) {
@@ -50,6 +53,9 @@ class PasswordHasherListener
         ];
     }
 
+    /**
+     * @return void
+     */
     public function hashPasswords(FormEvent $event)
     {
         $form = $event->getForm();
@@ -95,7 +101,7 @@ class PasswordHasherListener
         $parent = $this->getTargetForm($form)->getParent();
 
         if (!($user = $parent?->getData()) || !$user instanceof PasswordAuthenticatedUserInterface) {
-            throw new InvalidConfigurationException(sprintf('The "hash_property_path" option only supports "%s" objects, "%s" given.', PasswordAuthenticatedUserInterface::class, get_debug_type($user)));
+            throw new InvalidConfigurationException(\sprintf('The "hash_property_path" option only supports "%s" objects, "%s" given.', PasswordAuthenticatedUserInterface::class, get_debug_type($user)));
         }
 
         return $user;

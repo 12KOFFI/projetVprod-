@@ -32,7 +32,7 @@ class RemoteUserAuthenticator extends AbstractPreAuthenticatedAuthenticator
 {
     private string $userKey;
 
-    public function __construct(UserProviderInterface $userProvider, TokenStorageInterface $tokenStorage, string $firewallName, string $userKey = 'REMOTE_USER', LoggerInterface $logger = null)
+    public function __construct(UserProviderInterface $userProvider, TokenStorageInterface $tokenStorage, string $firewallName, string $userKey = 'REMOTE_USER', ?LoggerInterface $logger = null)
     {
         parent::__construct($userProvider, $tokenStorage, $firewallName, $logger);
 
@@ -42,9 +42,9 @@ class RemoteUserAuthenticator extends AbstractPreAuthenticatedAuthenticator
     protected function extractUsername(Request $request): ?string
     {
         if (!$request->server->has($this->userKey)) {
-            throw new BadCredentialsException(sprintf('User key was not found: "%s".', $this->userKey));
+            throw new BadCredentialsException(\sprintf('User key was not found: "%s".', $this->userKey));
         }
 
-        return $request->server->get($this->userKey);
+        return $request->server->get($this->userKey) ?: null;
     }
 }

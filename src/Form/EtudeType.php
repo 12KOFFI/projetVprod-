@@ -21,11 +21,13 @@ class EtudeType extends AbstractType
             ->add('statut', EnumType::class, [
                 'class' => StatutEtude::class,
                 'label' => 'Résultat de l\'étude',
-                'placeholder' => 'Sélectionnez un résultat',
+                // Deux boutons radio toujours visibles plutôt qu'une liste
+                // déroulante : la décision se lit sans ouvrir de menu.
+                'expanded' => true,
                 'choice_label' => static fn (StatutEtude $statut): string => $statut->libelle(),
-                // « En attente » est l'état initial du dossier, pas un résultat que
-                // le conseiller puisse rendre : il n'est donc pas proposé.
-                'choice_filter' => static fn (?StatutEtude $statut): bool => $statut !== StatutEtude::EN_ATTENTE,
+                // Décision favorable d'abord. « En attente » est l'état initial du
+                // dossier, pas un résultat que le conseiller puisse rendre.
+                'choices' => [StatutEtude::ACCEPTE, StatutEtude::REFUSE],
             ])
             ->add('commentaire', TextareaType::class, [
                 'label' => 'Motif et observations',

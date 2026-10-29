@@ -204,7 +204,12 @@
 {% set erreur = champ_form.vars.errors|length > 0 %}
 {% set id = champ_form.vars.id %}
 <div class="{{ colonnes }}">
-    <label id="{{ id }}-libelle" for="{{ id }}" class="mb-1.5 block text-sm font-medium text-slate-700">{{ champ_form.vars.label }}</label>
+    <label id="{{ id }}-libelle" for="{{ id }}" class="mb-1.5 block text-sm font-medium text-slate-700">
+        {{ champ_form.vars.label }}
+        {% if champ_form.vars.required %}
+            <span class="text-red-600 font-bold ml-1" aria-hidden="true">*</span>
+        {% endif %}
+    </label>
     <div class="relative" x-data="listeDeroulante"
          @click.outside="fermer(false)" @keydown.escape="if (ouverte) { $event.preventDefault(); fermer(true); }"
          @focusout="quitter($event)">
@@ -252,7 +257,12 @@
 {% set facultatif = facultatif ?? not champ_form.vars.required %}
 <div class="{{ colonnes }}">
     <label for="{{ numero.vars.id }}" class="mb-1.5 block text-sm font-medium text-slate-700">
-        {{ champ_form.vars.label }}{% if facultatif %} <span class="font-normal text-slate-600">(facultatif)</span>{% endif %}
+        {{ champ_form.vars.label }}
+        {% if not facultatif %}
+            <span class="text-red-600 font-bold ml-1" aria-hidden="true">*</span>
+        {% else %}
+            <span class="font-normal text-slate-500 text-xs ml-1">(facultatif)</span>
+        {% endif %}
     </label>
     <div class="relative" x-data="listeDeroulante"
          @click.outside="fermer(false)" @keydown.escape="if (ouverte) { $event.preventDefault(); fermer(true); }"
@@ -361,7 +371,7 @@
 {% endmacro %}
 
 {#
-  Graphique circulaire d'un écran de pilotage.
+  Graphique d'un écran de pilotage.
 
   `valeurs` est une table {libellé: effectif}. Elle est passée au canvas par un
   attribut `data-`, jamais par un <script> inline : c'est assets/app.js qui
@@ -369,10 +379,15 @@
   liste de clés sémantiques ('succes', 'attente', 'refus', 'neutre') lorsque la
   teinte porte un sens ; sinon les nuances de bleu DAIP s'appliquent.
 
-  La légende est rendue ici, avec les effectifs chiffrés, plutôt que par
-  Chart.js : elle reste lisible à l'impression et respecte la typographie.
+  `type` : 'anneau' (répartition en parts), 'barres' (effectifs comparés, barres
+  horizontales) ou 'courbe' (évolution dans le temps).
+
+  Les chiffres sont toujours écrits ici, en plus du graphique : légende avec
+  part en pourcentage pour l'anneau, valeurs pour les barres, tableau lu par
+  les lecteurs d'écran pour la courbe. Ils restent lisibles à l'impression et
+  sans JavaScript.
 #}
-{% macro graphique(titre, icone, valeurs, couleurs = null, sous_titre = null) %}
+{% macro graphique(titre, icone, valeurs, couleurs = null, sous_titre = null, type = 'anneau') %}
 {% set total = 0 %}
 {% for effectif in valeurs %}{% set total = total + effectif %}{% endfor %}
 <div class="rounded-lg border border-slate-200 bg-white overflow-hidden">
@@ -388,26 +403,41 @@
 
     {% if total > 0 %}
         <div class="p-4 sm:p-6">
-            <div class="relative h-56 w-full">
+            <div class="relative w-full {{ type == 'courbe' ? 'h-64' : (type == 'barres' ? 'h-60' : 'h-56') }}">
                 <canvas data-valeurs="{{ valeurs|json_encode }}"
+                        data-graphique="{{ type }}"
                         {% if couleurs %}data-couleurs="{{ couleurs|join(',') }}"{% endif %}
                         role="img"
                         aria-label="{{ titre }} : {{ total }} dossier(s)"></canvas>
             </div>
 
-            <dl class="mt-5 space-y-2">
-                {% for libelle, effectif in valeurs %}
-                    <div class="flex items-center justify-between gap-3 text-sm">
-                        <dt class="text-slate-600 truncate">{{ libelle }}</dt>
-                        <dd class="font-semibold text-slate-800 tabular-nums shrink-0">
-                            {{ effectif }}
-                            <span class="text-xs font-normal text-slate-600">
-                                ({{ (effectif * 100 / total)|number_format(0) }} %)
-                            </span>
-                        </dd>
-                    </div>
-                {% endfor %}
-            </dl>
+            {% if type == 'courbe' %}
+                <table class="sr-only">
+                    <caption>{{ titre }}</caption>
+                    <thead><tr><th scope="col">Période</th><th scope="col">Dossiers</th></tr></thead>
+                    <tbody>
+                        {% for libelle, effectif in valeurs %}
+                            <tr><th scope="row">{{ libelle }}</th><td>{{ effectif }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <dl class="mt-5 space-y-2">
+                    {% for libelle, effectif in valeurs %}
+                        <div class="flex items-center justify-between gap-3 text-sm">
+                            <dt class="text-slate-600 truncate">{{ libelle }}</dt>
+                            <dd class="font-semibold text-slate-800 tabular-nums shrink-0">
+                                {{ effectif }}
+                                {% if type == 'anneau' %}
+                                    <span class="text-xs font-normal text-slate-600">
+                                        ({{ (effectif * 100 / total)|number_format(0) }} %)
+                                    </span>
+                                {% endif %}
+                            </dd>
+                        </div>
+                    {% endfor %}
+                </dl>
+            {% endif %}
         </div>
     {% else %}
         {{ _self.etat_vide('chart-pie', 'Aucune donnée', 'Aucun dossier ne correspond à ce périmètre pour le moment.') }}
@@ -548,7 +578,7 @@ inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg bg-
         <p class="text-sm text-slate-700">
             Page <span class="font-semibold text-slate-900 tabular-nums">{{ page_courante }}</span>
             sur <span class="font-semibold text-slate-900 tabular-nums">{{ nb_pages }}</span>
-            — <span class="tabular-nums">{{ total }}</span> {{ total > 1 ? (unites ?? unite ~ 's') : unite }}
+            — <span class="tabular-nums">{{ total }}</span> {{ total > 1 ? (unites ?? (unite ~ 's')) : unite }}
         </p>
 
         <ul class="flex flex-wrap items-center gap-1">
@@ -600,7 +630,7 @@ inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg bg-
 {% import _self as ui %}
 {% set lien = ui.classe_pagination('lien') %}
 {% set inactif = ui.classe_pagination('inactif') %}
-{% set pluriel = unites ?? unite ~ 's' %}
+{% set pluriel = unites ?? (unite ~ 's') %}
 <nav aria-label="{{ libelle }}" class="{{ ui.classe_pagination('nav') }}" x-cloak x-show="nbPages('{{ type }}') > 1">
     <p class="text-sm text-slate-700" aria-live="polite">
         Page <span class="font-semibold text-slate-900 tabular-nums" x-text="pages.{{ type }}"></span>

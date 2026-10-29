@@ -1,13 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Doctrine\Bundle\DoctrineBundle\Command;
 
 use Doctrine\DBAL\Connection;
-use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\EntityGenerator;
 use Doctrine\Persistence\ManagerRegistry;
 use InvalidArgumentException;
 use Symfony\Component\Console\Command\Command;
+
+use function assert;
 
 /**
  * Base class for Doctrine console commands to extend from.
@@ -16,21 +20,16 @@ use Symfony\Component\Console\Command\Command;
  */
 abstract class DoctrineCommand extends Command
 {
-    private ManagerRegistry $doctrine;
-
-    public function __construct(ManagerRegistry $doctrine)
-    {
+    public function __construct(
+        private readonly ManagerRegistry $doctrine,
+    ) {
         parent::__construct();
-
-        $this->doctrine = $doctrine;
     }
 
     /**
      * get a doctrine entity generator
      *
      * @return EntityGenerator
-     *
-     * @psalm-suppress UndefinedDocblockClass ORM < 3 specific
      */
     protected function getEntityGenerator()
     {
@@ -51,7 +50,7 @@ abstract class DoctrineCommand extends Command
      * @param string   $name
      * @param int|null $shardId
      *
-     * @return EntityManager
+     * @return EntityManagerInterface
      */
     protected function getEntityManager($name, $shardId = null)
     {
@@ -60,6 +59,8 @@ abstract class DoctrineCommand extends Command
         if ($shardId !== null) {
             throw new InvalidArgumentException('Shards are not supported anymore using doctrine/dbal >= 3');
         }
+
+        assert($manager instanceof EntityManagerInterface);
 
         return $manager;
     }

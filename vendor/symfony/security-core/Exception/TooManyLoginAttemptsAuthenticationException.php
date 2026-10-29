@@ -21,7 +21,7 @@ class TooManyLoginAttemptsAuthenticationException extends AuthenticationExceptio
 {
     private ?int $threshold;
 
-    public function __construct(int $threshold = null)
+    public function __construct(?int $threshold = null)
     {
         $this->threshold = $threshold;
     }
@@ -47,7 +47,6 @@ class TooManyLoginAttemptsAuthenticationException extends AuthenticationExceptio
     public function __unserialize(array $data): void
     {
         [$this->threshold, $parentData] = $data;
-        $parentData = \is_array($parentData) ? $parentData : unserialize($parentData);
         parent::__unserialize($parentData);
     }
 }

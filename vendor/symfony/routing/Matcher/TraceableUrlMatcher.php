@@ -29,6 +29,9 @@ class TraceableUrlMatcher extends UrlMatcher
 
     protected $traces;
 
+    /**
+     * @return array
+     */
     public function getTraces(string $pathinfo)
     {
         $this->traces = [];
@@ -41,6 +44,9 @@ class TraceableUrlMatcher extends UrlMatcher
         return $this->traces;
     }
 
+    /**
+     * @return array
+     */
     public function getTracesForRequest(Request $request)
     {
         $this->request = $request;
@@ -53,11 +59,11 @@ class TraceableUrlMatcher extends UrlMatcher
     protected function matchCollection(string $pathinfo, RouteCollection $routes): array
     {
         // HEAD and GET are equivalent as per RFC
-        if ('HEAD' === $method = $this->context->getMethod()) {
+        if ('HEAD' === $method = $requestMethod = $this->context->getMethod()) {
             $method = 'GET';
         }
         $supportsTrailingSlash = 'GET' === $method && $this instanceof RedirectableUrlMatcherInterface;
-        $trimmedPathinfo = rtrim($pathinfo, '/') ?: '/';
+        $trimmedPathinfo = '' === ($trimmedPathinfo = rtrim($pathinfo, '/')) ? '/' : $trimmedPathinfo;
 
         foreach ($routes as $name => $route) {
             $compiledRoute = $route->compile();
@@ -66,7 +72,7 @@ class TraceableUrlMatcher extends UrlMatcher
 
             // check the static prefix of the URL first. Only use the more expensive preg_match when it matches
             if ('' !== $staticPrefix && !str_starts_with($trimmedPathinfo, $staticPrefix)) {
-                $this->addTrace(sprintf('Path "%s" does not match', $route->getPath()), self::ROUTE_DOES_NOT_MATCH, $name, $route);
+                $this->addTrace(\sprintf('Path "%s" does not match', $route->getPath()), self::ROUTE_DOES_NOT_MATCH, $name, $route);
                 continue;
             }
             $regex = $compiledRoute->getRegex();
@@ -80,7 +86,7 @@ class TraceableUrlMatcher extends UrlMatcher
                 $r = new Route($route->getPath(), $route->getDefaults(), [], $route->getOptions());
                 $cr = $r->compile();
                 if (!preg_match($cr->getRegex(), $pathinfo)) {
-                    $this->addTrace(sprintf('Path "%s" does not match', $route->getPath()), self::ROUTE_DOES_NOT_MATCH, $name, $route);
+                    $this->addTrace(\sprintf('Path "%s" does not match', $route->getPath()), self::ROUTE_DOES_NOT_MATCH, $name, $route);
 
                     continue;
                 }
@@ -90,7 +96,7 @@ class TraceableUrlMatcher extends UrlMatcher
                     $cr = $r->compile();
 
                     if (\in_array($n, $cr->getVariables()) && !preg_match($cr->getRegex(), $pathinfo)) {
-                        $this->addTrace(sprintf('Requirement for "%s" does not match (%s)', $n, $regex), self::ROUTE_ALMOST_MATCHES, $name, $route);
+                        $this->addTrace(\sprintf('Requirement for "%s" does not match (%s)', $n, $regex), self::ROUTE_ALMOST_MATCHES, $name, $route);
 
                         continue 2;
                     }
@@ -111,7 +117,7 @@ class TraceableUrlMatcher extends UrlMatcher
 
             $hostMatches = [];
             if ($compiledRoute->getHostRegex() && !preg_match($compiledRoute->getHostRegex(), $this->context->getHost(), $hostMatches)) {
-                $this->addTrace(sprintf('Host "%s" does not match the requirement ("%s")', $this->context->getHost(), $route->getHost()), self::ROUTE_ALMOST_MATCHES, $name, $route);
+                $this->addTrace(\sprintf('Host "%s" does not match the requirement ("%s")', $this->context->getHost(), $route->getHost()), self::ROUTE_ALMOST_MATCHES, $name, $route);
                 continue;
             }
 
@@ -120,29 +126,30 @@ class TraceableUrlMatcher extends UrlMatcher
             $status = $this->handleRouteRequirements($pathinfo, $name, $route, $attributes);
 
             if (self::REQUIREMENT_MISMATCH === $status[0]) {
-                $this->addTrace(sprintf('Condition "%s" does not evaluate to "true"', $route->getCondition()), self::ROUTE_ALMOST_MATCHES, $name, $route);
+                $this->addTrace(\sprintf('Condition "%s" does not evaluate to "true"', $route->getCondition()), self::ROUTE_ALMOST_MATCHES, $name, $route);
                 continue;
             }
 
             if ('/' !== $pathinfo && !$hasTrailingVar && $hasTrailingSlash === ($trimmedPathinfo === $pathinfo)) {
                 if ($supportsTrailingSlash && (!$requiredMethods || \in_array('GET', $requiredMethods))) {
                     $this->addTrace('Route matches!', self::ROUTE_MATCHES, $name, $route);
+                    $this->trailingSlashSchemes = $this->allowSchemes;
 
                     return $this->allow = $this->allowSchemes = [];
                 }
-                $this->addTrace(sprintf('Path "%s" does not match', $route->getPath()), self::ROUTE_DOES_NOT_MATCH, $name, $route);
+                $this->addTrace(\sprintf('Path "%s" does not match', $route->getPath()), self::ROUTE_DOES_NOT_MATCH, $name, $route);
                 continue;
             }
 
             if ($route->getSchemes() && !$route->hasScheme($this->context->getScheme())) {
                 $this->allowSchemes = array_merge($this->allowSchemes, $route->getSchemes());
-                $this->addTrace(sprintf('Scheme "%s" does not match any of the required schemes (%s)', $this->context->getScheme(), implode(', ', $route->getSchemes())), self::ROUTE_ALMOST_MATCHES, $name, $route);
+                $this->addTrace(\sprintf('Scheme "%s" does not match any of the required schemes (%s)', $this->context->getScheme(), implode(', ', $route->getSchemes())), self::ROUTE_ALMOST_MATCHES, $name, $route);
                 continue;
             }
 
-            if ($requiredMethods && !\in_array($method, $requiredMethods)) {
+            if ($requiredMethods && !\in_array($method, $requiredMethods) && !\in_array($requestMethod, $requiredMethods)) {
                 $this->allow = array_merge($this->allow, $requiredMethods);
-                $this->addTrace(sprintf('Method "%s" does not match any of the required methods (%s)', $this->context->getMethod(), implode(', ', $requiredMethods)), self::ROUTE_ALMOST_MATCHES, $name, $route);
+                $this->addTrace(\sprintf('Method "%s" does not match any of the required methods (%s)', $this->context->getMethod(), implode(', ', $requiredMethods)), self::ROUTE_ALMOST_MATCHES, $name, $route);
                 continue;
             }
 
@@ -154,7 +161,7 @@ class TraceableUrlMatcher extends UrlMatcher
         return [];
     }
 
-    private function addTrace(string $log, int $level = self::ROUTE_DOES_NOT_MATCH, string $name = null, Route $route = null)
+    private function addTrace(string $log, int $level = self::ROUTE_DOES_NOT_MATCH, ?string $name = null, ?Route $route = null): void
     {
         $this->traces[] = [
             'log' => $log,

@@ -29,22 +29,22 @@ class ContainerAwareEventManager extends EventManager
      * <event> => <listeners>
      */
     private array $listeners = [];
-    private array $subscribers;
     private array $initialized = [];
     private bool $initializedSubscribers = false;
+    private array $initializedHashMapping = [];
     private array $methods = [];
     private ContainerInterface $container;
 
     /**
-     * @param list<string|EventSubscriber|array{string[], string|object}> $subscriberIds List of subscribers, subscriber ids, or [events, listener] tuples
+     * @param list<array{string[], string|object}> $listeners List of [events, listener] tuples
      */
-    public function __construct(ContainerInterface $container, array $subscriberIds = [])
+    public function __construct(ContainerInterface $container, array $listeners = [])
     {
         $this->container = $container;
-        $this->subscribers = $subscriberIds;
+        $this->listeners = $listeners;
     }
 
-    public function dispatchEvent($eventName, EventArgs $eventArgs = null): void
+    public function dispatchEvent($eventName, ?EventArgs $eventArgs = null): void
     {
         if (!$this->initializedSubscribers) {
             $this->initializeSubscribers();
@@ -64,9 +64,6 @@ class ContainerAwareEventManager extends EventManager
         }
     }
 
-    /**
-     * @return object[][]
-     */
     public function getListeners($event = null): array
     {
         if (null === $event) {
@@ -123,6 +120,7 @@ class ContainerAwareEventManager extends EventManager
 
             if (\is_string($listener)) {
                 unset($this->initialized[$event]);
+                unset($this->initializedHashMapping[$event][$hash]);
             } else {
                 $this->methods[$event][$hash] = $this->getMethod($listener, $event);
             }
@@ -138,14 +136,20 @@ class ContainerAwareEventManager extends EventManager
         $hash = $this->getHash($listener);
 
         foreach ((array) $events as $event) {
-            // Check if we actually have this listener associated
-            if (isset($this->listeners[$event][$hash])) {
-                unset($this->listeners[$event][$hash]);
+            $eventHash = $hash;
+
+            // The listener might be registered as a service that is not initialized yet,
+            // in which case it is stored under the hash of its service id
+            if (\is_object($listener) && isset($this->listeners[$event]) && !isset($this->listeners[$event][$eventHash]) && !isset($this->initialized[$event])) {
+                $this->initializeListeners($event);
             }
 
-            if (isset($this->methods[$event][$hash])) {
-                unset($this->methods[$event][$hash]);
+            if (null !== $initializedHash = $this->initializedHashMapping[$event][$eventHash] ?? null) {
+                unset($this->initializedHashMapping[$event][$eventHash]);
+                $eventHash = $initializedHash;
             }
+
+            unset($this->listeners[$event][$eventHash], $this->methods[$event][$eventHash]);
         }
     }
 
@@ -167,32 +171,64 @@ class ContainerAwareEventManager extends EventManager
         parent::removeEventSubscriber($subscriber);
     }
 
-    private function initializeListeners(string $eventName)
+    private function initializeListeners(string $eventName): void
     {
-        $this->initialized[$eventName] = true;
-        foreach ($this->listeners[$eventName] as $hash => $listener) {
-            if (\is_string($listener)) {
-                $this->listeners[$eventName][$hash] = $listener = $this->container->get($listener);
+        do {
+            $this->initialized[$eventName] = true;
 
-                $this->methods[$eventName][$hash] = $this->getMethod($listener, $eventName);
+            // We'll refill the whole array in order to keep the same order
+            $listeners = [];
+            foreach ($this->listeners[$eventName] as $hash => $listener) {
+                if (!isset($this->listeners[$eventName][$hash])) {
+                    // removed while another listener service was being built
+                    continue;
+                }
+                unset($this->listeners[$eventName][$hash]);
+
+                if (\is_string($listener)) {
+                    try {
+                        $listener = $this->container->get($listener);
+                    } catch (\Throwable $e) {
+                        unset($this->initialized[$eventName]);
+                        $this->listeners[$eventName] = $listeners + [$hash => $listener] + $this->listeners[$eventName];
+
+                        throw $e;
+                    }
+                    $newHash = $this->getHash($listener);
+
+                    $this->initializedHashMapping[$eventName][$hash] = $newHash;
+
+                    $listeners[$newHash] = $listener;
+
+                    $this->methods[$eventName][$newHash] = $this->getMethod($listener, $eventName);
+                } else {
+                    $listeners[$hash] = $listener;
+                }
             }
-        }
+
+            // Building a listener service can add listeners for the same event.
+            // What is left in $this->listeners[$eventName] is what it added.
+            $this->listeners[$eventName] = $listeners + $this->listeners[$eventName];
+        } while (!isset($this->initialized[$eventName]));
     }
 
-    private function initializeSubscribers()
+    private function initializeSubscribers(): void
     {
         $this->initializedSubscribers = true;
-        foreach ($this->subscribers as $subscriber) {
-            if (\is_array($subscriber)) {
-                $this->addEventListener(...$subscriber);
+        $listeners = $this->listeners;
+        $this->listeners = [];
+        foreach ($listeners as $listener) {
+            if (\is_array($listener)) {
+                $this->addEventListener(...$listener);
                 continue;
             }
-            if (\is_string($subscriber)) {
-                $subscriber = $this->container->get($subscriber);
+            if (\is_string($listener)) {
+                $listener = $this->container->get($listener);
             }
-            parent::addEventSubscriber($subscriber);
+            // throw new \InvalidArgumentException(sprintf('Using Doctrine subscriber "%s" is not allowed. Register it as a listener instead, using e.g. the #[AsDoctrineListener] or #[AsDocumentListener] attribute.', \is_object($listener) ? $listener::class : $listener));
+            trigger_deprecation('symfony/doctrine-bridge', '6.3', 'Registering "%s" as a Doctrine subscriber is deprecated. Register it as a listener instead, using e.g. the #[AsDoctrineListener] or #[AsDocumentListener] attribute.', \is_object($listener) ? get_debug_type($listener) : $listener);
+            parent::addEventSubscriber($listener);
         }
-        $this->subscribers = [];
     }
 
     private function getHash(string|object $listener): string
@@ -201,7 +237,7 @@ class ContainerAwareEventManager extends EventManager
             return '_service_'.$listener;
         }
 
-        return spl_object_hash($listener);
+        return spl_object_id($listener);
     }
 
     private function getMethod(object $listener, string $event): string

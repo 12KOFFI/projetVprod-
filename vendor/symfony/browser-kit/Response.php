@@ -46,10 +46,10 @@ final class Response
         $headers = '';
         foreach ($this->headers as $name => $value) {
             if (\is_string($value)) {
-                $headers .= sprintf("%s: %s\n", $name, $value);
+                $headers .= \sprintf("%s: %s\n", $name, $value);
             } else {
                 foreach ($value as $headerValue) {
-                    $headers .= sprintf("%s: %s\n", $name, $headerValue);
+                    $headers .= \sprintf("%s: %s\n", $name, $headerValue);
                 }
             }
         }
@@ -81,7 +81,7 @@ final class Response
         foreach ($this->headers as $key => $value) {
             if (str_replace('-', '_', strtolower($key)) === $normalizedHeader) {
                 if ($first) {
-                    return \is_array($value) ? (\count($value) ? $value[0] : '') : $value;
+                    return \is_array($value) ? ($value ? $value[0] : '') : $value;
                 }
 
                 return \is_array($value) ? $value : [$value];
@@ -104,7 +104,7 @@ final class Response
         }
 
         if (!\is_array($content)) {
-            throw new JsonException(sprintf('JSON content was expected to decode to an array, "%s" returned.', get_debug_type($content)));
+            throw new JsonException(\sprintf('JSON content was expected to decode to an array, "%s" returned.', get_debug_type($content)));
         }
 
         return $this->jsonData = $content;

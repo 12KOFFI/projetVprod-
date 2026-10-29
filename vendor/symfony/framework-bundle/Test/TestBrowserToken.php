@@ -23,7 +23,7 @@ class TestBrowserToken extends AbstractToken
 {
     private string $firewallName;
 
-    public function __construct(array $roles = [], UserInterface $user = null, string $firewallName = 'main')
+    public function __construct(array $roles = [], ?UserInterface $user = null, string $firewallName = 'main')
     {
         parent::__construct($roles);
 
@@ -51,6 +51,10 @@ class TestBrowserToken extends AbstractToken
 
     public function __unserialize(array $data): void
     {
+        if (($data[0] ?? null) instanceof \Stringable) {
+            throw new \BadMethodCallException('Cannot unserialize '.self::class);
+        }
+
         [$this->firewallName, $parentData] = $data;
 
         parent::__unserialize($parentData);

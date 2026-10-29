@@ -17,7 +17,8 @@
         <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
             
             {# Sélecteur de profil : même page, textes adaptés (comme sur vae.gouv.fr). #}
-            {% set redirect_param = app.request.query.get('redirect') ? {'redirect': app.request.query.get('redirect')} : {} %}
+            {# « redirect » est validé par le contrôleur (chemin interne uniquement) : jamais le paramètre brut. #}
+            {% set redirect_param = redirect ? {'redirect': redirect} : {} %}
             <nav class="grid grid-cols-2 border-b border-slate-200 bg-slate-50" aria-label="Type de compte">
                 <a href="{{ path('app_login', redirect_param) }}"
                    {% if profil == 'candidat' %}aria-current="page"{% endif %}
@@ -40,7 +41,7 @@
                 </h1>
                 <p class="text-sm text-slate-600 leading-relaxed">
                     {% if profil == 'professionnel' %}
-                        Espace réservé aux conseillers VAE, accompagnateurs, agents d'accueil et administrateurs.
+                        Espace réservé aux agents d'accueil, conseillers VAE, et accompagnateurs.
                     {% else %}
                         Suivez votre dossier VAE, réglez vos frais et consultez vos résultats.
                     {% endif %}
@@ -50,8 +51,8 @@
             <div class="p-6 md:p-8 pt-2">
                 <form method="post" class="space-y-6">
                     <!-- Champ caché pour la redirection - VÉRIFIER QUE C'EST BIEN PRÉSENT -->
-                    {% if app.request.query.get('redirect') %}
-                        <input type="hidden" name="_target_path" value="{{ app.request.query.get('redirect') }}">
+                    {% if redirect %}
+                        <input type="hidden" name="_target_path" value="{{ redirect }}">
                     {% endif %}
 
                     <!-- Champ email/téléphone -->
@@ -133,7 +134,7 @@
                     {% else %}
                         <p class="text-center text-slate-600">
                             Pas encore de compte ?
-                            <a href="{{ path('app_register', {'redirect': app.request.query.get('redirect')}) }}" class="text-indigo-600 hover:text-indigo-800 font-semibold inline-flex items-center">
+                            <a href="{{ path('app_register', redirect_param) }}" class="text-indigo-600 hover:text-indigo-800 font-semibold inline-flex items-center">
                                 Faire ma préinscription
                                 <i class="fas fa-arrow-right ml-1 text-sm" aria-hidden="true"></i>
                             </a>
@@ -146,8 +147,8 @@
 
     <!-- Lien retour accueil et retour page précédente -->
     <div class="text-center mt-4 space-y-2">
-        {% if app.request.query.get('redirect') %}
-            <a href="{{ app.request.query.get('redirect') }}" class="text-sm text-slate-500 hover:text-indigo-600 transition inline-flex items-center mr-4">
+        {% if redirect %}
+            <a href="{{ redirect }}" class="text-sm text-slate-500 hover:text-indigo-600 transition inline-flex items-center mr-4">
                 <i class="fas fa-arrow-left mr-1"></i>
                 Retour à la page précédente
             </a>

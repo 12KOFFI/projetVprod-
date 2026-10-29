@@ -10,7 +10,9 @@ use App\Service\Statistique\StatistiqueService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Écran de pilotage chiffré, partagé par tous les rôles qui encadrent le
@@ -23,6 +25,8 @@ use Symfony\Component\Routing\Annotation\Route;
  * et son suivi d'étapes remplit déjà ce rôle.
  */
 #[Route('/indicateurs', name: 'app_indicateurs', methods: ['GET'])]
+// Même règle que access_control, redoublée au plus près de l'action.
+#[IsGranted(new Expression("is_granted('ROLE_CONSEILLER') or is_granted('ROLE_ACCOMPAGNATEUR')"))]
 class IndicateursController extends AbstractController
 {
     public function __construct(

@@ -19,6 +19,7 @@ use Symfony\Bridge\Doctrine\Middleware\Debug\DebugDataHolder;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\DataCollector\DataCollector;
+use Symfony\Component\HttpKernel\DataCollector\LateDataCollectorInterface;
 use Symfony\Component\VarDumper\Caster\Caster;
 use Symfony\Component\VarDumper\Cloner\Stub;
 
@@ -27,10 +28,12 @@ use Symfony\Component\VarDumper\Cloner\Stub;
  *
  * @author Fabien Potencier <fabien@symfony.com>
  */
-class DoctrineDataCollector extends DataCollector
+class DoctrineDataCollector extends DataCollector implements LateDataCollectorInterface
 {
     private array $connections;
     private array $managers;
+    private ?\stdClass $collectState = null;
+    private int $collectIndex = 0;
 
     /**
      * @var array<string, DebugStack>
@@ -43,23 +46,45 @@ class DoctrineDataCollector extends DataCollector
     ) {
         $this->connections = $registry->getConnectionNames();
         $this->managers = $registry->getManagerNames();
+
+        if (null === $debugDataHolder) {
+            trigger_deprecation('symfony/doctrine-bridge', '6.4', 'Not passing an instance of "%s" as "$debugDataHolder" to "%s()" is deprecated.', DebugDataHolder::class, __METHOD__);
+        }
     }
 
     /**
      * Adds the stack logger for a connection.
+     *
+     * @return void
+     *
+     * @deprecated since Symfony 6.4, use a DebugDataHolder instead.
      */
     public function addLogger(string $name, DebugStack $logger)
     {
+        trigger_deprecation('symfony/doctrine-bridge', '6.4', '"%s()" is deprecated. Pass an instance of "%s" to the constructor instead.', __METHOD__, DebugDataHolder::class);
+
         $this->loggers[$name] = $logger;
     }
 
-    public function collect(Request $request, Response $response, \Throwable $exception = null)
+    /**
+     * @return void
+     */
+    public function collect(Request $request, Response $response, ?\Throwable $exception = null)
     {
+        $this->collectState ??= (object) ['index' => 0];
+        $this->collectIndex = ++$this->collectState->index;
         $this->data = [
             'queries' => $this->collectQueries(),
             'connections' => $this->connections,
             'managers' => $this->managers,
         ];
+    }
+
+    public function lateCollect(): void
+    {
+        if ($this->collectState && $this->collectIndex === $this->collectState->index) {
+            $this->data['queries'] = $this->collectQueries();
+        }
     }
 
     private function collectQueries(): array
@@ -81,8 +106,15 @@ class DoctrineDataCollector extends DataCollector
         return $queries;
     }
 
+    /**
+     * @return void
+     */
     public function reset()
     {
+        if ($this->collectState) {
+            $this->collectState->index = 0;
+            $this->collectState = null;
+        }
         $this->data = [];
 
         if (null !== $this->debugDataHolder) {
@@ -97,26 +129,41 @@ class DoctrineDataCollector extends DataCollector
         }
     }
 
+    /**
+     * @return array
+     */
     public function getManagers()
     {
         return $this->data['managers'];
     }
 
+    /**
+     * @return array
+     */
     public function getConnections()
     {
         return $this->data['connections'];
     }
 
+    /**
+     * @return int
+     */
     public function getQueryCount()
     {
         return array_sum(array_map('count', $this->data['queries']));
     }
 
+    /**
+     * @return array
+     */
     public function getQueries()
     {
         return $this->data['queries'];
     }
 
+    /**
+     * @return float
+     */
     public function getTime()
     {
         $time = 0;
@@ -158,7 +205,7 @@ class DoctrineDataCollector extends DataCollector
                     return [Caster::PREFIX_VIRTUAL.'__toString()' => (string) $o->getObject()];
                 }
 
-                return [Caster::PREFIX_VIRTUAL.'⚠' => sprintf('Object of class "%s" could not be converted to string.', $o->getClass())];
+                return [Caster::PREFIX_VIRTUAL.'⚠' => \sprintf('Object of class "%s" could not be converted to string.', $o->getClass())];
             },
         ];
     }
@@ -183,18 +230,22 @@ class DoctrineDataCollector extends DataCollector
         if (!\is_array($query['types'])) {
             $query['types'] = [];
         }
+        $connection = $this->registry->getConnection($connectionName);
+
         foreach ($query['params'] as $j => $param) {
             $e = null;
             if (isset($query['types'][$j])) {
                 // Transform the param according to the type
                 $type = $query['types'][$j];
                 if (\is_string($type)) {
-                    $type = Type::getType($type);
+                    // doctrine/dbal 4.5 deprecates the static registry for a provider on the configuration
+                    $config = $connection->getConfiguration();
+                    $type = method_exists($config, 'getTypeProvider') ? $config->getTypeProvider()->get($type) : Type::getType($type);
                 }
                 if ($type instanceof Type) {
                     $query['types'][$j] = $type->getBindingType();
                     try {
-                        $param = $type->convertToDatabaseValue($param, $this->registry->getConnection($connectionName)->getDatabasePlatform());
+                        $param = $type->convertToDatabaseValue($param, $connection->getDatabasePlatform());
                     } catch (\TypeError $e) {
                     } catch (ConversionException $e) {
                     }
@@ -247,7 +298,7 @@ class DoctrineDataCollector extends DataCollector
         }
 
         if (\is_resource($var)) {
-            return [sprintf('/* Resource(%s) */', get_resource_type($var)), false, false];
+            return [\sprintf('/* Resource(%s) */', get_resource_type($var)), false, false];
         }
 
         return [$var, true, true];

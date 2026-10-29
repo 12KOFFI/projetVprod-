@@ -65,7 +65,7 @@ class FormDataCollector extends DataCollector implements FormDataCollectorInterf
     public function __construct(FormDataExtractorInterface $dataExtractor)
     {
         if (!class_exists(ClassStub::class)) {
-            throw new \LogicException(sprintf('The VarDumper component is needed for using the "%s" class. Install symfony/var-dumper version 3.4 or above.', __CLASS__));
+            throw new \LogicException(\sprintf('The VarDumper component is needed for using the "%s" class. Install symfony/var-dumper version 3.4 or above.', __CLASS__));
         }
 
         $this->dataExtractor = $dataExtractor;
@@ -76,11 +76,11 @@ class FormDataCollector extends DataCollector implements FormDataCollectorInterf
     /**
      * Does nothing. The data is collected during the form event listeners.
      */
-    public function collect(Request $request, Response $response, \Throwable $exception = null)
+    public function collect(Request $request, Response $response, ?\Throwable $exception = null): void
     {
     }
 
-    public function reset()
+    public function reset(): void
     {
         $this->data = [
             'forms' => [],
@@ -89,14 +89,14 @@ class FormDataCollector extends DataCollector implements FormDataCollectorInterf
         ];
     }
 
-    public function associateFormWithView(FormInterface $form, FormView $view)
+    public function associateFormWithView(FormInterface $form, FormView $view): void
     {
-        $this->formsByView[spl_object_hash($view)] = spl_object_hash($form);
+        $this->formsByView[spl_object_id($view)] = spl_object_id($form);
     }
 
-    public function collectConfiguration(FormInterface $form)
+    public function collectConfiguration(FormInterface $form): void
     {
-        $hash = spl_object_hash($form);
+        $hash = spl_object_id($form);
 
         if (!isset($this->dataByForm[$hash])) {
             $this->dataByForm[$hash] = [];
@@ -112,9 +112,9 @@ class FormDataCollector extends DataCollector implements FormDataCollectorInterf
         }
     }
 
-    public function collectDefaultData(FormInterface $form)
+    public function collectDefaultData(FormInterface $form): void
     {
-        $hash = spl_object_hash($form);
+        $hash = spl_object_id($form);
 
         if (!isset($this->dataByForm[$hash])) {
             // field was created by form event
@@ -131,9 +131,9 @@ class FormDataCollector extends DataCollector implements FormDataCollectorInterf
         }
     }
 
-    public function collectSubmittedData(FormInterface $form)
+    public function collectSubmittedData(FormInterface $form): void
     {
-        $hash = spl_object_hash($form);
+        $hash = spl_object_id($form);
 
         if (!isset($this->dataByForm[$hash])) {
             // field was created by form event
@@ -156,15 +156,15 @@ class FormDataCollector extends DataCollector implements FormDataCollectorInterf
 
             // Expand current form if there are children with errors
             if (empty($this->dataByForm[$hash]['has_children_error'])) {
-                $childData = $this->dataByForm[spl_object_hash($child)];
+                $childData = $this->dataByForm[spl_object_id($child)];
                 $this->dataByForm[$hash]['has_children_error'] = !empty($childData['has_children_error']) || !empty($childData['errors']);
             }
         }
     }
 
-    public function collectViewVariables(FormView $view)
+    public function collectViewVariables(FormView $view): void
     {
-        $hash = spl_object_hash($view);
+        $hash = spl_object_id($view);
 
         if (!isset($this->dataByView[$hash])) {
             $this->dataByView[$hash] = [];
@@ -180,12 +180,12 @@ class FormDataCollector extends DataCollector implements FormDataCollectorInterf
         }
     }
 
-    public function buildPreliminaryFormTree(FormInterface $form)
+    public function buildPreliminaryFormTree(FormInterface $form): void
     {
         $this->data['forms'][$form->getName()] = &$this->recursiveBuildPreliminaryFormTree($form, $this->data['forms_by_hash']);
     }
 
-    public function buildFinalFormTree(FormInterface $form, FormView $view)
+    public function buildFinalFormTree(FormInterface $form, FormView $view): void
     {
         $this->data['forms'][$form->getName()] = &$this->recursiveBuildFinalFormTree($form, $view, $this->data['forms_by_hash']);
     }
@@ -200,10 +200,7 @@ class FormDataCollector extends DataCollector implements FormDataCollectorInterf
         return $this->data;
     }
 
-    /**
-     * @internal
-     */
-    public function __sleep(): array
+    public function __serialize(): array
     {
         foreach ($this->data['forms_by_hash'] as &$form) {
             if (isset($form['type_class']) && !$form['type_class'] instanceof ClassStub) {
@@ -211,15 +208,13 @@ class FormDataCollector extends DataCollector implements FormDataCollectorInterf
             }
         }
 
-        $this->data = $this->cloneVar($this->data);
-
-        return parent::__sleep();
+        return ['data' => $this->data = $this->cloneVar($this->data)];
     }
 
     protected function getCasters(): array
     {
         return parent::getCasters() + [
-            \Exception::class => function (\Exception $e, array $a, Stub $s) {
+            \Exception::class => static function (\Exception $e, array $a, Stub $s) {
                 foreach (["\0Exception\0previous", "\0Exception\0trace"] as $k) {
                     if (isset($a[$k])) {
                         unset($a[$k]);
@@ -229,26 +224,22 @@ class FormDataCollector extends DataCollector implements FormDataCollectorInterf
 
                 return $a;
             },
-            FormInterface::class => function (FormInterface $f, array $a) {
-                return [
-                    Caster::PREFIX_VIRTUAL.'name' => $f->getName(),
-                    Caster::PREFIX_VIRTUAL.'type_class' => new ClassStub(\get_class($f->getConfig()->getType()->getInnerType())),
-                ];
-            },
+            FormInterface::class => static fn (FormInterface $f, array $a) => [
+                Caster::PREFIX_VIRTUAL.'name' => $f->getName(),
+                Caster::PREFIX_VIRTUAL.'type_class' => new ClassStub($f->getConfig()->getType()->getInnerType()::class),
+            ],
             FormView::class => StubCaster::cutInternals(...),
-            ConstraintViolationInterface::class => function (ConstraintViolationInterface $v, array $a) {
-                return [
-                    Caster::PREFIX_VIRTUAL.'root' => $v->getRoot(),
-                    Caster::PREFIX_VIRTUAL.'path' => $v->getPropertyPath(),
-                    Caster::PREFIX_VIRTUAL.'value' => $v->getInvalidValue(),
-                ];
-            },
+            ConstraintViolationInterface::class => static fn (ConstraintViolationInterface $v, array $a) => [
+                Caster::PREFIX_VIRTUAL.'root' => $v->getRoot(),
+                Caster::PREFIX_VIRTUAL.'path' => $v->getPropertyPath(),
+                Caster::PREFIX_VIRTUAL.'value' => $v->getInvalidValue(),
+            ],
         ];
     }
 
-    private function &recursiveBuildPreliminaryFormTree(FormInterface $form, array &$outputByHash)
+    private function &recursiveBuildPreliminaryFormTree(FormInterface $form, array &$outputByHash): array
     {
-        $hash = spl_object_hash($form);
+        $hash = spl_object_id($form);
 
         $output = &$outputByHash[$hash];
         $output = $this->dataByForm[$hash]
@@ -263,13 +254,13 @@ class FormDataCollector extends DataCollector implements FormDataCollectorInterf
         return $output;
     }
 
-    private function &recursiveBuildFinalFormTree(FormInterface $form = null, FormView $view, array &$outputByHash)
+    private function &recursiveBuildFinalFormTree(?FormInterface $form, FormView $view, array &$outputByHash): array
     {
-        $viewHash = spl_object_hash($view);
+        $viewHash = spl_object_id($view);
         $formHash = null;
 
         if (null !== $form) {
-            $formHash = spl_object_hash($form);
+            $formHash = spl_object_id($form);
         } elseif (isset($this->formsByView[$viewHash])) {
             // The FormInterface instance of the CSRF token is never contained in
             // the FormInterface tree of the form, so we need to get the

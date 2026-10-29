@@ -17,6 +17,11 @@ class RecevabiliteException extends VaeException
         return new self('Une décision défavorable doit être motivée.');
     }
 
+    public static function justificatifExperienceManquant(): self
+    {
+        return new self("Joignez le justificatif d'expérience professionnelle avant de rendre l'étude du dossier.");
+    }
+
     public static function resultatRecevabiliteManquant(): self
     {
         return new self('Choisissez un résultat de recevabilité (recevable ou non recevable).');
@@ -34,6 +39,14 @@ class RecevabiliteException extends VaeException
     {
         return new self(sprintf(
             "Le dossier « %s » n'est pas encore inscrit (paiement des frais de dossier requis) : sa recevabilité ne peut pas encore être prononcée.",
+            $numero
+        ));
+    }
+
+    public static function recevabiliteDejaPrononcee(string $numero): self
+    {
+        return new self(sprintf(
+            "La recevabilité du dossier « %s » est déjà prononcée : elle ne peut plus être modifiée.",
             $numero
         ));
     }

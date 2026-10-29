@@ -12,7 +12,7 @@
         <div role="{{ type == 'error' ? 'alert' : 'status' }}" class="mb-4 rounded-lg border p-4 text-sm {{ style.boite }}">
             <div class="flex items-center">
                 <i class="fas {{ style.icone }} mr-3" aria-hidden="true"></i>
-                <p>{{ message|raw }}</p>
+                <p>{{ message|message_flash }}</p>
             </div>
         </div>
     {% endfor %}

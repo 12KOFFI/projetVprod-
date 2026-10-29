@@ -25,13 +25,14 @@ use Symfony\Component\DependencyInjection\ServiceLocator;
  */
 class RegisterLdapLocatorPass implements CompilerPassInterface
 {
-    public function process(ContainerBuilder $container)
+    public function process(ContainerBuilder $container): void
     {
         $definition = $container->setDefinition('security.ldap_locator', new Definition(ServiceLocator::class));
 
         $locators = [];
-        foreach ($container->findTaggedServiceIds('ldap') as $serviceId => $tags) {
-            $locators[$serviceId] = new ServiceClosureArgument(new Reference($serviceId));
+        foreach ($container->findTaggedServiceIds('ldap') as $id => $tags) {
+            $locators[$id] = new ServiceClosureArgument(new Reference($id));
+            $container->getDefinition($id)->addTag('kernel.reset', ['method' => 'reset', 'on_invalid' => 'ignore']);
         }
 
         $definition->addArgument($locators);

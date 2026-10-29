@@ -17,10 +17,14 @@ use Symfony\Bridge\ProxyManager\Internal\ProxyGenerator;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\LazyProxy\PhpDumper\DumperInterface;
 
+trigger_deprecation('symfony/proxy-manager-bridge', '6.3', 'The "symfony/proxy-manager-bridge" package is deprecated and can be removed from your dependencies.');
+
 /**
  * Generates dumped PHP code of proxies via reflection.
  *
  * @author Marco Pivetta <ocramius@gmail.com>
+ *
+ * @deprecated since Symfony 6.3
  *
  * @final
  */
@@ -37,7 +41,7 @@ class ProxyDumper implements DumperInterface
         $this->classGenerator = new BaseGeneratorStrategy();
     }
 
-    public function isProxyCandidate(Definition $definition, bool &$asGhostObject = null, string $id = null): bool
+    public function isProxyCandidate(Definition $definition, ?bool &$asGhostObject = null, ?string $id = null): bool
     {
         $asGhostObject = false;
 
@@ -49,7 +53,7 @@ class ProxyDumper implements DumperInterface
         $instantiation = 'return';
 
         if ($definition->isShared()) {
-            $instantiation .= sprintf(' $this->%s[%s] =', $definition->isPublic() && !$definition->isPrivate() ? 'services' : 'privates', var_export($id, true));
+            $instantiation .= \sprintf(' $container->%s[%s] =', $definition->isPublic() && !$definition->isPrivate() ? 'services' : 'privates', var_export($id, true));
         }
 
         $proxifiedClass = new \ReflectionClass($this->proxyGenerator->getProxifiedClass($definition));
@@ -57,22 +61,22 @@ class ProxyDumper implements DumperInterface
 
         return <<<EOF
         if (true === \$lazyLoad) {
-            $instantiation \$this->createProxy('$proxyClass', function () {
-                return \\$proxyClass::staticProxyConstructor(function (&\$wrappedInstance, \ProxyManager\Proxy\LazyLoadingInterface \$proxy) {
+            $instantiation \$container->createProxy('$proxyClass', static fn () => \\$proxyClass::staticProxyConstructor(
+                static function (&\$wrappedInstance, \ProxyManager\Proxy\LazyLoadingInterface \$proxy) use (\$container) {
                     \$wrappedInstance = $factoryCode;
 
                     \$proxy->setProxyInitializer(null);
 
                     return true;
-                });
-            });
+                }
+            ));
         }
 
 
 EOF;
     }
 
-    public function getProxyCode(Definition $definition, string $id = null): string
+    public function getProxyCode(Definition $definition, ?string $id = null): string
     {
         $code = $this->classGenerator->generate($this->generateProxyClass($definition));
         $code = preg_replace('/^(class [^ ]++ extends )([^\\\\])/', '$1\\\\$2', $code);

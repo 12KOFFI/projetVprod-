@@ -29,7 +29,7 @@ class ParseException extends RuntimeException
      * @param string|null $snippet    The snippet of code near the problem
      * @param string|null $parsedFile The file name where the error occurred
      */
-    public function __construct(string $message, int $parsedLine = -1, string $snippet = null, string $parsedFile = null, \Throwable $previous = null)
+    public function __construct(string $message, int $parsedLine = -1, ?string $snippet = null, ?string $parsedFile = null, ?\Throwable $previous = null)
     {
         $this->parsedFile = $parsedFile;
         $this->parsedLine = $parsedLine;
@@ -44,13 +44,15 @@ class ParseException extends RuntimeException
     /**
      * Gets the snippet of code near the error.
      */
-    public function getSnippet(): string
+    public function getSnippet(): ?string
     {
         return $this->snippet;
     }
 
     /**
      * Sets the snippet of code near the error.
+     *
+     * @return void
      */
     public function setSnippet(string $snippet)
     {
@@ -64,13 +66,15 @@ class ParseException extends RuntimeException
      *
      * This method returns null if a string is parsed.
      */
-    public function getParsedFile(): string
+    public function getParsedFile(): ?string
     {
         return $this->parsedFile;
     }
 
     /**
      * Sets the filename where the error occurred.
+     *
+     * @return void
      */
     public function setParsedFile(string $parsedFile)
     {
@@ -89,6 +93,8 @@ class ParseException extends RuntimeException
 
     /**
      * Sets the line where the error occurred.
+     *
+     * @return void
      */
     public function setParsedLine(int $parsedLine)
     {
@@ -97,7 +103,7 @@ class ParseException extends RuntimeException
         $this->updateRepr();
     }
 
-    private function updateRepr()
+    private function updateRepr(): void
     {
         $this->message = $this->rawMessage;
 
@@ -108,15 +114,15 @@ class ParseException extends RuntimeException
         }
 
         if (null !== $this->parsedFile) {
-            $this->message .= sprintf(' in %s', json_encode($this->parsedFile, \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
+            $this->message .= \sprintf(' in %s', json_encode($this->parsedFile, \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
         }
 
         if ($this->parsedLine >= 0) {
-            $this->message .= sprintf(' at line %d', $this->parsedLine);
+            $this->message .= \sprintf(' at line %d', $this->parsedLine);
         }
 
         if ($this->snippet) {
-            $this->message .= sprintf(' (near "%s")', $this->snippet);
+            $this->message .= \sprintf(' (near "%s")', $this->snippet);
         }
 
         if ($dot) {

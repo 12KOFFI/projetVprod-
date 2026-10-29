@@ -7,7 +7,7 @@ use App\Enum\StatutRecevabilite;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * Saisie de la décision de recevabilité par le conseiller VAE (E4.5),
+ * Saisie de la décision de recevabilité par le jury local du centre,
  * ouverte uniquement une fois le dossier INSCRIT. Aucun commentaire n'est
  * requis pour cette décision.
  */

@@ -48,17 +48,17 @@ class MultiplierRetryStrategy implements RetryStrategyInterface
         $this->maxRetries = $maxRetries;
 
         if ($delayMilliseconds < 0) {
-            throw new InvalidArgumentException(sprintf('Delay must be greater than or equal to zero: "%s" given.', $delayMilliseconds));
+            throw new InvalidArgumentException(\sprintf('Delay must be greater than or equal to zero: "%s" given.', $delayMilliseconds));
         }
         $this->delayMilliseconds = $delayMilliseconds;
 
         if ($multiplier < 1) {
-            throw new InvalidArgumentException(sprintf('Multiplier must be greater than zero: "%s" given.', $multiplier));
+            throw new InvalidArgumentException(\sprintf('Multiplier must be greater than zero: "%s" given.', $multiplier));
         }
         $this->multiplier = $multiplier;
 
         if ($maxDelayMilliseconds < 0) {
-            throw new InvalidArgumentException(sprintf('Max delay must be greater than or equal to zero: "%s" given.', $maxDelayMilliseconds));
+            throw new InvalidArgumentException(\sprintf('Max delay must be greater than or equal to zero: "%s" given.', $maxDelayMilliseconds));
         }
         $this->maxDelayMilliseconds = $maxDelayMilliseconds;
     }
@@ -66,7 +66,7 @@ class MultiplierRetryStrategy implements RetryStrategyInterface
     /**
      * @param \Throwable|null $throwable The cause of the failed handling
      */
-    public function isRetryable(Envelope $message, \Throwable $throwable = null): bool
+    public function isRetryable(Envelope $message, ?\Throwable $throwable = null): bool
     {
         $retries = RedeliveryStamp::getRetryCountFromEnvelope($message);
 
@@ -76,7 +76,7 @@ class MultiplierRetryStrategy implements RetryStrategyInterface
     /**
      * @param \Throwable|null $throwable The cause of the failed handling
      */
-    public function getWaitingTime(Envelope $message, \Throwable $throwable = null): int
+    public function getWaitingTime(Envelope $message, ?\Throwable $throwable = null): int
     {
         $retries = RedeliveryStamp::getRetryCountFromEnvelope($message);
 

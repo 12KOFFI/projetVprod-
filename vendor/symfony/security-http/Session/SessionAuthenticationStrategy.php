@@ -34,7 +34,7 @@ class SessionAuthenticationStrategy implements SessionAuthenticationStrategyInte
     private string $strategy;
     private ?ClearableTokenStorageInterface $csrfTokenStorage = null;
 
-    public function __construct(string $strategy, ClearableTokenStorageInterface $csrfTokenStorage = null)
+    public function __construct(string $strategy, ?ClearableTokenStorageInterface $csrfTokenStorage = null)
     {
         $this->strategy = $strategy;
 
@@ -43,6 +43,9 @@ class SessionAuthenticationStrategy implements SessionAuthenticationStrategyInte
         }
     }
 
+    /**
+     * @return void
+     */
     public function onAuthentication(Request $request, TokenInterface $token)
     {
         switch ($this->strategy) {
@@ -64,7 +67,7 @@ class SessionAuthenticationStrategy implements SessionAuthenticationStrategyInte
                 return;
 
             default:
-                throw new \RuntimeException(sprintf('Invalid session authentication strategy "%s".', $this->strategy));
+                throw new \RuntimeException(\sprintf('Invalid session authentication strategy "%s".', $this->strategy));
         }
     }
 }

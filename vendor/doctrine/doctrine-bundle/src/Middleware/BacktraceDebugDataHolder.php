@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Doctrine\Bundle\DoctrineBundle\Middleware;
 
 use Symfony\Bridge\Doctrine\Middleware\Debug\DebugDataHolder;
@@ -11,19 +13,15 @@ use function in_array;
 
 use const DEBUG_BACKTRACE_IGNORE_ARGS;
 
-/** @psalm-suppress MissingDependency */
 class BacktraceDebugDataHolder extends DebugDataHolder
 {
-    /** @var string[] */
-    private array $connWithBacktraces;
-
     /** @var array<string, array<int|string, mixed>[]> */
     private array $backtraces = [];
 
     /** @param string[] $connWithBacktraces */
-    public function __construct(array $connWithBacktraces)
-    {
-        $this->connWithBacktraces = $connWithBacktraces;
+    public function __construct(
+        private readonly array $connWithBacktraces,
+    ) {
     }
 
     public function reset(): void

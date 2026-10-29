@@ -103,6 +103,9 @@ module.exports = {
         "scroll-reverse": "scroll 30s linear infinite reverse",
         "fade-in": "fadeIn 0.5s ease-in-out",
         "slide-up": "slideUp 0.6s ease-out",
+        // Apparition des blocs d'un écran de pilotage : courte, décélérée,
+        // et « both » pour que le bloc reste invisible pendant son délai.
+        apparition: "apparition 0.5s cubic-bezier(0.16, 1, 0.3, 1) both",
       },
       keyframes: {
         scroll: {
@@ -110,6 +113,10 @@ module.exports = {
           "100%": { transform: "translateX(-50%)" },
         },
         fadeIn: { "0%": { opacity: "0" }, "100%": { opacity: "1" } },
+        apparition: {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
         slideUp: {
           "0%": { transform: "translateY(20px)", opacity: "0" },
           "100%": { transform: "translateY(0)", opacity: "1" },

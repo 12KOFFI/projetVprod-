@@ -109,15 +109,20 @@ class CandidatureService
      * Utilisé au dépôt comme à la modification : lors d'une modification, un
      * fichier déjà transmis satisfait l'exigence sans nouvel envoi.
      *
+     * $piecesConseiller ajoute les pièces que le conseiller VAE doit joindre
+     * lui-même pour rendre l'étude (justificatif d'expérience professionnelle).
+     *
      * @param array<string, UploadedFile|null> $documents
      *
      * @return array<string, string> champ => libellé
      */
-    public function documentsManquants(array $documents, ?Candidature $candidature = null): array
+    public function documentsManquants(array $documents, ?Candidature $candidature = null, bool $piecesConseiller = false): array
     {
         $manquants = [];
+        $exigees = CandidatureDepotDto::documentsObligatoires()
+            + ($piecesConseiller ? CandidatureDepotDto::documentsConseiller() : []);
 
-        foreach (CandidatureDepotDto::documentsObligatoires() as $champ => $libelle) {
+        foreach ($exigees as $champ => $libelle) {
             if (($documents[$champ] ?? null) instanceof UploadedFile) {
                 continue;
             }
@@ -293,6 +298,28 @@ class CandidatureService
     private function repertoireDe(Candidature $candidature): string
     {
         return rtrim($this->dossierMedia, '/\\') . \DIRECTORY_SEPARATOR . $candidature->getNumero();
+    }
+
+    /**
+     * Pièces effectivement versées au dossier, pour la consultation : celles
+     * du candidat puis le justificatif d'expérience joint par le conseiller.
+     * Le droit de voir ce dernier reste vérifié par CandidatureVoter.
+     *
+     * @return array<string, array{libelle: string, fichier: string}>
+     */
+    public function piecesTransmises(Candidature $candidature): array
+    {
+        $pieces = [];
+
+        foreach (CandidatureDepotDto::champsDocuments() as $champ => $libelle) {
+            $fichier = $this->lireDocument($candidature, $champ);
+
+            if (!in_array($fichier, [null, ''], true)) {
+                $pieces[$champ] = ['libelle' => $libelle, 'fichier' => $fichier];
+            }
+        }
+
+        return $pieces;
     }
 
     private function lireDocument(Candidature $candidature, string $champ): ?string

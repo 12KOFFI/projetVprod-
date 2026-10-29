@@ -18,10 +18,10 @@
             Étape suivante : le dossier de candidature
             <i class="fas fa-arrow-right text-sm" aria-hidden="true"></i>
         </a>
-        <a href="{{ path('app_home') }}#conditions-candidature"
+        <a href="{{ path('app_home') }}#verifier-metier-centre"
            class="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-lg border border-primary-500 bg-white px-6 text-base font-semibold text-primary-900 transition-colors duration-200 motion-reduce:transition-none hover:border-primary-700 hover:bg-primary-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-800 sm:w-auto">
             <i class="fas fa-arrow-left text-sm" aria-hidden="true"></i>
-            Retour aux conditions
+            Retour
         </a>
     </div>
 {% endmacro %}
@@ -65,7 +65,7 @@
         </h1>
         <p class="mt-4 text-base sm:text-lg leading-relaxed text-slate-700 max-w-[58ch]">
             Vérifiez que votre métier fait partie de la session 2026, puis trouvez
-            le centre VAE où présenter votre dossier.
+            le centre VAE.
         </p>
 
         <div class="mt-6 sm:mt-8">
@@ -97,7 +97,7 @@
     <div class="sticky top-16 z-20 border-b border-slate-200 bg-white sm:top-[72px]">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
             <form method="get" action="{{ path('app_metiers_centres') }}#resultats" role="search" @submit.prevent>
-                <label for="recherche" class="block text-base font-bold text-slate-800">Tapez votre métier, votre ville ou le nom d'un centre</label>
+                <label for="recherche" class="block text-base font-bold text-slate-800">Rechercher par métier, par localité ou par centre VAE</label>
                 <p id="recherche-aide" class="mt-0.5 hidden text-sm text-slate-600 sm:block">Ex. : couture, menuiserie, Bouaké</p>
                 <div class="mt-2 flex gap-2">
                     <div class="relative min-w-0 flex-1">
@@ -120,17 +120,8 @@
                 </div>
             </form>
 
-            {# Résultat de la recherche, annoncé aux lecteurs d'écran ; les deux
-               nombres mènent à leur liste (elles sont l'une sous l'autre). #}
-            <p id="recherche-etat" class="mt-2 flex flex-wrap items-center gap-x-1.5 text-sm text-slate-700 tabular-nums">
-                <span class="sr-only" role="status" aria-live="polite" x-text="annonce"></span>
-                <a href="#metiers" class="inline-flex min-h-[32px] items-center font-semibold text-primary-800 underline underline-offset-4 hover:text-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
-                   x-text="libelle(nombreMetiers, 'métier')">{{ total_metiers }} métier{{ total_metiers > 1 ? 's' }}</a>
-                <span aria-hidden="true">·</span>
-                <a href="#centres" class="inline-flex min-h-[32px] items-center font-semibold text-primary-800 underline underline-offset-4 hover:text-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
-                   x-text="libelle(nombreCentres, 'centre')">{{ total_centres }} centre{{ total_centres > 1 ? 's' }}</a>
-                <span class="{{ filtre ? '' : 'hidden' }}" :class="{ 'hidden': !saisie }">pour « <span x-text="q.trim()">{{ saisie }}</span> »</span>
-            </p>
+            {# Annonce pour les lecteurs d'écran #}
+            <span id="recherche-etat" class="sr-only" role="status" aria-live="polite" x-text="annonce"></span>
         </div>
     </div>
 
@@ -149,7 +140,7 @@
 
             {# ---------------- 1. Les métiers ---------------- #}
             <div id="metiers" class="scroll-mt-56 overflow-hidden rounded-lg border border-slate-200 bg-white">
-                {{ page.entete_liste('fa-screwdriver-wrench', 'Mon métier est-il concerné ?', 'Touchez un métier pour voir les centres qui le proposent.') }}
+                {{ page.entete_liste('fa-screwdriver-wrench', 'Trouver mon métier', 'Cliquez sur un métier pour voir les centres disponibles.') }}
 
                 <div class="border-b border-green-200 bg-green-50 px-4 py-3 sm:px-5 {{ filtre and metiersTrouves is not empty ? '' : 'hidden' }}"
                      :class="{ 'hidden': !(saisie && nombreMetiers > 0) }">
@@ -215,7 +206,7 @@
 
             {# ---------------- 2. Les centres ---------------- #}
             <div id="centres" class="scroll-mt-56 overflow-hidden rounded-lg border border-slate-200 bg-white">
-                {{ page.entete_liste('fa-location-dot', 'Trouver mon centre VAE', 'Chaque centre, sa ville et les métiers qu’il propose.') }}
+                {{ page.entete_liste('fa-location-dot', 'Trouver mon centre VAE', 'Découvrez les centres VAE disponibles dans votre localité. Consultez les métiers proposés par chaque centre.') }}
 
                 <p class="px-4 py-4 text-base text-slate-700 sm:px-5 {{ filtre and centresTrouves is empty and metiersTrouves is not empty ? '' : 'hidden' }}"
                    :class="{ 'hidden': !(saisie && nombreCentres === 0 && nombreMetiers > 0) }">Aucun centre ne correspond à cette recherche.</p>
@@ -256,8 +247,8 @@
         {% if documents.liste.disponible %}
             <a href="{{ asset(documents.liste.chemin) }}" download
                class="inline-flex min-h-[44px] items-center gap-2 rounded-md text-base font-semibold text-primary-800 underline underline-offset-4 hover:text-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700">
-                <i class="fas fa-file-word" aria-hidden="true"></i>
-                Télécharger la liste complète (Word)
+                <i class="fas fa-download" aria-hidden="true"></i>
+                Télécharger la liste complète
             </a>
         {% endif %}
     </div>

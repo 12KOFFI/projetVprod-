@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\HttpKernel\Controller\ArgumentResolver;
 
+use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Attribute\MapDateTime;
 use Symfony\Component\HttpKernel\Controller\ArgumentValueResolverInterface;
@@ -26,6 +27,11 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 final class DateTimeValueResolver implements ArgumentValueResolverInterface, ValueResolverInterface
 {
+    public function __construct(
+        private readonly ?ClockInterface $clock = null,
+    ) {
+    }
+
     /**
      * @deprecated since Symfony 6.2, use resolve() instead
      */
@@ -45,12 +51,18 @@ final class DateTimeValueResolver implements ArgumentValueResolverInterface, Val
         $value = $request->attributes->get($argument->getName());
         $class = \DateTimeInterface::class === $argument->getType() ? \DateTimeImmutable::class : $argument->getType();
 
-        if ($value instanceof \DateTimeInterface) {
-            return [$value instanceof $class ? $value : $class::createFromInterface($value)];
+        if (!$value) {
+            if ($argument->isNullable()) {
+                return [null];
+            }
+            if (!$this->clock) {
+                return [new $class()];
+            }
+            $value = $this->clock->now();
         }
 
-        if ($argument->isNullable() && !$value) {
-            return [null];
+        if ($value instanceof \DateTimeInterface) {
+            return [$value instanceof $class ? $value : $class::createFromInterface($value)];
         }
 
         $format = null;
@@ -61,7 +73,7 @@ final class DateTimeValueResolver implements ArgumentValueResolverInterface, Val
         }
 
         if (null !== $format) {
-            $date = $class::createFromFormat($format, $value);
+            $date = $class::createFromFormat($format, $value, $this->clock?->now()->getTimeZone());
 
             if (($class::getLastErrors() ?: ['warning_count' => 0])['warning_count']) {
                 $date = false;
@@ -71,16 +83,55 @@ final class DateTimeValueResolver implements ArgumentValueResolverInterface, Val
                 $value = '@'.$value;
             }
             try {
-                $date = new $class($value ?? 'now');
+                $date = new $class($value, $this->clock?->now()->getTimeZone());
             } catch (\Exception) {
                 $date = false;
             }
         }
 
         if (!$date) {
-            throw new NotFoundHttpException(sprintf('Invalid date given for parameter "%s".', $argument->getName()));
+            throw new NotFoundHttpException(\sprintf('Invalid date given for parameter "%s".', $argument->getName()));
         }
 
-        return [$date];
+        return [$this->clock ? $this->fillFromClock($class, $date, $value, $format) : $date];
+    }
+
+    /**
+     * Takes the fields that $value leaves out from the clock instead of from the system time.
+     */
+    private function fillFromClock(string $class, \DateTimeInterface $date, string $value, ?string $format): \DateTimeInterface
+    {
+        $now = $class::createFromInterface($this->clock->now())->setTimezone($date->getTimezone());
+
+        if (null !== $format) {
+            // createFromFormat() takes the fields that $format does not parse from the system time, so we prepend them from the clock
+            $parsed = date_parse_from_format($format, $value);
+            $nowFormat = $nowValue = '';
+
+            foreach (['year' => 'Y', 'month' => 'm', 'day' => 'd', 'hour' => 'H', 'minute' => 'i', 'second' => 's'] as $field => $char) {
+                if (false === $parsed[$field]) {
+                    $nowFormat .= $char.'-';
+                    $nowValue .= $now->format($char).'-';
+                }
+            }
+
+            return '' === $nowFormat ? $date : $class::createFromFormat($nowFormat.$format, $nowValue.$value, $date->getTimezone());
+        }
+
+        $parsed = date_parse($value);
+
+        // $date does not depend on the system time when $value sets the full date
+        if (false !== $parsed['year'] && false !== $parsed['month'] && false !== $parsed['day']) {
+            return $date;
+        }
+
+        // The constructor starts from midnight when $value has a date but no time, and resets the microseconds when $value sets any field. modify() does neither.
+        if (false === $parsed['hour'] && (false !== $parsed['month'] || false !== $parsed['day'])) {
+            $value = 'midnight '.$value;
+        } elseif (false === $parsed['fraction'] && (false !== $parsed['year'] || false !== $parsed['hour'])) {
+            $now = $now->setTimestamp($now->getTimestamp());
+        }
+
+        return $now->modify($value);
     }
 }

@@ -19,11 +19,11 @@ use Symfony\Component\Notifier\Event\NotificationEvents;
  */
 final class NotificationCount extends Constraint
 {
-    private $expectedValue;
-    private $transport;
-    private $queued;
+    private int $expectedValue;
+    private ?string $transport;
+    private bool $queued;
 
-    public function __construct(int $expectedValue, string $transport = null, bool $queued = false)
+    public function __construct(int $expectedValue, ?string $transport = null, bool $queued = false)
     {
         $this->expectedValue = $expectedValue;
         $this->transport = $transport;
@@ -32,7 +32,7 @@ final class NotificationCount extends Constraint
 
     public function toString(): string
     {
-        return sprintf('%shas %s "%d" emails', $this->transport ? $this->transport.' ' : '', $this->queued ? 'queued' : 'sent', $this->expectedValue);
+        return \sprintf('%shas %s "%d" emails', $this->transport ? $this->transport.' ' : '', $this->queued ? 'queued' : 'sent', $this->expectedValue);
     }
 
     /**
@@ -48,7 +48,7 @@ final class NotificationCount extends Constraint
      */
     protected function failureDescription($events): string
     {
-        return sprintf('the Transport %s (%d %s)', $this->toString(), $this->countNotifications($events), $this->queued ? 'queued' : 'sent');
+        return \sprintf('the Transport %s (%d %s)', $this->toString(), $this->countNotifications($events), $this->queued ? 'queued' : 'sent');
     }
 
     private function countNotifications(NotificationEvents $events): int
@@ -57,8 +57,7 @@ final class NotificationCount extends Constraint
         foreach ($events->getEvents($this->transport) as $event) {
             if (
                 ($this->queued && $event->isQueued())
-                ||
-                (!$this->queued && !$event->isQueued())
+                || (!$this->queued && !$event->isQueued())
             ) {
                 ++$count;
             }

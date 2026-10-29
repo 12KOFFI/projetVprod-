@@ -6,6 +6,8 @@ use App\Referentiel\Telephone;
 use App\Entity\User;
 use App\Form\UserType;
 use App\Security\AppAuthenticator;
+use App\Security\CibleRedirection;
+use App\Security\LimiteurTentatives;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormError;
@@ -21,6 +23,9 @@ class SecurityController extends AbstractController
     private const RESET_STEP = 'forgot_password_step';
     private const RESET_USER = 'forgot_password_user_id';
     private const RESET_IDENTIFIER = 'forgot_password_identifier';
+    private const RESET_VERIFIE_LE = 'forgot_password_verifie_le';
+    /** Délai pour choisir le nouveau mot de passe une fois l'identité vérifiée. */
+    private const RESET_DUREE_SECONDES = 900;
 
     #[Route('/connexion', name: 'app_login', methods: ['GET', 'POST'])]
     public function login(AuthenticationUtils $authenticationUtils, Request $request): Response
@@ -91,14 +96,29 @@ class SecurityController extends AbstractController
         ]);
     }
 
+    /**
+     * Réinitialisation du mot de passe en libre-service, réservée aux candidats.
+     *
+     * Faute de canal hors bande (SMS, lien par e-mail), l'identité est vérifiée
+     * par des informations du compte : identifiant, date de naissance et quatre
+     * derniers chiffres du téléphone. La date de naissance est indispensable :
+     * quand l'identifiant saisi est le numéro de téléphone, ses quatre derniers
+     * chiffres ne prouvent rien. Les essais sont limités (LimiteurTentatives).
+     *
+     * Les comptes du personnel en sont exclus : leur mot de passe est
+     * réinitialisé par l'administrateur (PersonnelController), sans quoi un
+     * compte administrateur tomberait avec le seul numéro de son titulaire.
+     */
     #[Route('/mot-de-passe-oublie', name: 'app_forgot_password', methods: ['GET', 'POST'])]
-    public function forgotPassword(Request $request, EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher): Response
+    public function forgotPassword(Request $request, EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher, LimiteurTentatives $limiteur): Response
     {
         $session = $request->getSession();
-        $step = (int) $session->get(self::RESET_STEP, 1);
+        $verificationValide = (int) $session->get(self::RESET_STEP, 1) === 2
+            && $session->get(self::RESET_USER)
+            && time() - (int) $session->get(self::RESET_VERIFIE_LE, 0) <= self::RESET_DUREE_SECONDES;
 
         if ($request->isMethod('GET')) {
-            if ($step === 2 && $session->get(self::RESET_USER)) {
+            if ($verificationValide) {
                 return $this->render('security/forgot_password.html.twig', [
                     'step' => 2,
                     'identifier' => $session->get(self::RESET_IDENTIFIER, ''),
@@ -116,26 +136,37 @@ class SecurityController extends AbstractController
             }
 
             $identifier = trim((string) $request->request->get('identifier'));
+            $ip = $request->getClientIp();
+
+            $attente = $limiteur->minutesDAttente(LimiteurTentatives::REINITIALISATION, $identifier, $ip);
+            if ($attente !== null) {
+                $this->addFlash('error', sprintf('Trop de tentatives. Réessayez dans %d minute%s.', $attente, $attente > 1 ? 's' : ''));
+                return $this->render('security/forgot_password.html.twig', ['step' => 1]);
+            }
+
             $digits = preg_replace('/\D+/', '', (string) $request->request->get('last_four_digits'));
+            $dateNaissance = $this->lireDate((string) $request->request->get('date_naissance'));
             $repository = $entityManager->getRepository(User::class);
-            $user = $repository->findOneBy(['email' => strtolower($identifier)]);
+            $user = $identifier !== '' ? $repository->findOneBy(['email' => strtolower($identifier)]) : null;
             $telephone = Telephone::depuisIdentifiant($identifier);
-            if (!$user && $telephone !== null && $digits === (string) $request->request->get('last_four_digits')) {
+            if (!$user && $telephone !== null) {
                 $user = $repository->findOneBy(['contact' => $telephone]);
             }
 
-            $contact = $user?->getContact();
-            $normalizedContact = $contact !== null ? preg_replace('/\D+/', '', $contact) : '';
-            $contactSuffix = strlen($normalizedContact) >= 4 ? substr($normalizedContact, -4) : '';
-
-            if (!$user || $contactSuffix === '' || !hash_equals($contactSuffix, $digits)) {
+            if (!$user || !$this->identiteVerifiee($user, $digits, $dateNaissance)) {
+                $limiteur->enregistrerEchec(LimiteurTentatives::REINITIALISATION, $identifier, $ip);
                 $this->addFlash('error', 'Les informations fournies ne permettent pas de vérifier ce compte.');
                 return $this->render('security/forgot_password.html.twig', ['step' => 1]);
             }
 
+            $limiteur->reinitialiser(LimiteurTentatives::REINITIALISATION, $identifier);
+            // Nouvel identifiant de session : la vérification ne profite pas à
+            // une session qui aurait été fixée par un tiers.
+            $session->migrate(true);
             $session->set(self::RESET_STEP, 2);
             $session->set(self::RESET_USER, $user->getId());
             $session->set(self::RESET_IDENTIFIER, $user->getEmail() ?: $user->getContact());
+            $session->set(self::RESET_VERIFIE_LE, time());
             return $this->render('security/forgot_password.html.twig', [
                 'step' => 2,
                 'identifier' => $user->getEmail() ?: $user->getContact(),
@@ -144,6 +175,12 @@ class SecurityController extends AbstractController
 
         if (!$this->isCsrfTokenValid('forgot_password_reset', $request->request->get('_csrf_token'))) {
             $this->addFlash('error', 'La demande est invalide. Veuillez recommencer.');
+            return $this->redirectToRoute('app_forgot_password');
+        }
+
+        if (!$verificationValide) {
+            $this->clearResetSession($session);
+            $this->addFlash('error', 'La vérification a expiré. Veuillez recommencer.');
             return $this->redirectToRoute('app_forgot_password');
         }
 
@@ -176,11 +213,48 @@ class SecurityController extends AbstractController
         $session->remove(self::RESET_STEP);
         $session->remove(self::RESET_USER);
         $session->remove(self::RESET_IDENTIFIER);
+        $session->remove(self::RESET_VERIFIE_LE);
     }
 
     private function safeTarget(?string $target): ?string
     {
-        return $target && str_starts_with($target, '/') && !str_starts_with($target, '//') ? $target : null;
+        return CibleRedirection::sure($target);
+    }
+
+    /**
+     * Seul un compte de candidat actif, dont la date de naissance et les quatre
+     * derniers chiffres du téléphone correspondent, peut être réinitialisé ici.
+     */
+    private function identiteVerifiee(User $user, string $digits, ?\DateTimeInterface $dateNaissance): bool
+    {
+        if (array_diff($user->getRoles(), [User::ROLE_CANDIDAT, 'ROLE_USER']) !== [] || !$user->isActif()) {
+            return false;
+        }
+
+        $contact = preg_replace('/\D+/', '', (string) $user->getContact());
+        $suffixe = strlen($contact) >= 4 ? substr($contact, -4) : '';
+        $naissance = $user->getDatenaissance();
+
+        return $suffixe !== '' && strlen($digits) === 4 && hash_equals($suffixe, $digits)
+            && $naissance !== null && $dateNaissance !== null
+            && $naissance->format('Y-m-d') === $dateNaissance->format('Y-m-d');
+    }
+
+    /**
+     * Champ date du navigateur (aaaa-mm-jj) ou saisie libre jj/mm/aaaa.
+     */
+    private function lireDate(string $saisie): ?\DateTimeInterface
+    {
+        $saisie = trim($saisie);
+
+        foreach (['Y-m-d', 'd/m/Y'] as $format) {
+            $date = \DateTimeImmutable::createFromFormat('!' . $format, $saisie);
+            if ($date !== false && $date->format($format) === $saisie) {
+                return $date;
+            }
+        }
+
+        return null;
     }
 
     /**

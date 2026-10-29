@@ -33,25 +33,33 @@ class OutputFormatterStyle implements OutputFormatterStyleInterface
      * @param string|null $foreground The style foreground color name
      * @param string|null $background The style background color name
      */
-    public function __construct(string $foreground = null, string $background = null, array $options = [])
+    public function __construct(?string $foreground = null, ?string $background = null, array $options = [])
     {
         $this->color = new Color($this->foreground = $foreground ?: '', $this->background = $background ?: '', $this->options = $options);
     }
 
-    public function setForeground(string $color = null)
+    /**
+     * @return void
+     */
+    public function setForeground(?string $color = null)
     {
         if (1 > \func_num_args()) {
             trigger_deprecation('symfony/console', '6.2', 'Calling "%s()" without any arguments is deprecated, pass null explicitly instead.', __METHOD__);
         }
-        $this->color = new Color($this->foreground = $color ?: '', $this->background, $this->options);
+        $this->color = new Color($foreground = $color ?: '', $this->background, $this->options);
+        $this->foreground = $foreground;
     }
 
-    public function setBackground(string $color = null)
+    /**
+     * @return void
+     */
+    public function setBackground(?string $color = null)
     {
         if (1 > \func_num_args()) {
             trigger_deprecation('symfony/console', '6.2', 'Calling "%s()" without any arguments is deprecated, pass null explicitly instead.', __METHOD__);
         }
-        $this->color = new Color($this->foreground, $this->background = $color ?: '', $this->options);
+        $this->color = new Color($this->foreground, $background = $color ?: '', $this->options);
+        $this->background = $background;
     }
 
     public function setHref(string $url): void
@@ -59,25 +67,31 @@ class OutputFormatterStyle implements OutputFormatterStyleInterface
         $this->href = $url;
     }
 
+    /**
+     * @return void
+     */
     public function setOption(string $option)
     {
+        $this->color = new Color($this->foreground, $this->background, [...$this->options, $option]);
         $this->options[] = $option;
-        $this->color = new Color($this->foreground, $this->background, $this->options);
     }
 
+    /**
+     * @return void
+     */
     public function unsetOption(string $option)
     {
-        $pos = array_search($option, $this->options);
-        if (false !== $pos) {
-            unset($this->options[$pos]);
-        }
-
+        $this->options = array_diff($this->options, [$option]);
         $this->color = new Color($this->foreground, $this->background, $this->options);
     }
 
+    /**
+     * @return void
+     */
     public function setOptions(array $options)
     {
-        $this->color = new Color($this->foreground, $this->background, $this->options = $options);
+        $this->color = new Color($this->foreground, $this->background, $options);
+        $this->options = $options;
     }
 
     public function apply(string $text): string

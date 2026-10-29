@@ -27,7 +27,10 @@ class CandidatureVoter extends Voter
 {
     public const VIEW                     = 'CANDIDATURE_VIEW';
     public const EDIT                     = 'CANDIDATURE_EDIT';
+    /** Étude du dossier par le conseiller VAE (prise en charge, corrections, avis d'étude). */
     public const EVALUATE_RECEVABILITE    = 'CANDIDATURE_EVALUATE_RECEVABILITE';
+    /** Décision de recevabilité, prononcée par le jury local du centre. */
+    public const STATUER_RECEVABILITE     = 'CANDIDATURE_STATUER_RECEVABILITE';
     public const EVALUATE_ADMISSIBILITE   = 'CANDIDATURE_EVALUATE_ADMISSIBILITE';
     public const ACCOMPAGNER              = 'CANDIDATURE_ACCOMPAGNER';
     public const PAY                      = 'CANDIDATURE_PAY';
@@ -43,6 +46,7 @@ class CandidatureVoter extends Voter
         self::VIEW,
         self::EDIT,
         self::EVALUATE_RECEVABILITE,
+        self::STATUER_RECEVABILITE,
         self::EVALUATE_ADMISSIBILITE,
         self::ACCOMPAGNER,
         self::PAY,
@@ -86,6 +90,7 @@ class CandidatureVoter extends Voter
             self::VIEW                   => $this->peutVoir($subject, $user),
             self::EDIT                   => $this->peutModifier($subject, $user),
             self::EVALUATE_RECEVABILITE  => $this->peutEvaluerRecevabilite($subject, $user),
+            self::STATUER_RECEVABILITE   => $this->peutStatuerRecevabilite($subject, $user),
             self::EVALUATE_ADMISSIBILITE => $this->peutEvaluerAdmissibilite($subject, $user),
             self::ACCOMPAGNER            => $this->peutAccompagner($subject, $user),
             self::PAY                    => $this->peutPayer($subject, $user),
@@ -105,7 +110,9 @@ class CandidatureVoter extends Voter
         }
 
         if ($this->estDuMemeCentre($candidature, $user)
-            && ($this->aRole($user, Role::CONSEILLER) || $this->aRole($user, Role::AGENT_ACCUEIL))) {
+            && ($this->aRole($user, Role::CONSEILLER)
+                || $this->aRole($user, Role::AGENT_ACCUEIL)
+                || $this->aRole($user, Role::JURY_LOCAL))) {
             return true;
         }
 
@@ -114,13 +121,15 @@ class CandidatureVoter extends Voter
 
     /**
      * Le justificatif d'expérience, joint par le conseiller : le candidat le
-     * consulte, le conseiller du centre et l'accompagnateur aussi ; l'agent
-     * d'accueil, qui voit les autres pièces de son centre, ne le voit pas.
+     * consulte, le conseiller et le jury local du centre aussi (le jury fonde
+     * sa décision de recevabilité dessus), ainsi que l'accompagnateur ;
+     * l'agent d'accueil, qui voit les autres pièces de son centre, ne le voit pas.
      */
     private function peutVoirPiecesConseiller(Candidature $candidature, User $user): bool
     {
         return $this->estLeCandidat($candidature, $user)
-            || ($this->aRole($user, Role::CONSEILLER) && $this->estDuMemeCentre($candidature, $user))
+            || (($this->aRole($user, Role::CONSEILLER) || $this->aRole($user, Role::JURY_LOCAL))
+                && $this->estDuMemeCentre($candidature, $user))
             || $this->estSonAccompagnateur($candidature, $user);
     }
 
@@ -154,6 +163,17 @@ class CandidatureVoter extends Voter
     private function peutEvaluerRecevabilite(Candidature $candidature, User $user): bool
     {
         return $this->aRole($user, Role::CONSEILLER) && $this->estDuMemeCentre($candidature, $user);
+    }
+
+    /**
+     * La recevabilité n'est plus prononcée par le conseiller qui a étudié le
+     * dossier, mais par le jury local de son centre. Le moment (dossier
+     * INSCRIT) est contrôlé par RecevabiliteService, pas ici : le droit
+     * d'afficher le formulaire et celui d'enregistrer restent identiques.
+     */
+    private function peutStatuerRecevabilite(Candidature $candidature, User $user): bool
+    {
+        return $this->aRole($user, Role::JURY_LOCAL) && $this->estDuMemeCentre($candidature, $user);
     }
 
     /**

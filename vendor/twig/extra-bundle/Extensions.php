@@ -36,8 +36,8 @@ final class Extensions
             'class' => HtmlExtension::class,
             'class_name' => 'HtmlExtension',
             'package' => 'twig/html-extra',
-            'filters' => ['data_uri'],
-            'functions' => ['html_classes'],
+            'filters' => ['data_uri', 'html_attr_merge', 'html_attr_type'],
+            'functions' => ['html_classes', 'html_cva', 'html_attr'],
             'tags' => [],
         ],
         'markdown' => [
@@ -57,9 +57,11 @@ final class Extensions
             'filters' => ['country_name', 'currency_name', 'currency_symbol', 'language_name', 'locale_name', 'timezone_name',
                 'format_currency', 'format_number', 'format_decimal_number', 'format_currency_number',
                 'format_percent_number', 'format_scientific_number', 'format_spellout_number', 'format_ordinal_number',
-                'format_duration_number', 'format_date', 'format_datetime', 'format_time',
+                'format_duration_number', 'format_date', 'format_datetime', 'format_time', 'format_list',
             ],
-            'functions' => ['country_timezones'],
+            'functions' => ['country_timezones', 'language_names', 'script_names', 'country_names',
+                'locale_names', 'currency_names', 'timezone_names',
+            ],
             'tags' => [],
         ],
         'cssinliner' => [
@@ -85,7 +87,7 @@ final class Extensions
             'class' => StringExtension::class,
             'class_name' => 'StringExtension',
             'package' => 'twig/string-extra',
-            'filters' => ['u'],
+            'filters' => ['u', 'slug', 'plural', 'singular'],
             'functions' => [],
             'tags' => [],
         ],
@@ -99,7 +101,7 @@ final class Extensions
     public static function getFilter(string $name): array
     {
         foreach (self::EXTENSIONS as $extension) {
-            if (\in_array($name, $extension['filters'])) {
+            if (\in_array($name, $extension['filters'], true)) {
                 return [$extension['class_name'], $extension['package']];
             }
         }
@@ -110,7 +112,7 @@ final class Extensions
     public static function getFunction(string $name): array
     {
         foreach (self::EXTENSIONS as $extension) {
-            if (\in_array($name, $extension['functions'])) {
+            if (\in_array($name, $extension['functions'], true)) {
                 return [$extension['class_name'], $extension['package']];
             }
         }
@@ -121,7 +123,7 @@ final class Extensions
     public static function getTag(string $name): array
     {
         foreach (self::EXTENSIONS as $extension) {
-            if (\in_array($name, $extension['tags'])) {
+            if (\in_array($name, $extension['tags'], true)) {
                 return [$extension['class_name'], $extension['package']];
             }
         }

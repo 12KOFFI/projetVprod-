@@ -56,3 +56,17 @@ yarn-error.log
 
 # Les tests restent en local : ils n'ont pas leur place sur l'hebergement mutualise.
 /tests/
+
+# Outillage et documentation de la branche de developpement : volontairement
+# hors du depot de deploiement (l'hebergement n'en a aucun usage et
+# .claude/skills/impeccable embarque un binaire de 20 Mo).
+/.agents/
+/.claude/
+/.impeccable/
+/CLAUDE.md
+/DESIGN.md
+/PRODUCT.md
+/GUIDE_PLAYWRIGHT.md
+/modifs.txt
+/final.txt
+/php.ini.bak

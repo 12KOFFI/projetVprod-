@@ -94,7 +94,8 @@
    En-tête : annonce de la session et parcours en 4 étapes.
    Sur téléphone : titre → texte et dates → animation → étapes.
    ============================================================ #}
-<section id="session" class="bg-primary-50 border-b border-primary-200 scroll-mt-24">
+<section id="hero" class="bg-primary-50 border-b border-primary-200 scroll-mt-24">
+    <span id="session" class="sr-only"></span>
     <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10 md:py-16 grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-12 lg:gap-x-14 lg:gap-y-7">
 
         <div class="lg:col-span-7 lg:self-end">
@@ -104,10 +105,17 @@
             <p class="mt-4 sm:mt-5 text-base sm:text-lg leading-relaxed text-slate-700 max-w-[52ch]">
                Avec la VAE, faites reconnaître vos compétences par un Certificat de Qualification Professionnelle (CQP) ou un Certificat d’Aptitude Professionnelle (CAP).
             </p>
-            <p class="mt-5 inline-flex items-start gap-3 rounded-lg border border-primary-200 bg-white px-4 py-3 text-base text-slate-700">
-                <i class="fas fa-calendar-days mt-1 text-primary-700" aria-hidden="true"></i>
-                <span>Accueil et inscription <strong class="font-bold text-primary-900 tabular-nums">du 21 septembre au 17 octobre 2026</strong></span>
-            </p>
+            <div class="mt-5 flex flex-col items-start gap-3">
+                <p class="inline-flex items-start gap-3 rounded-lg border border-primary-200 bg-white px-4 py-3 text-base text-slate-700">
+                    <i class="fas fa-calendar-days mt-1 text-primary-700" aria-hidden="true"></i>
+                    <span>Accueil et inscription <strong class="font-bold text-primary-900 tabular-nums">du 21 septembre au 17 octobre 2026</strong></span>
+                </p>
+                <a href="{{ asset('document/communiquer.docx') }}" download
+                   class="inline-flex min-h-[36px] items-center gap-2 text-sm sm:text-base font-semibold text-primary-800 underline underline-offset-4 hover:text-primary-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700">
+                    <i class="fas fa-download text-sm" aria-hidden="true"></i>
+                    Télécharger le communiqué officiel
+                </a>
+            </div>
         </div>
 
         {# Le parcours VAE en motion design, en 5 « phases » (la page, elle, a
@@ -311,8 +319,8 @@
                         </div>
                     </dl>
                     <p class="mt-3 text-sm leading-relaxed text-slate-600">
-                        Ces frais couvrent l'inscription et l'analyse de l'éligibilité,
-                        l'accompagnement et les droits d'examen de certification.
+                        Ces frais couvrent l'inscription, l'analyse de l'éligibilité,
+                        l'accompagnement ainsi que les droits d'examen de certification.
                     </p>
                 </div>
             </li>
@@ -321,11 +329,11 @@
         {# 2.2 — Métier et centre : deux grandes entrées vers la page dédiée
            (app_metiers_centres), où tous les métiers et tous les centres sont
            affichés et se filtrent pendant la frappe. #}
-        <div class="mt-10">
+        <div id="verifier-metier-centre" class="mt-10 scroll-mt-24">
             <h3 class="flex items-center gap-3 text-xl font-bold text-slate-800"><i class="fas fa-magnifying-glass text-indigo-700" aria-hidden="true"></i>Vérifiez votre métier et votre centre VAE</h3>
 
             {% set acces = [
-                { url: path('app_metiers_centres') ~ '#metiers', icone: 'fa-screwdriver-wrench', titre: 'Voir tous les métiers VAE', detail: 'Mon métier est-il concerné ? Consultez la liste des métiers de la session 2026.' },
+                { url: path('app_metiers_centres') ~ '#metiers', icone: 'fa-screwdriver-wrench', titre: 'Trouver mon métier', detail: 'Mon métier est-il concerné ? Consultez la liste des métiers de la session 2026.' },
                 { url: path('app_metiers_centres') ~ '#centres', icone: 'fa-location-dot', titre: 'Trouver mon centre VAE', detail: 'Trouvez le centre VAE de votre ville et les métiers qu’il propose.' }
             ] %}
             <ul class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">

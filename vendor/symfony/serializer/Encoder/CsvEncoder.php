@@ -38,7 +38,7 @@ class CsvEncoder implements EncoderInterface, DecoderInterface
 
     private const FORMULAS_START_CHARACTERS = ['=', '-', '+', '@', "\t", "\r"];
 
-    private $defaultContext = [
+    private array $defaultContext = [
         self::DELIMITER_KEY => ',',
         self::ENCLOSURE_KEY => '"',
         self::ESCAPE_CHAR_KEY => '',
@@ -65,6 +65,10 @@ class CsvEncoder implements EncoderInterface, DecoderInterface
         } elseif (empty($data)) {
             $data = [[]];
         } else {
+            if ($data instanceof \Traversable) {
+                // Generators can only be iterated once — convert to array to allow multiple traversals
+                $data = iterator_to_array($data);
+            }
             // Sequential arrays of arrays are considered as collections
             $i = 0;
             foreach ($data as $key => $value) {
@@ -90,7 +94,15 @@ class CsvEncoder implements EncoderInterface, DecoderInterface
         $endOfLine = $context[self::END_OF_LINE] ?? $this->defaultContext[self::END_OF_LINE];
 
         if (!($context[self::NO_HEADERS_KEY] ?? $this->defaultContext[self::NO_HEADERS_KEY])) {
-            fputcsv($handle, $headers, $delimiter, $enclosure, $escapeChar);
+            $headerRow = $headers;
+            if ($escapeFormulas) {
+                foreach ($headerRow as $i => $header) {
+                    if (\in_array(substr((string) $header, 0, 1), self::FORMULAS_START_CHARACTERS, true)) {
+                        $headerRow[$i] = "'".$header;
+                    }
+                }
+            }
+            fputcsv($handle, $headerRow, $delimiter, $enclosure, $escapeChar);
             if ("\n" !== $endOfLine && 0 === fseek($handle, -1, \SEEK_CUR)) {
                 fwrite($handle, $endOfLine);
             }
@@ -148,10 +160,17 @@ class CsvEncoder implements EncoderInterface, DecoderInterface
                 $nbHeaders = $nbCols;
 
                 if ($context[self::NO_HEADERS_KEY] ?? $this->defaultContext[self::NO_HEADERS_KEY]) {
+                    $userHeaders = $context[self::HEADERS_KEY] ?? $this->defaultContext[self::HEADERS_KEY];
                     for ($i = 0; $i < $nbCols; ++$i) {
-                        $headers[] = [$i];
+                        if (isset($userHeaders[$i])) {
+                            $header = explode($keySeparator, $userHeaders[$i]);
+                            $headers[] = $header;
+                            $headerCount[] = \count($header);
+                        } else {
+                            $headers[] = [$i];
+                            $headerCount[] = 1;
+                        }
                     }
-                    $headerCount = array_fill(0, $nbCols, 1);
                 } else {
                     foreach ($cols as $col) {
                         $header = explode($keySeparator, $col ?? '');
@@ -168,18 +187,24 @@ class CsvEncoder implements EncoderInterface, DecoderInterface
                 $depth = $headerCount[$i];
                 $arr = &$item;
                 for ($j = 0; $j < $depth; ++$j) {
+                    $headerName = $headers[$i][$j];
+
+                    if ('' === $headerName) {
+                        $headerName = $i;
+                    }
+
                     // Handle nested arrays
                     if ($j === ($depth - 1)) {
-                        $arr[$headers[$i][$j]] = $cols[$i];
+                        $arr[$headerName] = $cols[$i];
 
                         continue;
                     }
 
-                    if (!isset($arr[$headers[$i][$j]])) {
-                        $arr[$headers[$i][$j]] = [];
+                    if (!isset($arr[$headerName])) {
+                        $arr[$headerName] = [];
                     }
 
-                    $arr = &$arr[$headers[$i][$j]];
+                    $arr = &$arr[$headerName];
                 }
             }
 
@@ -207,7 +232,7 @@ class CsvEncoder implements EncoderInterface, DecoderInterface
     /**
      * Flattens an array and generates keys including the path.
      */
-    private function flatten(iterable $array, array &$result, string $keySeparator, string $parentKey = '', bool $escapeFormulas = false)
+    private function flatten(iterable $array, array &$result, string $keySeparator, string $parentKey = '', bool $escapeFormulas = false): void
     {
         foreach ($array as $key => $value) {
             if (is_iterable($value)) {
@@ -235,7 +260,7 @@ class CsvEncoder implements EncoderInterface, DecoderInterface
         $asCollection = $context[self::AS_COLLECTION_KEY] ?? $this->defaultContext[self::AS_COLLECTION_KEY];
 
         if (!\is_array($headers)) {
-            throw new InvalidArgumentException(sprintf('The "%s" context variable must be an array or null, given "%s".', self::HEADERS_KEY, get_debug_type($headers)));
+            throw new InvalidArgumentException(\sprintf('The "%s" context variable must be an array or null, given "%s".', self::HEADERS_KEY, get_debug_type($headers)));
         }
 
         return [$delimiter, $enclosure, $escapeChar, $keySeparator, $headers, $escapeFormulas, $outputBom, $asCollection];

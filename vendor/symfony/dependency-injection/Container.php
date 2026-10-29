@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\DependencyInjection;
 
+use ProxyManager\Proxy\LazyLoadingInterface;
 use Symfony\Component\DependencyInjection\Argument\RewindableGenerator;
 use Symfony\Component\DependencyInjection\Argument\ServiceLocator as ArgumentServiceLocator;
 use Symfony\Component\DependencyInjection\Exception\EnvNotFoundException;
@@ -22,7 +23,9 @@ use Symfony\Component\DependencyInjection\Exception\ServiceCircularReferenceExce
 use Symfony\Component\DependencyInjection\Exception\ServiceNotFoundException;
 use Symfony\Component\DependencyInjection\ParameterBag\EnvPlaceholderParameterBag;
 use Symfony\Component\DependencyInjection\ParameterBag\FrozenParameterBag;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use Symfony\Component\VarExporter\LazyObjectInterface;
 use Symfony\Contracts\Service\ResetInterface;
 
 // Help opcache.preload discover always-needed symbols
@@ -34,7 +37,7 @@ class_exists(ArgumentServiceLocator::class);
  *
  * It gives access to object instances (services).
  * Services and parameters are simple key/pair stores.
- * The container can have four possible behaviors when a service
+ * The container can have five possible behaviors when a service
  * does not exist (or is not initialized for the last case):
  *
  *  * EXCEPTION_ON_INVALID_REFERENCE: Throws an exception at compilation time (the default)
@@ -64,7 +67,9 @@ class Container implements ContainerInterface, ResetInterface
     private bool $compiled = false;
     private \Closure $getEnv;
 
-    public function __construct(ParameterBagInterface $parameterBag = null)
+    private static \Closure $make;
+
+    public function __construct(?ParameterBagInterface $parameterBag = null)
     {
         $this->parameterBag = $parameterBag ?? new EnvPlaceholderParameterBag();
     }
@@ -76,12 +81,17 @@ class Container implements ContainerInterface, ResetInterface
      *
      *  * Parameter values are resolved;
      *  * The parameter bag is frozen.
+     *
+     * @return void
      */
     public function compile()
     {
         $this->parameterBag->resolve();
 
-        $this->parameterBag = new FrozenParameterBag($this->parameterBag->all());
+        $this->parameterBag = new FrozenParameterBag(
+            $this->parameterBag->all(),
+            $this->parameterBag instanceof ParameterBag ? $this->parameterBag->allDeprecated() : []
+        );
 
         $this->compiled = true;
     }
@@ -119,6 +129,9 @@ class Container implements ContainerInterface, ResetInterface
         return $this->parameterBag->has($name);
     }
 
+    /**
+     * @return void
+     */
     public function setParameter(string $name, array|bool|string|int|float|\UnitEnum|null $value)
     {
         $this->parameterBag->set($name, $value);
@@ -129,6 +142,8 @@ class Container implements ContainerInterface, ResetInterface
      *
      * Setting a synthetic service to null resets it: has() returns false and get()
      * behaves in the same way as if the service was never created.
+     *
+     * @return void
      */
     public function set(string $id, ?object $service)
     {
@@ -136,7 +151,7 @@ class Container implements ContainerInterface, ResetInterface
         if (isset($this->privates['service_container']) && $this->privates['service_container'] instanceof \Closure) {
             $initialize = $this->privates['service_container'];
             unset($this->privates['service_container']);
-            $initialize();
+            $initialize($this);
         }
 
         if ('service_container' === $id) {
@@ -147,12 +162,12 @@ class Container implements ContainerInterface, ResetInterface
             if (isset($this->syntheticIds[$id]) || !isset($this->getRemovedIds()[$id])) {
                 // no-op
             } elseif (null === $service) {
-                throw new InvalidArgumentException(sprintf('The "%s" service is private, you cannot unset it.', $id));
+                throw new InvalidArgumentException(\sprintf('The "%s" service is private, you cannot unset it.', $id));
             } else {
-                throw new InvalidArgumentException(sprintf('The "%s" service is private, you cannot replace it.', $id));
+                throw new InvalidArgumentException(\sprintf('The "%s" service is private, you cannot replace it.', $id));
             }
         } elseif (isset($this->services[$id])) {
-            throw new InvalidArgumentException(sprintf('The "%s" service is already initialized, you cannot replace it.', $id));
+            throw new InvalidArgumentException(\sprintf('The "%s" service is already initialized, you cannot replace it.', $id));
         }
 
         if (isset($this->aliases[$id])) {
@@ -188,7 +203,6 @@ class Container implements ContainerInterface, ResetInterface
      *
      * @throws ServiceCircularReferenceException When a circular reference is detected
      * @throws ServiceNotFoundException          When the service is not defined
-     * @throws \Exception                        if an exception has been thrown when the service has been resolved
      *
      * @see Reference
      */
@@ -196,7 +210,7 @@ class Container implements ContainerInterface, ResetInterface
     {
         return $this->services[$id]
             ?? $this->services[$id = $this->aliases[$id] ?? $id]
-            ?? ('service_container' === $id ? $this : ($this->factories[$id] ?? $this->make(...))($id, $invalidBehavior));
+            ?? ('service_container' === $id ? $this : ($this->factories[$id] ?? self::$make ??= self::make(...))($this, $id, $invalidBehavior));
     }
 
     /**
@@ -204,41 +218,41 @@ class Container implements ContainerInterface, ResetInterface
      *
      * As a separate method to allow "get()" to use the really fast `??` operator.
      */
-    private function make(string $id, int $invalidBehavior)
+    private static function make(self $container, string $id, int $invalidBehavior): ?object
     {
-        if (isset($this->loading[$id])) {
-            throw new ServiceCircularReferenceException($id, array_merge(array_keys($this->loading), [$id]));
+        if (isset($container->loading[$id])) {
+            throw new ServiceCircularReferenceException($id, array_merge(array_keys($container->loading), [$id]));
         }
 
-        $this->loading[$id] = true;
+        $container->loading[$id] = true;
 
         try {
-            if (isset($this->fileMap[$id])) {
-                return /* self::IGNORE_ON_UNINITIALIZED_REFERENCE */ 4 === $invalidBehavior ? null : $this->load($this->fileMap[$id]);
-            } elseif (isset($this->methodMap[$id])) {
-                return /* self::IGNORE_ON_UNINITIALIZED_REFERENCE */ 4 === $invalidBehavior ? null : $this->{$this->methodMap[$id]}();
+            if (isset($container->fileMap[$id])) {
+                return /* self::IGNORE_ON_UNINITIALIZED_REFERENCE */ 4 === $invalidBehavior ? null : $container->load($container->fileMap[$id]);
+            } elseif (isset($container->methodMap[$id])) {
+                return /* self::IGNORE_ON_UNINITIALIZED_REFERENCE */ 4 === $invalidBehavior ? null : $container->{$container->methodMap[$id]}($container);
             }
-        } catch (\Exception $e) {
-            unset($this->services[$id]);
+        } catch (\Throwable $e) {
+            unset($container->services[$id], $container->privates[$id]);
 
             throw $e;
         } finally {
-            unset($this->loading[$id]);
+            unset($container->loading[$id]);
         }
 
         if (self::EXCEPTION_ON_INVALID_REFERENCE === $invalidBehavior) {
             if (!$id) {
                 throw new ServiceNotFoundException($id);
             }
-            if (isset($this->syntheticIds[$id])) {
-                throw new ServiceNotFoundException($id, null, null, [], sprintf('The "%s" service is synthetic, it needs to be set at boot time before it can be used.', $id));
+            if (isset($container->syntheticIds[$id])) {
+                throw new ServiceNotFoundException($id, null, null, [], \sprintf('The "%s" service is synthetic, it needs to be set at boot time before it can be used.', $id));
             }
-            if (isset($this->getRemovedIds()[$id])) {
-                throw new ServiceNotFoundException($id, null, null, [], sprintf('The "%s" service or alias has been removed or inlined when the container was compiled. You should either make it public, or stop using the container directly and use dependency injection instead.', $id));
+            if (isset($container->getRemovedIds()[$id])) {
+                throw new ServiceNotFoundException($id, null, null, [], \sprintf('The "%s" service or alias has been removed or inlined when the container was compiled. You should either make it public, or stop using the container directly and use dependency injection instead.', $id));
             }
 
             $alternatives = [];
-            foreach ($this->getServiceIds() as $knownId) {
+            foreach ($container->getServiceIds() as $knownId) {
                 if ('' === $knownId || '.' === $knownId[0]) {
                     continue;
                 }
@@ -270,20 +284,26 @@ class Container implements ContainerInterface, ResetInterface
         return isset($this->services[$id]);
     }
 
+    /**
+     * @return void
+     */
     public function reset()
     {
         $services = $this->services + $this->privates;
-        $this->services = $this->factories = $this->privates = [];
 
         foreach ($services as $service) {
             try {
-                if ($service instanceof ResetInterface) {
+                if ($service instanceof ResetInterface && !self::isUninitializedLazyObject($service)) {
                     $service->reset();
                 }
             } catch (\Throwable) {
                 continue;
             }
         }
+
+        $this->services = $this->factories = $this->privates = [];
+        // the closures that reference the container itself are created again when needed
+        unset($this->getEnv, $this->getService);
     }
 
     /**
@@ -322,6 +342,8 @@ class Container implements ContainerInterface, ResetInterface
 
     /**
      * Creates a service by requiring its factory file.
+     *
+     * @return mixed
      */
     protected function load(string $file)
     {
@@ -355,13 +377,9 @@ class Container implements ContainerInterface, ResetInterface
             $localName = $name;
         }
 
-        if ($processors->has($prefix)) {
-            $processor = $processors->get($prefix);
-        } else {
-            $processor = new EnvVarProcessor($this);
-            if (false === $i) {
-                $prefix = '';
-            }
+        $processor = $processors->has($prefix) ? $processors->get($prefix) : new EnvVarProcessor($this);
+        if (false === $i) {
+            $prefix = '';
         }
 
         $this->resolving[$envName] = true;
@@ -387,13 +405,26 @@ class Container implements ContainerInterface, ResetInterface
             return false !== $registry ? $this->{$registry}[$id] ?? null : null;
         }
         if (false !== $registry) {
-            return $this->{$registry}[$id] ??= $load ? $this->load($method) : $this->{$method}();
+            return $this->{$registry}[$id] ??= $load ? $this->load($method) : $this->{$method}($this);
         }
         if (!$load) {
-            return $this->{$method}();
+            return $this->{$method}($this);
         }
 
-        return ($factory = $this->factories[$id] ?? $this->factories['service_container'][$id] ?? null) ? $factory() : $this->load($method);
+        return ($factory = $this->factories[$id] ?? $this->factories['service_container'][$id] ?? null) ? $factory($this) : $this->load($method);
+    }
+
+    private static function isUninitializedLazyObject(object $service): bool
+    {
+        if ($service instanceof LazyObjectInterface && !$service->isLazyObjectInitialized(true)) {
+            return true;
+        }
+
+        if ($service instanceof LazyLoadingInterface && !$service->isProxyInitialized()) {
+            return true;
+        }
+
+        return \PHP_VERSION_ID >= 80400 && (new \ReflectionClass($service))->isUninitializedLazyObject($service);
     }
 
     private function __clone()

@@ -240,7 +240,7 @@ class AccueilController extends AbstractController
                     $this->addFlash('success', sprintf(
                         'Dossier enregistré sous le numéro <strong class="font-mono">%s</strong>. '
                         . 'Le candidat se connecte avec son email ou son téléphone et le mot de passe choisi.',
-                        htmlspecialchars((string) $candidature->getNumero(), \ENT_QUOTES)
+                        (string) $candidature->getNumero()
                     ));
 
                     return $this->redirectToRoute('app_accueil_candidatures');

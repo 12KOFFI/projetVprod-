@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Doctrine\Bundle\DoctrineBundle\Command;
 
+use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Mapping\Driver\DatabaseDriver;
 use Doctrine\ORM\Tools\Console\MetadataFilter;
 use Doctrine\ORM\Tools\DisconnectedClassMetadataFactory;
@@ -13,6 +16,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
+use function assert;
 use function chmod;
 use function dirname;
 use function file_put_contents;
@@ -30,15 +34,12 @@ use function str_replace;
  */
 class ImportMappingDoctrineCommand extends DoctrineCommand
 {
-    /** @var string[] */
-    private array $bundles;
-
     /** @param string[] $bundles */
-    public function __construct(ManagerRegistry $doctrine, array $bundles)
-    {
+    public function __construct(
+        ManagerRegistry $doctrine,
+        private readonly array $bundles,
+    ) {
         parent::__construct($doctrine);
-
-        $this->bundles = $bundles;
     }
 
     protected function configure(): void
@@ -47,7 +48,7 @@ class ImportMappingDoctrineCommand extends DoctrineCommand
             ->setName('doctrine:mapping:import')
             ->addArgument('name', InputArgument::REQUIRED, 'The bundle or namespace to import the mapping information to')
             ->addArgument('mapping-type', InputArgument::OPTIONAL, 'The mapping type to export the imported mapping information to')
-            ->addOption('em', null, InputOption::VALUE_OPTIONAL, 'The entity manager to use for this command')
+            ->addOption('em', null, InputOption::VALUE_REQUIRED, 'The entity manager to use for this command')
             ->addOption('filter', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'A string pattern used to match entities that should be mapped.')
             ->addOption('force', null, InputOption::VALUE_NONE, 'Force to overwrite existing mapping files.')
             ->addOption('path', null, InputOption::VALUE_REQUIRED, 'The path where the files would be generated (not used when a bundle is passed).')
@@ -91,6 +92,7 @@ EOT);
 
         $namespaceOrBundle = $input->getArgument('name');
         if (isset($this->bundles[$namespaceOrBundle])) {
+            /** @phpstan-ignore method.notFound */
             $bundle    = $this->getApplication()->getKernel()->getBundle($namespaceOrBundle);
             $namespace = $bundle->getNamespace() . '\Entity';
 
@@ -109,6 +111,7 @@ EOT);
             }
         }
 
+        /* @phpstan-ignore class.notFound */
         $cme      = new ClassMetadataExporter();
         $exporter = $cme->getExporter($type);
         $exporter->setOverwriteExistingFiles($input->getOption('force'));
@@ -120,6 +123,7 @@ EOT);
 
         $em = $this->getEntityManager($input->getOption('em'));
 
+        /* @phpstan-ignore method.notFound (Available in DBAL < 4) */
         $databaseDriver = new DatabaseDriver($em->getConnection()->getSchemaManager());
         $em->getConfiguration()->setMetadataDriverImpl($databaseDriver);
 
@@ -133,6 +137,7 @@ EOT);
         if ($metadata) {
             $output->writeln(sprintf('Importing mapping information from "<info>%s</info>" entity manager', $emName));
             foreach ($metadata as $class) {
+                assert($class instanceof ClassMetadata);
                 $className   = $class->name;
                 $class->name = $namespace . '\\' . $className;
                 if ($type === 'annotation') {

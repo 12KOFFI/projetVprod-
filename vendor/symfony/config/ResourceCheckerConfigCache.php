@@ -105,11 +105,13 @@ class ResourceCheckerConfigCache implements ConfigCacheInterface
      * @param string              $content  The content to write in the cache
      * @param ResourceInterface[] $metadata An array of metadata
      *
+     * @return void
+     *
      * @throws \RuntimeException When cache file can't be written
      */
-    public function write(string $content, array $metadata = null)
+    public function write(string $content, ?array $metadata = null)
     {
-        $mode = 0666;
+        $mode = 0o666;
         $umask = umask();
         $filesystem = new Filesystem();
         $filesystem->dumpFile($this->file, $content);
@@ -141,14 +143,14 @@ class ResourceCheckerConfigCache implements ConfigCacheInterface
         return $this->file.'.meta';
     }
 
-    private function safelyUnserialize(string $file)
+    private function safelyUnserialize(string $file): mixed
     {
         $meta = false;
         $content = file_get_contents($file);
         $signalingException = new \UnexpectedValueException();
         $prevUnserializeHandler = ini_set('unserialize_callback_func', self::class.'::handleUnserializeCallback');
-        $prevErrorHandler = set_error_handler(function ($type, $msg, $file, $line, $context = []) use (&$prevErrorHandler, $signalingException) {
-            if (__FILE__ === $file) {
+        $prevErrorHandler = set_error_handler(static function ($type, $msg, $file, $line, $context = []) use (&$prevErrorHandler, $signalingException) {
+            if (__FILE__ === $file && !\in_array($type, [\E_DEPRECATED, \E_USER_DEPRECATED], true)) {
                 throw $signalingException;
             }
 
@@ -156,7 +158,7 @@ class ResourceCheckerConfigCache implements ConfigCacheInterface
         });
 
         try {
-            $meta = unserialize($content);
+            $meta = unserialize($content, ['allowed_classes' => true]);
         } catch (\Throwable $e) {
             if ($e !== $signalingException) {
                 throw $e;
@@ -172,7 +174,7 @@ class ResourceCheckerConfigCache implements ConfigCacheInterface
     /**
      * @internal
      */
-    public static function handleUnserializeCallback(string $class)
+    public static function handleUnserializeCallback(string $class): void
     {
         trigger_error('Class not found: '.$class);
     }

@@ -57,14 +57,16 @@ class Stopwatch implements ResetInterface
      *
      * @param string|null $id The id of the session to re-open, null to create a new one
      *
+     * @return void
+     *
      * @throws \LogicException When the section to re-open is not reachable
      */
-    public function openSection(string $id = null)
+    public function openSection(?string $id = null)
     {
         $current = end($this->activeSections);
 
         if (null !== $id && null === $current->get($id)) {
-            throw new \LogicException(sprintf('The section "%s" has been started at an other level and cannot be opened.', $id));
+            throw new \LogicException(\sprintf('The section "%s" has been started at an other level and cannot be opened.', $id));
         }
 
         $this->start('__section__.child', 'section');
@@ -78,6 +80,8 @@ class Stopwatch implements ResetInterface
      * The id parameter is used to retrieve the events from this section.
      *
      * @see getSectionEvents()
+     *
+     * @return void
      *
      * @throws \LogicException When there's no started section to be stopped
      */
@@ -96,7 +100,7 @@ class Stopwatch implements ResetInterface
     /**
      * Starts an event.
      */
-    public function start(string $name, string $category = null): StopwatchEvent
+    public function start(string $name, ?string $category = null): StopwatchEvent
     {
         return end($this->activeSections)->startEvent($name, $category);
     }
@@ -145,6 +149,8 @@ class Stopwatch implements ResetInterface
 
     /**
      * Resets the stopwatch to its original state.
+     *
+     * @return void
      */
     public function reset()
     {

@@ -32,7 +32,7 @@ class PhpProcess extends Process
      * @param int         $timeout The timeout in seconds
      * @param array|null  $php     Path to the PHP binary to use with any additional arguments
      */
-    public function __construct(string $script, string $cwd = null, array $env = null, int $timeout = 60, array $php = null)
+    public function __construct(string $script, ?string $cwd = null, ?array $env = null, int $timeout = 60, ?array $php = null)
     {
         if (null === $php) {
             $executableFinder = new PhpExecutableFinder();
@@ -42,7 +42,12 @@ class PhpProcess extends Process
         if ('phpdbg' === \PHP_SAPI) {
             $file = tempnam(sys_get_temp_dir(), 'dbg');
             file_put_contents($file, $script);
-            register_shutdown_function('unlink', $file);
+            $pid = getmypid();
+            register_shutdown_function(static function () use ($file, $pid) {
+                if ($pid === getmypid()) {
+                    unlink($file);
+                }
+            });
             $php[] = $file;
             $script = null;
         }
@@ -50,12 +55,15 @@ class PhpProcess extends Process
         parent::__construct($php, $cwd, $env, $script, $timeout);
     }
 
-    public static function fromShellCommandline(string $command, string $cwd = null, array $env = null, mixed $input = null, ?float $timeout = 60): static
+    public static function fromShellCommandline(string $command, ?string $cwd = null, ?array $env = null, mixed $input = null, ?float $timeout = 60): static
     {
-        throw new LogicException(sprintf('The "%s()" method cannot be called when using "%s".', __METHOD__, self::class));
+        throw new LogicException(\sprintf('The "%s()" method cannot be called when using "%s".', __METHOD__, self::class));
     }
 
-    public function start(callable $callback = null, array $env = [])
+    /**
+     * @return void
+     */
+    public function start(?callable $callback = null, array $env = [])
     {
         if (null === $this->getCommandLine()) {
             throw new RuntimeException('Unable to find the PHP executable.');

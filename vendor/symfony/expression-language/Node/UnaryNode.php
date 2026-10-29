@@ -35,7 +35,7 @@ class UnaryNode extends Node
         );
     }
 
-    public function compile(Compiler $compiler)
+    public function compile(Compiler $compiler): void
     {
         $compiler
             ->raw('(')
@@ -45,13 +45,14 @@ class UnaryNode extends Node
         ;
     }
 
-    public function evaluate(array $functions, array $values)
+    public function evaluate(array $functions, array $values): mixed
     {
         $value = $this->nodes['node']->evaluate($functions, $values);
 
         return match ($this->attributes['operator']) {
             'not',
             '!' => !$value,
+            '+' => +$value,
             '-' => -$value,
             default => $value,
         };

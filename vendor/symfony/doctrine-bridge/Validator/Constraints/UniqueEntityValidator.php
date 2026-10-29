@@ -27,15 +27,15 @@ use Symfony\Component\Validator\Exception\UnexpectedValueException;
  */
 class UniqueEntityValidator extends ConstraintValidator
 {
-    private ManagerRegistry $registry;
-
-    public function __construct(ManagerRegistry $registry)
-    {
-        $this->registry = $registry;
+    public function __construct(
+        private readonly ManagerRegistry $registry,
+    ) {
     }
 
     /**
      * @param object $entity
+     *
+     * @return void
      *
      * @throws UnexpectedTypeException
      * @throws ConstraintDefinitionException
@@ -56,7 +56,7 @@ class UniqueEntityValidator extends ConstraintValidator
 
         $fields = (array) $constraint->fields;
 
-        if (0 === \count($fields)) {
+        if (!$fields) {
             throw new ConstraintDefinitionException('At least one field has to be specified.');
         }
 
@@ -69,42 +69,44 @@ class UniqueEntityValidator extends ConstraintValidator
         }
 
         if ($constraint->em) {
-            $em = $this->registry->getManager($constraint->em);
-
-            if (!$em) {
-                throw new ConstraintDefinitionException(sprintf('Object manager "%s" does not exist.', $constraint->em));
+            try {
+                $em = $this->registry->getManager($constraint->em);
+            } catch (\InvalidArgumentException $e) {
+                throw new ConstraintDefinitionException(\sprintf('Object manager "%s" does not exist.', $constraint->em), 0, $e);
             }
         } else {
             $em = $this->registry->getManagerForClass($entity::class);
 
             if (!$em) {
-                throw new ConstraintDefinitionException(sprintf('Unable to find the object manager associated with an entity of class "%s".', get_debug_type($entity)));
+                throw new ConstraintDefinitionException(\sprintf('Unable to find the object manager associated with an entity of class "%s".', get_debug_type($entity)));
             }
         }
 
         $class = $em->getClassMetadata($entity::class);
 
         $criteria = [];
-        $hasNullValue = false;
+        $hasIgnorableNullValue = false;
 
         foreach ($fields as $fieldName) {
             if (!$class->hasField($fieldName) && !$class->hasAssociation($fieldName)) {
-                throw new ConstraintDefinitionException(sprintf('The field "%s" is not mapped by Doctrine, so it cannot be validated for uniqueness.', $fieldName));
+                throw new ConstraintDefinitionException(\sprintf('The field "%s" is not mapped by Doctrine, so it cannot be validated for uniqueness.', $fieldName));
             }
 
-            $fieldValue = $class->reflFields[$fieldName]->getValue($entity);
-
-            if (null === $fieldValue) {
-                $hasNullValue = true;
+            if (property_exists($class, 'propertyAccessors')) {
+                $fieldValue = $class->propertyAccessors[$fieldName]->getValue($entity);
+            } else {
+                $fieldValue = $class->reflFields[$fieldName]->getValue($entity);
             }
 
-            if ($constraint->ignoreNull && null === $fieldValue) {
+            if (null === $fieldValue && $this->ignoreNullForField($constraint, $fieldName)) {
+                $hasIgnorableNullValue = true;
+
                 continue;
             }
 
             $criteria[$fieldName] = $fieldValue;
 
-            if (null !== $criteria[$fieldName] && $class->hasAssociation($fieldName)) {
+            if (\is_object($criteria[$fieldName]) && $class->hasAssociation($fieldName)) {
                 /* Ensure the Proxy is initialized before using reflection to
                  * read its identifiers. This is necessary because the wrapped
                  * getter methods in the Proxy are being bypassed.
@@ -114,7 +116,7 @@ class UniqueEntityValidator extends ConstraintValidator
         }
 
         // validation doesn't fail if one of the fields is null and if null values should be ignored
-        if ($hasNullValue && $constraint->ignoreNull) {
+        if ($hasIgnorableNullValue) {
             return;
         }
 
@@ -133,7 +135,7 @@ class UniqueEntityValidator extends ConstraintValidator
             $supportedClass = $repository->getClassName();
 
             if (!$entity instanceof $supportedClass) {
-                throw new ConstraintDefinitionException(sprintf('The "%s" entity repository does not support the "%s" entity. The entity should be an instance of or extend "%s".', $constraint->entityClass, $class->getName(), $supportedClass));
+                throw new ConstraintDefinitionException(\sprintf('The "%s" entity repository does not support the "%s" entity. The entity should be an instance of or extend "%s".', $constraint->entityClass, $class->getName(), $supportedClass));
             }
         } else {
             $repository = $em->getRepository($entity::class);
@@ -193,7 +195,16 @@ class UniqueEntityValidator extends ConstraintValidator
             ->addViolation();
     }
 
-    private function formatWithIdentifiers(ObjectManager $em, ClassMetadata $class, mixed $value)
+    private function ignoreNullForField(UniqueEntity $constraint, string $fieldName): bool
+    {
+        if (\is_bool($constraint->ignoreNull)) {
+            return $constraint->ignoreNull;
+        }
+
+        return \in_array($fieldName, (array) $constraint->ignoreNull, true);
+    }
+
+    private function formatWithIdentifiers(ObjectManager $em, ClassMetadata $class, mixed $value): string
     {
         if (!\is_object($value) || $value instanceof \DateTimeInterface) {
             return $this->formatValue($value, self::PRETTY_DATE);
@@ -217,19 +228,19 @@ class UniqueEntityValidator extends ConstraintValidator
         }
 
         if (!$identifiers) {
-            return sprintf('object("%s")', $idClass);
+            return \sprintf('object("%s")', $idClass);
         }
 
         array_walk($identifiers, function (&$id, $field) {
             if (!\is_object($id) || $id instanceof \DateTimeInterface) {
                 $idAsString = $this->formatValue($id, self::PRETTY_DATE);
             } else {
-                $idAsString = sprintf('object("%s")', $id::class);
+                $idAsString = \sprintf('object("%s")', $id::class);
             }
 
-            $id = sprintf('%s => %s', $field, $idAsString);
+            $id = \sprintf('%s => %s', $field, $idAsString);
         });
 
-        return sprintf('object("%s") identified by (%s)', $idClass, implode(', ', $identifiers));
+        return \sprintf('object("%s") identified by (%s)', $idClass, implode(', ', $identifiers));
     }
 }

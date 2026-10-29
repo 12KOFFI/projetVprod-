@@ -107,6 +107,10 @@ final class PhpStanTypeHelper
                     // It's safer to fall back to other extractors here, as resolving const types correctly is not easy at the moment
                     return [];
                 }
+                if ($type instanceof IdentifierTypeNode && 'mixed' === $type->name) {
+                    // a union that contains "mixed" is equivalent to "mixed", so it accepts any value
+                    return [];
+                }
                 foreach ($this->extractTypes($type, $nameScope) as $subType) {
                     $types[] = $subType;
                 }
@@ -125,6 +129,13 @@ final class PhpStanTypeHelper
                 return [$mainType];
             }
 
+            $collection = $mainType->isCollection() || is_a($mainType->getClassName(), \Traversable::class, true) || is_a($mainType->getClassName(), \ArrayAccess::class, true);
+
+            // it's safer to fall back to other extractors if the generic type is too abstract
+            if (!$collection && !class_exists($mainType->getClassName()) && !interface_exists($mainType->getClassName(), false)) {
+                return [];
+            }
+
             $collectionKeyTypes = $mainType->getCollectionKeyTypes();
             $collectionKeyValues = [];
             if (1 === \count($node->genericTypes)) {
@@ -140,7 +151,7 @@ final class PhpStanTypeHelper
                 }
             }
 
-            return [new Type($mainType->getBuiltinType(), $mainType->isNullable(), $mainType->getClassName(), true, $collectionKeyTypes, $collectionKeyValues)];
+            return [new Type($mainType->getBuiltinType(), $mainType->isNullable(), $mainType->getClassName(), $collection, $collectionKeyTypes, $collectionKeyValues)];
         }
         if ($node instanceof ArrayShapeNode) {
             return [new Type(Type::BUILTIN_TYPE_ARRAY, false, null, true)];
@@ -178,9 +189,9 @@ final class PhpStanTypeHelper
                 'non-empty-list' => [new Type(Type::BUILTIN_TYPE_ARRAY, false, null, true, new Type(Type::BUILTIN_TYPE_INT))],
                 'non-empty-array' => [new Type(Type::BUILTIN_TYPE_ARRAY, false, null, true)],
                 'mixed' => [], // mixed seems to be ignored in all other extractors
-                'parent' => [new Type(Type::BUILTIN_TYPE_OBJECT, false, $node->name)],
-                'static',
-                'self' => [new Type(Type::BUILTIN_TYPE_OBJECT, false, $nameScope->resolveRootClass())],
+                'parent' => [new Type(Type::BUILTIN_TYPE_OBJECT, false, $nameScope->resolveParentClass() ?? $node->name)],
+                'static' => [new Type(Type::BUILTIN_TYPE_OBJECT, false, $nameScope->resolveRootClass())],
+                'self' => [new Type(Type::BUILTIN_TYPE_OBJECT, false, $nameScope->resolveSelfClass())],
                 'class-string',
                 'html-escaped-string',
                 'lowercase-string',

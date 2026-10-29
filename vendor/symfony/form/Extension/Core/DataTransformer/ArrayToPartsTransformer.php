@@ -68,13 +68,13 @@ class ArrayToPartsTransformer implements DataTransformerInterface
             }
         }
 
-        if (\count($emptyKeys) > 0) {
+        if ($emptyKeys) {
             if (\count($emptyKeys) === \count($this->partMapping)) {
                 // All parts empty
                 return null;
             }
 
-            throw new TransformationFailedException(sprintf('The keys "%s" should not be empty.', implode('", "', $emptyKeys)));
+            throw new TransformationFailedException(\sprintf('The keys "%s" should not be empty.', implode('", "', $emptyKeys)));
         }
 
         return $result;

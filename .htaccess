@@ -1,11 +1,100 @@
-# Racine du projet : tout le trafic est redirige en interne vers public/,
-# qui est la vraie racine web de Symfony.
-# Il n'y a volontairement AUCUNE condition "fichier existant" ici : les fichiers
-# sensibles restes a la racine (.env.local, config/, src/, vendor/, var/, composer.json)
-# ne sont donc jamais servis directement par Apache.
+# ======================================================================
+# .htaccess de la RACINE du projet.
+#
+# Il n'est lu par Apache que lorsque la racine web du domaine pointe sur le
+# dossier du projet. Lorsqu'elle pointe directement sur public/ (montage a
+# privilegier), ce fichier n'est jamais lu : c'est public/.htaccess qui fait
+# foi. La configuration est ecrite pour rester valable dans les deux cas.
+#
+# Durcissement repris de la branche de developpement (audit du 2026-10-29) et
+# adapte : la ou l'amont sert l'application depuis la racine, on conserve ici
+# la reecriture interne vers public/, qui garde les assets de public/build
+# accessibles sous /build/... dans les deux montages.
+# ======================================================================
+
+# ======================================================================
+# 1. PROTECTION DES FICHIERS ET DOSSIERS INTERNES
+# ======================================================================
+
+# Pas de listage de dossier, pas de negociation de contenu
+Options -Indexes -MultiViews
+
+# Fichiers sensibles, quel que soit leur dossier.
+# « ^\.env.* » couvre aussi .env.local, .env.local.php, .env.prod.local ;
+# « error_log » est le journal d'erreurs PHP que cPanel ecrit a la racine.
+<FilesMatch "(^\.env.*|^\.git.*|^\.ht.*|\.(lock|yml|yaml|sql|sql\.gz|log|bak|dist|twig|md)|composer\.(json|lock)|phpunit\.xml(\.dist)?|^error_log)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Dossiers internes du projet : jamais servis directement.
+    #   stockage/ : pieces justificatives des candidats (CNI, photos, diplomes)
+    #   var/      : cache, journaux, imports du jury, sauvegardes
+    #   vendor/, src/, config/, templates/, migrations/, bin/... : code et configuration
+    RewriteRule ^(?:bin|config|migrations|src|stockage|templates|tests|translations|var|vendor|node_modules|assets)(?:/|$) - [F,L]
+
+    # Fichiers et dossiers caches (.env.local, .git/, .htaccess...), sauf
+    # .well-known, dont cPanel a besoin pour renouveler le certificat HTTPS.
+    RewriteRule (?:^|/)\.(?!well-known(?:/|$)) - [F,L]
+
+    # Documents de travail et fichiers techniques poses a la racine du projet
+    # (modifs.txt, CLAUDE.md, rapports .docx, composer.json...). Les documents
+    # publics, eux, sont dans public/document/ et restent telechargeables.
+    RewriteCond %{REQUEST_URI} !^/robots\.txt$
+    RewriteRule ^[^/]+\.(?:md|txt|docx|xlsx|lock|json|dist|bak|ini|log|sql|yaml|yml|cache|sh)$ - [F,L]
+    RewriteRule ^(?:webpack|tailwind|postcss|playwright)\.config\.js$ - [F,L]
+
+    # Aucun script PHP executable dans les dossiers de medias
+    RewriteRule ^(?:public/)?media/.*\.php$ - [F,L]
+    RewriteRule ^(?:public/)?image/.*\.php$ - [F,L]
+    RewriteRule ^(?:public/)?document/.*\.php$ - [F,L]
+</IfModule>
+
+# ======================================================================
+# 2. EN-TETES HTTP DE SECURITE
+# (l'application les pose aussi via EntetesSecuriteSubscriber ;
+#  « set » plutot que « add » evite tout doublon)
+# ======================================================================
+<IfModule mod_headers.c>
+    # Empeche l'integration du site dans une iframe externe (clickjacking)
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # Empeche le navigateur de deviner le type MIME des fichiers
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Ancien filtre XSS des navigateurs : desactive, comme le recommande
+    # l'OWASP (« 1; mode=block » pouvait lui-meme etre detourne). La
+    # protection reelle est l'echappement fait par l'application.
+    Header always set X-XSS-Protection "0"
+
+    # Politique de referent securisee
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Redirection HTTP -> HTTPS : a activer une fois le certificat confirme
+# (ouvrir https://<domaine> sans alerte). Laisser commente si le site passe
+# par Cloudflare en mode « Flexible » : cela creerait une boucle.
+#<IfModule mod_rewrite.c>
+#    RewriteCond %{HTTPS} off
+#    RewriteCond %{REQUEST_URI} !^/\.well-known/
+#    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+#</IfModule>
+
+# ======================================================================
+# 3. ROUTAGE : TOUT LE TRAFIC PASSE PAR public/
+# Volontairement sans condition « fichier existant » : les fichiers restes a
+# la racine sont reecrits vers public/, ou ils n'existent pas, en plus des
+# refus explicites de la section 1.
+# ======================================================================
+<IfModule mod_rewrite.c>
     # Evite la boucle : la requete a deja ete reecrite vers public/
     RewriteRule ^public/ - [L]
 
@@ -22,9 +111,14 @@
 # /!\ Si l'editeur "MultiPHP INI Editor" de cPanel est reutilise, il reinjectera
 #     sa propre section ici : verifier alors qu'elle ne fait pas doublon.
 #
+# Valeurs volontairement plus hautes que celles relevees sur le serveur
+# (128M / 20M / 6M / 30s) : le depot de candidature televerse plusieurs pieces
+# justificatives et la generation PDF depasse 30 s sur les gros dossiers.
 # Regle a respecter : memory_limit >= post_max_size >= upload_max_filesize
 <IfModule php8_module>
    php_flag display_errors Off
+   php_flag log_errors On
+   php_value error_log "error_log"
    php_value max_execution_time 150
    php_value max_input_time 120
    php_value max_input_vars 2000
@@ -36,6 +130,8 @@
 </IfModule>
 <IfModule lsapi_module>
    php_flag display_errors Off
+   php_flag log_errors On
+   php_value error_log "error_log"
    php_value max_execution_time 150
    php_value max_input_time 120
    php_value max_input_vars 2000
@@ -48,7 +144,7 @@
 # END cPanel-generated php ini directives
 
 # php -- BEGIN cPanel-generated handler, do not edit
-# Set the “ea-php83” package as the default “PHP” programming language.
+# Set the "ea-php83" package as the default "PHP" programming language.
 <IfModule mime_module>
   AddHandler application/x-httpd-ea-php83 .php .php8 .phtml
 </IfModule>

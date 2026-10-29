@@ -11,11 +11,13 @@
 
 namespace Symfony\Bundle\FrameworkBundle\Command;
 
+use Psr\Container\ContainerInterface;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Completion\CompletionInput;
 use Symfony\Component\Console\Completion\CompletionSuggestions;
+use Symfony\Component\Console\Exception\InvalidArgumentException;
 use Symfony\Component\Console\Exception\LogicException;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -38,28 +40,43 @@ use Symfony\Component\Yaml\Yaml;
 #[AsCommand(name: 'debug:config', description: 'Dump the current configuration for an extension')]
 class ConfigDebugCommand extends AbstractConfigCommand
 {
-    protected function configure()
+    public function __construct(
+        private ?ContainerInterface $envVarProcessors = null,
+    ) {
+        parent::__construct();
+    }
+
+    protected function configure(): void
     {
+        $commentedHelpFormats = array_map(static fn ($format) => \sprintf('<comment>%s</comment>', $format), $this->getAvailableFormatOptions());
+        $helpFormats = implode('", "', $commentedHelpFormats);
+
         $this
             ->setDefinition([
                 new InputArgument('name', InputArgument::OPTIONAL, 'The bundle name or the extension alias'),
                 new InputArgument('path', InputArgument::OPTIONAL, 'The configuration option path'),
                 new InputOption('resolve-env', null, InputOption::VALUE_NONE, 'Display resolved environment variable values instead of placeholders'),
+                new InputOption('format', null, InputOption::VALUE_REQUIRED, \sprintf('The output format ("%s")', implode('", "', $this->getAvailableFormatOptions())), class_exists(Yaml::class) ? 'txt' : 'json'),
             ])
-            ->setHelp(<<<'EOF'
-The <info>%command.name%</info> command dumps the current configuration for an
-extension/bundle.
+            ->setHelp(<<<EOF
+                The <info>%command.name%</info> command dumps the current configuration for an
+                extension/bundle.
 
-Either the extension alias or bundle name can be used:
+                Either the extension alias or bundle name can be used:
 
-  <info>php %command.full_name% framework</info>
-  <info>php %command.full_name% FrameworkBundle</info>
+                  <info>php %command.full_name% framework</info>
+                  <info>php %command.full_name% FrameworkBundle</info>
 
-For dumping a specific option, add its path as second argument:
+                The <info>--format</info> option specifies the format of the configuration,
+                these are "{$helpFormats}".
 
-  <info>php %command.full_name% framework serializer.enabled</info>
+                  <info>php %command.full_name% framework --format=json</info>
 
-EOF
+                For dumping a specific option, add its path as second argument:
+
+                  <info>php %command.full_name% framework serializer.enabled</info>
+
+                EOF
             )
         ;
     }
@@ -85,12 +102,22 @@ EOF
 
         $config = $this->getConfig($extension, $container, $input->getOption('resolve-env'));
 
-        if (null === $path = $input->getArgument('path')) {
-            $io->title(
-                sprintf('Current configuration for %s', $name === $extensionAlias ? sprintf('extension with alias "%s"', $extensionAlias) : sprintf('"%s"', $name))
-            );
+        $format = $input->getOption('format');
 
-            $io->writeln(Yaml::dump([$extensionAlias => $config], 10));
+        if (\in_array($format, ['txt', 'yml'], true) && !class_exists(Yaml::class)) {
+            $errorIo->error('Setting the "format" option to "txt" or "yaml" requires the Symfony Yaml component. Try running "composer install symfony/yaml" or use "--format=json" instead.');
+
+            return 1;
+        }
+
+        if (null === $path = $input->getArgument('path')) {
+            if ('txt' === $input->getOption('format')) {
+                $io->title(
+                    \sprintf('Current configuration for %s', $name === $extensionAlias ? \sprintf('extension with alias "%s"', $extensionAlias) : \sprintf('"%s"', $name))
+                );
+            }
+
+            $io->writeln($this->convertToFormat([$extensionAlias => $config], $format));
 
             return 0;
         }
@@ -103,11 +130,20 @@ EOF
             return 1;
         }
 
-        $io->title(sprintf('Current configuration for "%s.%s"', $extensionAlias, $path));
+        $io->title(\sprintf('Current configuration for "%s.%s"', $extensionAlias, $path));
 
-        $io->writeln(Yaml::dump($config, 10));
+        $io->writeln($this->convertToFormat($config, $format));
 
         return 0;
+    }
+
+    private function convertToFormat(mixed $config, string $format): string
+    {
+        return match ($format) {
+            'txt', 'yaml' => Yaml::dump($config, 10),
+            'json' => json_encode($config, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE),
+            default => throw new InvalidArgumentException(\sprintf('Supported formats are "%s".', implode('", "', $this->getAvailableFormatOptions()))),
+        };
     }
 
     private function compileContainer(): ContainerBuilder
@@ -117,6 +153,9 @@ EOF
 
         $method = new \ReflectionMethod($kernel, 'buildContainer');
         $container = $method->invoke($kernel);
+        if ($this->envVarProcessors) {
+            $container->set('container.env_var_processors_locator', $this->envVarProcessors);
+        }
         $container->getCompiler()->compile($container);
 
         return $container;
@@ -132,8 +171,8 @@ EOF
         $steps = explode('.', $path);
 
         foreach ($steps as $step) {
-            if (!\array_key_exists($step, $config)) {
-                throw new LogicException(sprintf('Unable to find configuration for "%s.%s".', $alias, $path));
+            if (!\is_array($config) || !\array_key_exists($step, $config)) {
+                throw new LogicException(\sprintf('Unable to find configuration for "%s.%s".', $alias, $path));
             }
 
             $config = $config[$step];
@@ -161,7 +200,7 @@ EOF
         // Fall back to default config if the extension has one
 
         if (!$extension instanceof ConfigurationExtensionInterface && !$extension instanceof ConfigurationInterface) {
-            throw new \LogicException(sprintf('The extension with alias "%s" does not have configuration.', $extensionAlias));
+            throw new \LogicException(\sprintf('The extension with alias "%s" does not have configuration.', $extensionAlias));
         }
 
         $configs = $container->getExtensionConfig($extensionAlias);
@@ -188,6 +227,10 @@ EOF
             } catch (LogicException) {
             }
         }
+
+        if ($input->mustSuggestOptionValuesFor('format')) {
+            $suggestions->suggestValues($this->getAvailableFormatOptions());
+        }
     }
 
     private function getAvailableExtensions(): array
@@ -212,7 +255,7 @@ EOF
         return $availableBundles;
     }
 
-    private function getConfig(ExtensionInterface $extension, ContainerBuilder $container, bool $resolveEnvs = false)
+    private function getConfig(ExtensionInterface $extension, ContainerBuilder $container, bool $resolveEnvs = false): mixed
     {
         return $container->resolveEnvPlaceholders(
             $container->getParameterBag()->resolveValue(
@@ -226,12 +269,17 @@ EOF
         $completionPaths = [];
         foreach ($paths as $key => $values) {
             if (\is_array($values)) {
-                $completionPaths = $completionPaths + self::buildPathsCompletion($values, $prefix.$key.'.');
+                $completionPaths += self::buildPathsCompletion($values, $prefix.$key.'.');
             } else {
                 $completionPaths[$prefix.$key] = null;
             }
         }
 
         return $completionPaths;
+    }
+
+    private function getAvailableFormatOptions(): array
+    {
+        return ['txt', 'yaml', 'json'];
     }
 }

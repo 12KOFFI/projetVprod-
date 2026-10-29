@@ -32,15 +32,22 @@ class SuiviParcours
     /**
      * Libellés du parcours présenté au candidat. Ils décrivent des étapes, et
      * non des statuts : le badge de statut garde, lui, StatutCandidature::libelle().
+     *
+     * Méthode et non constante : « StatutCandidature::X->value » dans une
+     * expression constante exige PHP 8.2, et le serveur peut être en PHP 8.1.
      */
-    private const LIBELLES = [
-        StatutCandidature::PREINSCRIT->value => 'Préinscription',
-        StatutCandidature::INSCRIT->value => 'Inscription',
-        StatutCandidature::DOSSIER_RECEVABLE->value => 'Recevabilité',
-        StatutCandidature::ELIGIBLE->value => 'Éligibilité',
-        StatutCandidature::ADMISSIBLE->value => 'Admissibilité',
-        StatutCandidature::ADMIS_DEFINITIF->value => 'Admission définitive',
-    ];
+    private static function libelleEtape(StatutCandidature $statut): string
+    {
+        return match ($statut) {
+            StatutCandidature::PREINSCRIT => 'Préinscription',
+            StatutCandidature::INSCRIT => 'Inscription',
+            StatutCandidature::DOSSIER_RECEVABLE => 'Recevabilité',
+            StatutCandidature::ELIGIBLE => 'Éligibilité',
+            StatutCandidature::ADMISSIBLE => 'Admissibilité',
+            StatutCandidature::ADMIS_DEFINITIF => 'Admission définitive',
+            default => $statut->libelle(),
+        };
+    }
 
     /**
      * Étapes du parcours, dans l'ordre chronologique :
@@ -60,7 +67,7 @@ class SuiviParcours
 
         $etapes = [[
             'statut' => StatutCandidature::PREINSCRIT,
-            'libelle' => self::LIBELLES[StatutCandidature::PREINSCRIT->value],
+            'libelle' => self::libelleEtape(StatutCandidature::PREINSCRIT),
             'description' => 'Dossier soumis, numéro VAE attribué.',
             'etat' => self::FRANCHIE,
             'date' => $dates[StatutCandidature::PREINSCRIT->value] ?? null,
@@ -85,7 +92,7 @@ class SuiviParcours
             $etat = $etats[$index];
             $etapes[] = [
                 'statut' => $etape,
-                'libelle' => self::LIBELLES[$etape->value],
+                'libelle' => self::libelleEtape($etape),
                 'description' => $this->description($etape, $etat),
                 'etat' => $etat,
                 'date' => $dates[$etape->value] ?? null,

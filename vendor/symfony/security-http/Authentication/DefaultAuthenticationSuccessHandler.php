@@ -45,7 +45,7 @@ class DefaultAuthenticationSuccessHandler implements AuthenticationSuccessHandle
     /**
      * @param array $options Options for processing a successful authentication attempt
      */
-    public function __construct(HttpUtils $httpUtils, array $options = [], LoggerInterface $logger = null)
+    public function __construct(HttpUtils $httpUtils, array $options = [], ?LoggerInterface $logger = null)
     {
         $this->httpUtils = $httpUtils;
         $this->logger = $logger;
@@ -65,6 +65,9 @@ class DefaultAuthenticationSuccessHandler implements AuthenticationSuccessHandle
         return $this->options;
     }
 
+    /**
+     * @return void
+     */
     public function setOptions(array $options)
     {
         $this->options = array_merge($this->defaultOptions, $options);
@@ -96,11 +99,11 @@ class DefaultAuthenticationSuccessHandler implements AuthenticationSuccessHandle
         }
 
         if ($this->logger && $targetUrl) {
-            $this->logger->debug(sprintf('Ignoring query parameter "%s": not a valid URL.', $this->options['target_path_parameter']));
+            $this->logger->debug(\sprintf('Ignoring query parameter "%s": not a valid URL.', $this->options['target_path_parameter']));
         }
 
         $firewallName = $this->getFirewallName();
-        if (null !== $firewallName && $targetUrl = $this->getTargetPath($request->getSession(), $firewallName)) {
+        if (null !== $firewallName && !$request->attributes->getBoolean('_stateless') && $targetUrl = $this->getTargetPath($request->getSession(), $firewallName)) {
             $this->removeTargetPath($request->getSession(), $firewallName);
 
             return $targetUrl;
@@ -110,7 +113,7 @@ class DefaultAuthenticationSuccessHandler implements AuthenticationSuccessHandle
             if (false !== $pos = strpos($targetUrl, '?')) {
                 $targetUrl = substr($targetUrl, 0, $pos);
             }
-            if ($targetUrl && $targetUrl !== $this->httpUtils->generateUri($request, $this->options['login_path'])) {
+            if ($targetUrl && $targetUrl !== $this->httpUtils->generateUri($request, $this->options['login_path']) && $targetUrl !== $request->getSchemeAndHttpHost().$request->getBaseUrl().$request->getPathInfo()) {
                 return $targetUrl;
             }
         }

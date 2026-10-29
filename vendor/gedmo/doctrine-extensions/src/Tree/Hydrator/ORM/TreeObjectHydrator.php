@@ -30,6 +30,8 @@ class TreeObjectHydrator extends ObjectHydrator
     use EntityManagerRetriever;
     use HydratorCompat;
 
+    private const NO_PARENT_ID = '__no-parent__';
+
     /**
      * @var array<string, mixed>
      */
@@ -108,7 +110,7 @@ class TreeObjectHydrator extends ObjectHydrator
 
         foreach ($nodes as $node) {
             $parentProxy = $this->getPropertyValue($node, $this->config['parent']);
-            $parentId = null;
+            $parentId = self::NO_PARENT_ID;
 
             if (null !== $parentProxy) {
                 $parentId = $this->getPropertyValue($parentProxy, $this->idField);
@@ -166,13 +168,13 @@ class TreeObjectHydrator extends ObjectHydrator
 
         foreach ($nodes as $node) {
             $parentProxy = $this->getPropertyValue($node, $this->config['parent']);
-            $parentId = null;
+            $parentId = self::NO_PARENT_ID;
 
             if (null !== $parentProxy) {
                 $parentId = $this->getPropertyValue($parentProxy, $this->idField);
             }
 
-            if (null === $parentId || !array_key_exists($parentId, $idHashmap)) {
+            if (self::NO_PARENT_ID === $parentId || !array_key_exists($parentId, $idHashmap)) {
                 $rootNodes[] = $node;
             }
         }
@@ -247,6 +249,13 @@ class TreeObjectHydrator extends ObjectHydrator
             }
 
             $associationMapping = $meta->getAssociationMapping($property->getName());
+
+            // ORM 3 mapping objects implement ArrayAccess, so both ORM 2 arrays
+            // and ORM 3 objects go through the same path. Owning-side mappings (the parent
+            // ManyToOne) have no `mappedBy`, hence the isset() guard.
+            if (!isset($associationMapping['mappedBy'])) {
+                continue;
+            }
 
             // Make sure the association is mapped by the parent property
             if ($associationMapping['mappedBy'] !== $this->parentField) {

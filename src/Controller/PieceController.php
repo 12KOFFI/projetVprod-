@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 
 /**
@@ -26,6 +27,7 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
  *   - VIEW_PIECES_CONSEILLER pour le justificatif d'expérience, que l'agent
  *     d'accueil ne voit pas.
  */
+#[IsGranted('ROLE_USER')]
 class PieceController extends AbstractController
 {
     public function __construct(

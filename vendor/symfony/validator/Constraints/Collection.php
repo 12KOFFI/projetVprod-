@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\Validator\Constraints;
 
+use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\Exception\ConstraintDefinitionException;
 
 /**
@@ -41,11 +42,9 @@ class Collection extends Composite
     public $extraFieldsMessage = 'This field was not expected.';
     public $missingFieldsMessage = 'This field is missing.';
 
-    public function __construct(mixed $fields = null, array $groups = null, mixed $payload = null, bool $allowExtraFields = null, bool $allowMissingFields = null, string $extraFieldsMessage = null, string $missingFieldsMessage = null)
+    public function __construct(mixed $fields = null, ?array $groups = null, mixed $payload = null, ?bool $allowExtraFields = null, ?bool $allowMissingFields = null, ?string $extraFieldsMessage = null, ?string $missingFieldsMessage = null)
     {
-        // no known options set? $fields is the fields array
-        if (\is_array($fields)
-            && !array_intersect(array_keys($fields), ['groups', 'fields', 'allowExtraFields', 'allowMissingFields', 'extraFieldsMessage', 'missingFieldsMessage'])) {
+        if (self::isFieldsOption($fields)) {
             $fields = ['fields' => $fields];
         }
 
@@ -57,12 +56,15 @@ class Collection extends Composite
         $this->missingFieldsMessage = $missingFieldsMessage ?? $this->missingFieldsMessage;
     }
 
+    /**
+     * @return void
+     */
     protected function initializeNestedConstraints()
     {
         parent::initializeNestedConstraints();
 
         if (!\is_array($this->fields)) {
-            throw new ConstraintDefinitionException(sprintf('The option "fields" is expected to be an array in constraint "%s".', __CLASS__));
+            throw new ConstraintDefinitionException(\sprintf('The option "fields" is expected to be an array in constraint "%s".', __CLASS__));
         }
 
         foreach ($this->fields as $fieldName => $field) {
@@ -73,7 +75,8 @@ class Collection extends Composite
             }
 
             if (!$field instanceof Optional && !$field instanceof Required) {
-                $this->fields[$fieldName] = new Required($field);
+                // when the collection has explicit groups, nested constraints without groups inherit them
+                $this->fields[$fieldName] = new Required($field, isset(get_object_vars($this)['groups']) ? $this->groups : null);
             }
         }
     }
@@ -86,5 +89,32 @@ class Collection extends Composite
     protected function getCompositeOption(): string
     {
         return 'fields';
+    }
+
+    private static function isFieldsOption($options): bool
+    {
+        if (!\is_array($options)) {
+            return false;
+        }
+
+        foreach ($options as $optionOrField) {
+            if ($optionOrField instanceof Constraint) {
+                return true;
+            }
+
+            if (null === $optionOrField) {
+                continue;
+            }
+
+            if (!\is_array($optionOrField)) {
+                return false;
+            }
+
+            if ($optionOrField && !($optionOrField[0] ?? null) instanceof Constraint) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

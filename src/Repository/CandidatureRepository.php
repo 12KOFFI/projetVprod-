@@ -29,14 +29,35 @@ use Doctrine\Persistence\ManagerRegistry;
 class CandidatureRepository extends ServiceEntityRepository
 {
     /**
-     * Préinscrits dont l'étude reste à rendre (jamais étudiés ou refusés).
+     * Préinscrits dont l'étude n'a jamais été rendue : ils attendent le
+     * conseiller VAE.
      */
     public const ETUDE_A_RENDRE = 'a_rendre';
+
+    /**
+     * Préinscrits dont l'étude est refusée. Le conseiller étudie le dossier en
+     * présence du candidat et le corrige sur place : un refus n'attend donc
+     * plus rien de lui. Le dossier reste réétudiable si le candidat revient
+     * avec de nouveaux éléments, mais il ne figure plus parmi les « à étudier ».
+     */
+    public const ETUDE_REFUSEE = 'refusee';
 
     /**
      * Préinscrits dont l'étude est acceptée, en attente des frais de dossier.
      */
     public const ETUDE_ACCEPTEE = 'acceptee';
+
+    /**
+     * Dossiers INSCRIT du centre : la recevabilité reste à prononcer par le
+     * jury local.
+     */
+    public const JURY_A_STATUER = 'a_statuer';
+
+    /**
+     * Dossiers du centre dont la recevabilité est prononcée, quelle que soit
+     * l'étape atteinte depuis.
+     */
+    public const JURY_STATUES = 'statues';
 
     public function __construct(
         ManagerRegistry $registry,
@@ -95,6 +116,7 @@ class CandidatureRepository extends ServiceEntityRepository
 
             case Role::CONSEILLER:
             case Role::AGENT_ACCUEIL:
+            case Role::JURY_LOCAL:
                 // Un membre du personnel sans centre ne voit aucune donnée.
                 $qb->andWhere($alias . '.centre = :perimetreCentre')
                    ->setParameter('perimetreCentre', $user->getCentre());
@@ -233,17 +255,90 @@ class CandidatureRepository extends ServiceEntityRepository
     /**
      * Restreint aux préinscrits selon l'état de leur étude : l'étude ne portant
      * pas de statut propre, c'est le couple (PREINSCRIT calculé, etu_statut) qui
-     * distingue « à étudier » de « accepté, en attente de paiement ».
+     * distingue « à étudier », « refusée » et « acceptée, en attente de paiement ».
      */
     private function filtrerEtude(QueryBuilder $qb, string $etude): void
     {
         $qb->andWhere($this->statut() . ' = :preinscrit')
-           ->setParameter('preinscrit', StatutCandidature::PREINSCRIT->value)
-           ->setParameter('etudeAcceptee', StatutEtude::ACCEPTE->value);
+           ->setParameter('preinscrit', StatutCandidature::PREINSCRIT->value);
 
-        $qb->andWhere($etude === self::ETUDE_ACCEPTEE
-            ? 'c.etuStatut = :etudeAcceptee'
-            : '(c.etuStatut IS NULL OR c.etuStatut != :etudeAcceptee)');
+        match ($etude) {
+            self::ETUDE_ACCEPTEE => $qb->andWhere('c.etuStatut = :etude')->setParameter('etude', StatutEtude::ACCEPTE->value),
+            self::ETUDE_REFUSEE => $qb->andWhere('c.etuStatut = :etude')->setParameter('etude', StatutEtude::REFUSE->value),
+            default => $qb->andWhere('(c.etuStatut IS NULL OR c.etuStatut = :etude)')->setParameter('etude', StatutEtude::EN_ATTENTE->value),
+        };
+    }
+
+    /**
+     * Préinscrits répartis selon leur étude, dans le périmètre de
+     * l'utilisateur : à rendre, refusée, acceptée (en attente de paiement).
+     *
+     * @return array{a_rendre: int, refusee: int, acceptee: int}
+     */
+    public function compterPreinscritsParEtude(User $user): array
+    {
+        $qb = $this->createQueryBuilder('c')
+            ->select('c.etuStatut AS etude, COUNT(c.id) AS effectif')
+            ->andWhere($this->statut() . ' = :preinscrit')
+            ->setParameter('preinscrit', StatutCandidature::PREINSCRIT->value)
+            ->groupBy('c.etuStatut');
+
+        $this->appliquerPerimetre($qb, $user);
+
+        $effectifs = [self::ETUDE_A_RENDRE => 0, self::ETUDE_REFUSEE => 0, self::ETUDE_ACCEPTEE => 0];
+
+        foreach ($qb->getQuery()->getScalarResult() as $ligne) {
+            $cle = match ((int) $ligne['etude']) {
+                StatutEtude::ACCEPTE->value => self::ETUDE_ACCEPTEE,
+                StatutEtude::REFUSE->value => self::ETUDE_REFUSEE,
+                default => self::ETUDE_A_RENDRE,
+            };
+            $effectifs[$cle] += (int) $ligne['effectif'];
+        }
+
+        return $effectifs;
+    }
+
+    /**
+     * Dernières études refusées encore en l'état (dossier toujours préinscrit),
+     * avec leur motif, dans le périmètre de l'utilisateur.
+     *
+     * @return Candidature[]
+     */
+    public function findDerniersRefusEtude(User $user, int $limite = 5): array
+    {
+        $qb = $this->createQueryBuilder('c')
+            ->leftJoin('c.user', 'cand')->addSelect('cand')
+            ->leftJoin('c.centre', 'ce')->addSelect('ce')
+            ->orderBy('c.etuDate', 'DESC')
+            ->setMaxResults($limite);
+
+        $this->filtrerEtude($qb, self::ETUDE_REFUSEE);
+        $this->appliquerPerimetre($qb, $user);
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Dates de dépôt des dossiers déposés depuis une date, dans le périmètre
+     * de l'utilisateur : le regroupement par semaine se fait en PHP, DQL
+     * n'offrant pas de fonction de semaine portable.
+     *
+     * @return list<\DateTimeInterface>
+     */
+    public function findDatesDeDepotDepuis(User $user, \DateTimeInterface $depuis): array
+    {
+        $qb = $this->createQueryBuilder('c')
+            ->select('c.creation AS creation')
+            ->andWhere('c.creation >= :depuis')
+            ->setParameter('depuis', $depuis);
+
+        $this->appliquerPerimetre($qb, $user);
+
+        return array_values(array_filter(array_map(
+            static fn (array $ligne): ?\DateTimeInterface => $ligne['creation'] instanceof \DateTimeInterface ? $ligne['creation'] : null,
+            $qb->getQuery()->getArrayResult()
+        )));
     }
 
     /**
@@ -322,6 +417,77 @@ class CandidatureRepository extends ServiceEntityRepository
         }
 
         return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Dossiers du centre pour l'espace du jury local : ceux à statuer (INSCRIT,
+     * plus anciens d'abord) ou ceux déjà statués (dernières décisions d'abord).
+     *
+     * Le centre provient du compte connecté, jamais de la requête.
+     */
+    public function queryListeJuryLocal(Centre $centre, string $vue = self::JURY_A_STATUER, ?string $recherche = null): \Doctrine\ORM\Query
+    {
+        $qb = $this->createQueryBuilder('c')
+            ->leftJoin('c.user', 'cand')->addSelect('cand')
+            ->leftJoin('c.metier', 'm')->addSelect('m')
+            ->leftJoin('c.conseiller', 'cons')->addSelect('cons')
+            ->andWhere('c.centre = :centre')
+            ->setParameter('centre', $centre);
+
+        if ($vue === self::JURY_STATUES) {
+            $qb->andWhere('c.recStatut IS NOT NULL')
+               ->orderBy('c.recDate', 'DESC');
+        } else {
+            $qb->andWhere($this->statut() . ' = :statut')
+               ->setParameter('statut', StatutCandidature::INSCRIT->value)
+               ->orderBy('c.creation', 'ASC');
+        }
+
+        if ($recherche !== null && $recherche !== '') {
+            $qb->andWhere('c.numero LIKE :recherche OR cand.nom LIKE :recherche OR cand.prenoms LIKE :recherche')
+               ->setParameter('recherche', '%' . $recherche . '%');
+        }
+
+        return $qb->getQuery();
+    }
+
+    /**
+     * Compteurs du tableau de bord du jury local. Les décisions rendues se
+     * comptent sur leur propre colonne (recStatut) : un dossier recevable
+     * devenu éligible depuis reste une décision « recevable » du jury.
+     *
+     * @return array{a_statuer: int, recevables: int, non_recevables: int}
+     */
+    public function compteursJuryLocal(Centre $centre): array
+    {
+        $aStatuer = (int) $this->createQueryBuilder('c')
+            ->select('COUNT(c.id)')
+            ->andWhere('c.centre = :centre')
+            ->andWhere($this->statut() . ' = :statut')
+            ->setParameter('centre', $centre)
+            ->setParameter('statut', StatutCandidature::INSCRIT->value)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $parDecision = [];
+        $lignes = $this->createQueryBuilder('c')
+            ->select('c.recStatut AS decision, COUNT(c.id) AS effectif')
+            ->andWhere('c.centre = :centre')
+            ->andWhere('c.recStatut IS NOT NULL')
+            ->setParameter('centre', $centre)
+            ->groupBy('c.recStatut')
+            ->getQuery()
+            ->getScalarResult();
+
+        foreach ($lignes as $ligne) {
+            $parDecision[(int) $ligne['decision']] = (int) $ligne['effectif'];
+        }
+
+        return [
+            'a_statuer' => $aStatuer,
+            'recevables' => $parDecision[StatutRecevabilite::RECEVABLE->value] ?? 0,
+            'non_recevables' => $parDecision[StatutRecevabilite::NON_RECEVABLE->value] ?? 0,
+        ];
     }
 
     /**
@@ -406,9 +572,13 @@ class CandidatureRepository extends ServiceEntityRepository
             $qb->andWhere('c.centre = :centre')->setParameter('centre', $centre);
         }
 
+        // La colonne stocke « F » / « M » : une légende de graphique doit lire
+        // « Femmes » / « Hommes », pas l'initiale brute.
+        $libelles = ['F' => 'Femmes', 'M' => 'Hommes'];
         $resultats = [];
         foreach ($qb->getQuery()->getScalarResult() as $ligne) {
-            $resultats[(string) ($ligne['sexe'] ?? 'Non renseigné')] = (int) $ligne['effectif'];
+            $sexe = (string) ($ligne['sexe'] ?? '');
+            $resultats[$libelles[$sexe] ?? 'Non renseigné'] = (int) $ligne['effectif'];
         }
 
         return $resultats;
@@ -498,7 +668,7 @@ class CandidatureRepository extends ServiceEntityRepository
     /**
      * Compteurs du tableau de bord conseiller (F4.1).
      *
-     * @return array{a_traiter: int, attente_paiement: int, inscrits: int, recevables: int, non_recevables: int, non_affectees: int}
+     * @return array{a_traiter: int, refusees: int, attente_paiement: int, inscrits: int, recevables: int, non_recevables: int, non_affectees: int}
      */
     public function compteursConseiller(Centre $centre, User $conseiller): array
     {
@@ -516,11 +686,11 @@ class CandidatureRepository extends ServiceEntityRepository
             $parStatut[(int) $ligne['statut']] = (int) $ligne['effectif'];
         }
 
-        $attentePaiement = $this->compterPreinscritsSelonEtude($centre, self::ETUDE_ACCEPTEE);
-
         return [
-            'a_traiter' => ($parStatut[StatutCandidature::PREINSCRIT->value] ?? 0) - $attentePaiement,
-            'attente_paiement' => $attentePaiement,
+            // Études jamais rendues : un refus n'attend plus le conseiller.
+            'a_traiter' => $this->compterPreinscritsSelonEtude($centre, self::ETUDE_A_RENDRE),
+            'refusees' => $this->compterPreinscritsSelonEtude($centre, self::ETUDE_REFUSEE),
+            'attente_paiement' => $this->compterPreinscritsSelonEtude($centre, self::ETUDE_ACCEPTEE),
             'inscrits' => $parStatut[StatutCandidature::INSCRIT->value] ?? 0,
             'recevables' => $parStatut[StatutCandidature::DOSSIER_RECEVABLE->value] ?? 0,
             'non_recevables' => $parStatut[StatutCandidature::DOSSIER_NON_RECEVABLE->value] ?? 0,

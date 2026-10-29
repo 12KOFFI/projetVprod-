@@ -24,10 +24,14 @@ use Symfony\Component\DependencyInjection\Reference;
  */
 class ReplaceAliasByActualDefinitionPass extends AbstractRecursivePass
 {
+    protected bool $skipScalars = true;
+
     private array $replacements;
 
     /**
      * Process the Container to replace aliases with service definitions.
+     *
+     * @return void
      *
      * @throws InvalidArgumentException if the service definition does not exist
      */
@@ -37,7 +41,15 @@ class ReplaceAliasByActualDefinitionPass extends AbstractRecursivePass
         $seenAliasTargets = [];
         $replacements = [];
 
-        foreach ($container->getAliases() as $definitionId => $target) {
+        // Sort aliases so non-deprecated ones come first. This ensures that when
+        // multiple aliases point to the same private definition, non-deprecated
+        // aliases get priority for renaming. Otherwise, the definition might be
+        // renamed to a deprecated alias ID, causing the original service ID to
+        // become an alias to the deprecated one (inverting the alias chain).
+        $aliases = $container->getAliases();
+        uasort($aliases, static fn ($a, $b) => $a->isDeprecated() <=> $b->isDeprecated());
+
+        foreach ($aliases as $definitionId => $target) {
             $targetId = (string) $target;
             // Special case: leave this target alone
             if ('service_container' === $targetId) {
@@ -91,7 +103,7 @@ class ReplaceAliasByActualDefinitionPass extends AbstractRecursivePass
             // Perform the replacement
             $newId = $this->replacements[$referenceId];
             $value = new Reference($newId, $value->getInvalidBehavior());
-            $this->container->log($this, sprintf('Changed reference of service "%s" previously pointing to "%s" to "%s".', $this->currentId, $referenceId, $newId));
+            $this->container->log($this, \sprintf('Changed reference of service "%s" previously pointing to "%s" to "%s".', $this->currentId, $referenceId, $newId));
         }
 
         return parent::processValue($value, $isRoot);

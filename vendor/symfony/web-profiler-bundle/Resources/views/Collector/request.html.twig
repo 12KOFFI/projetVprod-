@@ -1,5 +1,28 @@
 {% extends '@WebProfiler/Profiler/layout.html.twig' %}
 
+{% block head %}
+    {{ parent() }}
+
+    <style>
+        .empty-query-post-files {
+            display: flex;
+            justify-content: space-between;
+        }
+        .empty-query-post-files > div {
+            flex: 1;
+        }
+        .empty-query-post-files > div + div {
+            margin-left: 30px;
+        }
+        .empty-query-post-files h3 {
+            margin-top: 0;
+        }
+        .empty-query-post-files .empty {
+            margin-bottom: 0;
+        }
+    </style>
+{% endblock %}
+
 {% block toolbar %}
     {% set request_handler %}
         {{ _self.set_handler(collector.controller) }}
@@ -248,7 +271,7 @@
             </div>
         </div>
 
-        <div class="tab {{ collector.sessionmetadata is empty ? 'disabled' }}">
+        <div class="tab {{ collector.sessionmetadata is empty and collector.sessionusages is empty ? 'disabled' }}">
             <h3 class="tab-title">Session{% if collector.sessionusages is not empty %} <span class="badge">{{ collector.sessionusages|length }}</span>{% endif %}</h3>
 
             <div class="tab-content">
@@ -308,7 +331,7 @@
                                     {%- if link %}</a>{% else %}</span>{% endif %}
                                     <div class="text-small font-normal">
                                         {% set usage_id = 'session-usage-trace-' ~ key %}
-                                        <a class="btn btn-link text-small sf-toggle" data-toggle-selector="#{{ usage_id }}" data-toggle-alt-content="Hide trace">Show trace</a>
+                                        <button type="button" class="btn btn-link text-small sf-toggle" data-toggle-selector="#{{ usage_id }}" data-toggle-alt-content="Hide trace">Show trace</button>
                                     </div>
                                     <div id="{{ usage_id }}" class="context sf-toggle-content sf-toggle-hidden">
                                         {{ profiler_dump(usage.trace, maxDepth=2) }}
@@ -388,7 +411,7 @@
     </div>
 {% endblock %}
 
-{% macro set_handler(controller, route, method) %}
+{% macro set_handler(controller, route = null, method = null) %}
     {% if controller.class is defined -%}
         {%- if method|default(false) %}<span class="sf-toolbar-status sf-toolbar-redirection-method">{{ method }}</span>{% endif -%}
         {%- set link = controller.file|file_link(controller.line) %}

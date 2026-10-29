@@ -76,8 +76,8 @@ class PersonnelController extends AbstractController
                     'Compte créé pour %s. Mot de passe initial : <strong class="font-mono">%s</strong> — '
                     . 'communiquez-le hors bande, il ne sera plus affiché. Son changement sera demandé '
                     . 'à la première connexion.',
-                    htmlspecialchars($utilisateur->getNomComplet(), \ENT_QUOTES),
-                    htmlspecialchars($motDePasse, \ENT_QUOTES)
+                    (string) $utilisateur->getNomComplet(),
+                    $motDePasse
                 ));
 
                 return $this->redirectToRoute('app_admin_personnel_index');
@@ -134,8 +134,8 @@ class PersonnelController extends AbstractController
         $this->addFlash('success', sprintf(
             'Nouveau mot de passe de %s : <strong class="font-mono">%s</strong> — communiquez-le hors '
             . 'bande, il ne sera plus affiché.',
-            htmlspecialchars($utilisateur->getNomComplet(), \ENT_QUOTES),
-            htmlspecialchars($motDePasse, \ENT_QUOTES)
+            (string) $utilisateur->getNomComplet(),
+            $motDePasse
         ));
 
         return $this->redirectToRoute('app_admin_personnel_index');

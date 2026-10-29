@@ -51,8 +51,6 @@ trait AbstractAdapterTrait
      * Fetches several cache items.
      *
      * @param array $ids The cache identifiers to fetch
-     *
-     * @return array|\Traversable
      */
     abstract protected function doFetch(array $ids): iterable;
 
@@ -127,6 +125,10 @@ trait AbstractAdapterTrait
                 $this->namespaceVersion = $namespaceVersion;
                 $this->ids = [];
             }
+        } elseif (preg_match('#[^-+.:_A-Za-z0-9]#', $prefix)) {
+            CacheItem::log($this->logger, 'Failed to clear the cache: Namespace-prefix contains invalid characters.', ['cache-adapter' => get_debug_type($this)]);
+
+            return false;
         } else {
             $namespaceToClear = $this->namespace.$prefix;
         }
@@ -269,7 +271,7 @@ trait AbstractAdapterTrait
         return $wasEnabled;
     }
 
-    public function reset()
+    public function reset(): void
     {
         if ($this->deferred) {
             $this->commit();
@@ -278,12 +280,12 @@ trait AbstractAdapterTrait
         $this->ids = [];
     }
 
-    public function __sleep(): array
+    public function __serialize(): array
     {
         throw new \BadMethodCallException('Cannot serialize '.__CLASS__);
     }
 
-    public function __wakeup()
+    public function __unserialize(array $data): void
     {
         throw new \BadMethodCallException('Cannot unserialize '.__CLASS__);
     }
@@ -302,7 +304,7 @@ trait AbstractAdapterTrait
         try {
             foreach ($items as $id => $value) {
                 if (!isset($keys[$id])) {
-                    throw new InvalidArgumentException(sprintf('Could not match value id "%s" to keys "%s".', $id, implode('", "', $keys)));
+                    throw new InvalidArgumentException(\sprintf('Could not match value id "%s" to keys "%s".', $id, implode('", "', $keys)));
                 }
                 $key = $keys[$id];
                 unset($keys[$id]);
@@ -320,7 +322,7 @@ trait AbstractAdapterTrait
     /**
      * @internal
      */
-    protected function getId(mixed $key)
+    protected function getId(mixed $key): string
     {
         if ($this->versioningIsEnabled && '' === $this->namespaceVersion) {
             $this->ids = [];
@@ -356,8 +358,8 @@ trait AbstractAdapterTrait
             return $this->namespace.$this->namespaceVersion.$key;
         }
         if (\strlen($id = $this->namespace.$this->namespaceVersion.$key) > $this->maxIdLength) {
-            // Use MD5 to favor speed over security, which is not an issue here
-            $this->ids[$key] = $id = substr_replace(base64_encode(hash('md5', $key, true)), static::NS_SEPARATOR, -(\strlen($this->namespaceVersion) + 2));
+            // Use xxh128 to favor speed over security, which is not an issue here
+            $this->ids[$key] = $id = substr_replace(base64_encode(hash('xxh128', $key, true)), static::NS_SEPARATOR, -(\strlen($this->namespaceVersion) + 2));
             $id = $this->namespace.$this->namespaceVersion.$id;
         }
 
@@ -367,7 +369,7 @@ trait AbstractAdapterTrait
     /**
      * @internal
      */
-    public static function handleUnserializeCallback(string $class)
+    public static function handleUnserializeCallback(string $class): never
     {
         throw new \DomainException('Class not found: '.$class);
     }

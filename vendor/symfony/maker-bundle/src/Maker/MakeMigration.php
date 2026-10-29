@@ -48,18 +48,19 @@ final class MakeMigration extends AbstractMaker implements ApplicationAwareMaker
 
     public static function getCommandDescription(): string
     {
-        return 'Creates a new migration based on database changes';
+        return 'Create a new migration based on database changes';
     }
 
+    /** @return void */
     public function setApplication(Application $application)
     {
         $this->application = $application;
     }
 
-    public function configureCommand(Command $command, InputConfiguration $inputConf)
+    public function configureCommand(Command $command, InputConfiguration $inputConfig): void
     {
         $command
-            ->setHelp(file_get_contents(__DIR__.'/../Resources/help/MakeMigration.txt'))
+            ->setHelp($this->getHelpFileContents('MakeMigration.txt'))
         ;
 
         if (class_exists(MigrationsDiffDoctrineCommand::class)) {
@@ -70,8 +71,15 @@ final class MakeMigration extends AbstractMaker implements ApplicationAwareMaker
                 ->addOption('shard', null, InputOption::VALUE_REQUIRED, 'The shard connection name')
             ;
         }
+
+        $command
+            ->addOption('formatted', null, InputOption::VALUE_NONE, 'Format the generated SQL')
+            ->addOption('nowdoc', null, InputOption::VALUE_NONE, 'Use nowdoc format for generated SQL')
+            ->addOption('configuration', null, InputOption::VALUE_OPTIONAL, 'The path of doctrine configuration file')
+        ;
     }
 
+    /** @return void|int */
     public function generate(InputInterface $input, ConsoleStyle $io, Generator $generator)
     {
         $options = ['doctrine:migrations:diff'];
@@ -88,6 +96,18 @@ final class MakeMigration extends AbstractMaker implements ApplicationAwareMaker
         }
         // end 2.x support
 
+        if ($input->getOption('formatted')) {
+            $options[] = '--formatted';
+        }
+
+        if ($input->getOption('nowdoc')) {
+            $options[] = '--nowdoc';
+        }
+
+        if (null !== $configuration = $input->getOption('configuration')) {
+            $options[] = '--configuration='.$configuration;
+        }
+
         $generateMigrationCommand = $this->application->find('doctrine:migrations:diff');
         $generateMigrationCommandInput = new ArgvInput($options);
 
@@ -99,7 +119,7 @@ final class MakeMigration extends AbstractMaker implements ApplicationAwareMaker
         try {
             $returnCode = $generateMigrationCommand->run($generateMigrationCommandInput, $commandOutput);
 
-            // non-zero code would ideally mean the internal command has already printed an errror
+            // non-zero code would ideally mean the internal command has already printed an error
             // this happens if you "decline" generating a migration when you already
             // have some available
             if (0 !== $returnCode) {
@@ -127,12 +147,12 @@ final class MakeMigration extends AbstractMaker implements ApplicationAwareMaker
         $this->writeSuccessMessage($io);
 
         $io->text([
-            sprintf('Review the new migration then run it with <info>%s doctrine:migrations:migrate</info>', CliOutputHelper::getCommandPrefix()),
+            \sprintf('Review the new migration then run it with <info>%s doctrine:migrations:migrate</info>', CliOutputHelper::getCommandPrefix()),
             'See <fg=yellow>https://symfony.com/doc/current/bundles/DoctrineMigrationsBundle/index.html</>',
         ]);
     }
 
-    private function noChangesMessage(ConsoleStyle $io)
+    private function noChangesMessage(ConsoleStyle $io): void
     {
         $io->warning([
             'No database changes were detected.',
@@ -143,6 +163,7 @@ final class MakeMigration extends AbstractMaker implements ApplicationAwareMaker
         ]);
     }
 
+    /** @return void */
     public function configureDependencies(DependencyBuilder $dependencies)
     {
         $dependencies->addClassDependency(

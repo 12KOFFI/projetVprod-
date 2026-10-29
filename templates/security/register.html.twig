@@ -66,11 +66,12 @@
 
                 <!-- ÉTAPE 1 : Identité -->
                 <div class="step" id="step1">
+                    <p class="text-xs text-slate-500 mb-4"><span class="text-red-600 font-bold">*</span> Champs obligatoires</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- Nom -->
                         <div class="md:col-span-1">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">
-                                Nom
+                            <label for="{{ form.nom.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
+                                Nom <span class="text-red-600 font-bold ml-1" aria-hidden="true">*</span>
                             </label>
                             {{ form_widget(form.nom, {
                                 'attr': {
@@ -78,13 +79,14 @@
                                     'placeholder': 'Votre nom'
                                 }
                             }) }}
+                            <p id="{{ form.nom.vars.id }}-erreur" class="mt-1 hidden text-sm font-medium text-red-700" role="alert"></p>
                             {{ form_errors(form.nom) }}
                         </div>
                         
                         <!-- Prénoms -->
                         <div class="md:col-span-1">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">
-                                Prénoms
+                            <label for="{{ form.prenoms.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
+                                Prénoms <span class="text-red-600 font-bold ml-1" aria-hidden="true">*</span>
                             </label>
                             {{ form_widget(form.prenoms, {
                                 'attr': {
@@ -92,26 +94,28 @@
                                     'placeholder': 'Vos prénoms'
                                 }
                             }) }}
+                            <p id="{{ form.prenoms.vars.id }}-erreur" class="mt-1 hidden text-sm font-medium text-red-700" role="alert"></p>
                             {{ form_errors(form.prenoms) }}
                         </div>
 
                         <!-- Sexe -->
                         <div class="md:col-span-1">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">
-                                Sexe
+                            <label for="{{ form.sexe.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
+                                Sexe <span class="text-red-600 font-bold ml-1" aria-hidden="true">*</span>
                             </label>
                             {{ form_widget(form.sexe, {
                                 'attr': {
                                     'class': input_class
                                 }
                             }) }}
+                            <p id="{{ form.sexe.vars.id }}-erreur" class="mt-1 hidden text-sm font-medium text-red-700" role="alert"></p>
                             {{ form_errors(form.sexe) }}
                         </div>
                         
                         <!-- Situation matrimoniale -->
                         <div class="md:col-span-1">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">
-                                Situation matrimoniale
+                            <label for="{{ form.situationmat.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
+                                Situation matrimoniale <span class="font-normal text-slate-500 text-xs ml-1">(facultatif)</span>
                             </label>
                             {{ form_widget(form.situationmat, {
                                 'attr': {
@@ -125,6 +129,7 @@
         
                 <!-- ÉTAPE 2 : Naissance, nationalité et parents -->
                 <div class="step hidden" id="step2">
+                    <p class="text-xs text-slate-500 mb-4"><span class="text-red-600 font-bold">*</span> Champs obligatoires</p>
                     <!-- Naissance et nationalité -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <!-- Date de naissance : saisie « jj/mm/aaaa », barres posées pendant
@@ -132,7 +137,7 @@
                         {% set date_erreur = form.datenaissance.vars.errors|length > 0 %}
                         <div class="md:col-span-1">
                             <label for="{{ form.datenaissance.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
-                                Date de naissance
+                                Date de naissance <span class="text-red-600 font-bold ml-1" aria-hidden="true">*</span>
                             </label>
                             <div data-date-boite class="flex min-h-[44px] rounded-lg border bg-white transition duration-150 motion-reduce:transition-none focus-within:ring-2 {{ date_erreur ? 'border-red-600 focus-within:border-red-600 focus-within:ring-red-600' : 'border-slate-500 focus-within:border-indigo-600 focus-within:ring-indigo-600' }}">
                                 {{ form_widget(form.datenaissance, {
@@ -160,8 +165,8 @@
                         
                         <!-- Lieu de naissance -->
                         <div class="md:col-span-1">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">
-                                Lieu de naissance
+                            <label for="{{ form.lieunaissance.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
+                                Lieu de naissance <span class="text-red-600 font-bold ml-1" aria-hidden="true">*</span>
                             </label>
                             {{ form_widget(form.lieunaissance, {
                                 'attr': {
@@ -169,6 +174,7 @@
                                     'placeholder': 'Ville de naissance'
                                 }
                             }) }}
+                            <p id="{{ form.lieunaissance.vars.id }}-erreur" class="mt-1 hidden text-sm font-medium text-red-700" role="alert"></p>
                             {{ form_errors(form.lieunaissance) }}
                         </div>
                         
@@ -179,7 +185,9 @@
                         {% set nationalite = form.nationalite %}
                         {% set nationalite_erreur = nationalite.vars.errors|length > 0 %}
                         <div class="md:col-span-1">
-                            <label id="nationalite-libelle" for="{{ nationalite.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">Nationalité</label>
+                            <label id="nationalite-libelle" for="{{ nationalite.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
+                                Nationalité <span class="text-red-600 font-bold ml-1" aria-hidden="true">*</span>
+                            </label>
                             <div class="relative" x-data="listeDeroulante"
                                  @click.outside="fermer(false)" @keydown.escape="if (ouverte) { $event.preventDefault(); fermer(true); }"
                                  @focusout="quitter($event)">
@@ -208,6 +216,7 @@
                                 {{ include('partials/_liste_deroulante.html.twig', {libelle_liste: 'Nationalités', libelle_recherche: 'Rechercher une nationalité'}) }}
                             </div>
                             <p id="nationalite-aide" class="mt-1 text-sm text-slate-600">Condition de candidature : être de nationalité ivoirienne.</p>
+                            <p id="{{ nationalite.vars.id }}-erreur" class="mt-1 hidden text-sm font-medium text-red-700" role="alert"></p>
                             {{ form_errors(nationalite) }}
                         </div>
                         
@@ -217,11 +226,12 @@
         
                 <!-- ÉTAPE 3 : Résidence et contact -->
                 <div class="step hidden" id="step3">
+                    <p class="text-xs text-slate-500 mb-4"><span class="text-red-600 font-bold">*</span> Champs obligatoires</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- Ville de résidence -->
                         <div class="md:col-span-1">
                             <label for="{{ form.residence.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
-                                Ville de résidence
+                                Ville de résidence <span class="text-red-600 font-bold ml-1" aria-hidden="true">*</span>
                             </label>
                             {{ form_widget(form.residence, {
                                 'attr': {
@@ -229,13 +239,14 @@
                                     'placeholder': 'Votre ville, par exemple Bouaké'
                                 }
                             }) }}
+                            <p id="{{ form.residence.vars.id }}-erreur" class="mt-1 hidden text-sm font-medium text-red-700" role="alert"></p>
                             {{ form_errors(form.residence) }}
                         </div>
 
                         <!-- Boîte postale -->
                         <div class="md:col-span-1">
                             <label for="{{ form.boitePostale.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
-                                Boîte postale <span class="font-normal text-slate-600">(facultatif)</span>
+                                Boîte postale <span class="font-normal text-slate-500 text-xs ml-1">(facultatif)</span>
                             </label>
                             {{ form_widget(form.boitePostale, {
                                 'attr': {
@@ -258,12 +269,13 @@
 
                 <!-- ÉTAPE 4 : Identifiants de connexion et validation -->
                 <div class="step hidden" id="step4">
+                    <p class="text-xs text-slate-500 mb-4"><span class="text-red-600 font-bold">*</span> Champs obligatoires</p>
                     <!-- Identifiants -->
                     <div class="space-y-4 mb-6">
                         <!-- Email -->
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">
-                                Email
+                            <label for="{{ form.email.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
+                                Email <span class="text-red-600 font-bold ml-1" aria-hidden="true">*</span>
                             </label>
                             {{ form_widget(form.email, {
                                 'attr': {
@@ -271,14 +283,15 @@
                                     'placeholder': 'exemple@email.com'
                                 }
                             }) }}
+                            <p id="{{ form.email.vars.id }}-erreur" class="mt-1 hidden text-sm font-medium text-red-700" role="alert"></p>
                             {{ form_errors(form.email) }}
                         </div>
                         
                         <!-- Mot de passe et confirmation -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">
-                                    Mot de passe
+                                <label for="{{ form.password.first.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
+                                    Mot de passe <span class="text-red-600 font-bold ml-1" aria-hidden="true">*</span>
                                 </label>
                                 <div class="relative" x-data="{ visible: false }">
                                     {{ form_widget(form.password.first, {
@@ -298,8 +311,8 @@
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">
-                                    Confirmation
+                                <label for="{{ form.password.second.vars.id }}" class="block text-sm font-medium text-slate-700 mb-1">
+                                    Confirmation <span class="text-red-600 font-bold ml-1" aria-hidden="true">*</span>
                                 </label>
                                 <div class="relative" x-data="{ visible: false }">
                                     {{ form_widget(form.password.second, {
@@ -330,7 +343,7 @@
                         <div class="flex items-start">
                             {{ form_widget(form.attestation, {attr: {class: 'mt-1 mr-3 h-4 w-4 shrink-0 accent-indigo-600'}}) }}
                             <label for="{{ form.attestation.vars.id }}" class="text-sm text-slate-600">
-                                {{ form.attestation.vars.label }}
+                                {{ form.attestation.vars.label }} <span class="text-red-600 font-bold ml-1" aria-hidden="true">*</span>
                             </label>
                         </div>
                         {{ form_errors(form.attestation) }}
@@ -462,6 +475,18 @@ document.addEventListener('DOMContentLoaded', function() {
         boite.classList.toggle('border-slate-500', !message);
     }
 
+    function afficherErreurChamp(champ, message) {
+        if (!champ) return;
+        var zone = document.getElementById(champ.id + '-erreur');
+        if (zone) {
+            zone.textContent = message;
+            zone.classList.toggle('hidden', !message);
+        }
+        champ.setAttribute('aria-invalid', message ? 'true' : 'false');
+        champ.classList.toggle('border-red-600', !!message);
+        champ.classList.toggle('border-slate-500', !message);
+    }
+
     function validerTelephones() {
         var champs = Array.from(document.querySelectorAll('[data-telephone-fr]'));
         var premier = null;
@@ -484,7 +509,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function messageDate(champ) {
         var v = champ.value.trim();
-        if (v === '') { return ''; }
+        if (v === '') { return 'La date de naissance est obligatoire.'; }
         var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v);
         if (!m) { return 'Saisissez la date complète : jj/mm/aaaa, par exemple 15/03/1985.'; }
         var j = +m[1], mo = +m[2], a = +m[3];
@@ -516,7 +541,11 @@ document.addEventListener('DOMContentLoaded', function() {
             formaterDate(champDate);
             if (champDate.value.length === 10 || champDate.getAttribute('aria-invalid') === 'true') { afficherErreurDate(messageDate(champDate)); }
         });
-        champDate.addEventListener('blur', function () { afficherErreurDate(messageDate(champDate)); });
+        champDate.addEventListener('blur', function () {
+            if (champDate.value.trim() !== '') {
+                afficherErreurDate(messageDate(champDate));
+            }
+        });
     }
     if (champDate && calendrier) {
         // Ouvre le calendrier sur la date déjà saisie ; reporte le choix en jj/mm/aaaa.
@@ -531,15 +560,137 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function validateStep(step) {
-        if (champDate && steps[step].contains(champDate)) {
+    function validerEtape0() {
+        var nom = document.getElementById('{{ form.nom.vars.id }}');
+        var prenoms = document.getElementById('{{ form.prenoms.vars.id }}');
+        var sexe = document.getElementById('{{ form.sexe.vars.id }}');
+        var premier = null;
+
+        if (nom && !nom.value.trim()) {
+            afficherErreurChamp(nom, 'Le nom est obligatoire.');
+            if (!premier) premier = nom;
+        } else if (nom) {
+            afficherErreurChamp(nom, '');
+        }
+
+        if (prenoms && !prenoms.value.trim()) {
+            afficherErreurChamp(prenoms, 'Les prénoms sont obligatoires.');
+            if (!premier) premier = prenoms;
+        } else if (prenoms) {
+            afficherErreurChamp(prenoms, '');
+        }
+
+        if (sexe && !sexe.value.trim()) {
+            afficherErreurChamp(sexe, 'Le sexe est obligatoire.');
+            if (!premier) premier = sexe;
+        } else if (sexe) {
+            afficherErreurChamp(sexe, '');
+        }
+
+        if (premier) {
+            premier.focus();
+            return false;
+        }
+        return true;
+    }
+
+    function validerEtape1() {
+        var premier = null;
+        if (champDate) {
             var messageD = messageDate(champDate);
             afficherErreurDate(messageD);
-            if (messageD) { champDate.focus(); return false; }
+            if (messageD && !premier) premier = champDate;
         }
-        if (!steps[step].querySelector('[data-telephone-fr]')) { return true; }
+
+        var lieu = document.getElementById('{{ form.lieunaissance.vars.id }}');
+        if (lieu && !lieu.value.trim()) {
+            afficherErreurChamp(lieu, 'Le lieu de naissance est obligatoire.');
+            if (!premier) premier = lieu;
+        } else if (lieu) {
+            afficherErreurChamp(lieu, '');
+        }
+
+        var nat = document.getElementById('{{ nationalite.vars.id }}');
+        if (nat && !nat.value.trim()) {
+            afficherErreurChamp(nat, 'La nationalité est obligatoire.');
+            if (!premier) premier = nat;
+        } else if (nat) {
+            afficherErreurChamp(nat, '');
+        }
+
+        if (premier) {
+            premier.focus();
+            return false;
+        }
+        return true;
+    }
+
+    function validerEtape2() {
+        var premier = null;
+        var residence = document.getElementById('{{ form.residence.vars.id }}');
+        if (residence && !residence.value.trim()) {
+            afficherErreurChamp(residence, 'La ville de résidence est obligatoire.');
+            if (!premier) premier = residence;
+        } else if (residence) {
+            afficherErreurChamp(residence, '');
+        }
+
         var invalide = validerTelephones();
-        if (invalide) { invalide.focus(); return false; }
+        if (invalide && !premier) {
+            premier = invalide;
+        }
+
+        if (premier) {
+            premier.focus();
+            return false;
+        }
+        return true;
+    }
+
+    function validerEtape3() {
+        var premier = null;
+        var email = document.getElementById('{{ form.email.vars.id }}');
+        if (email) {
+            var valEmail = email.value.trim();
+            if (!valEmail) {
+                afficherErreurChamp(email, "L'adresse email est obligatoire.");
+                if (!premier) premier = email;
+            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valEmail)) {
+                afficherErreurChamp(email, "L'adresse email n'est pas valide.");
+                if (!premier) premier = email;
+            } else {
+                afficherErreurChamp(email, '');
+            }
+        }
+
+        var mdp = document.getElementById('{{ form.password.first.vars.id }}');
+        var confirmation = document.getElementById('{{ form.password.second.vars.id }}');
+        var attestation = document.getElementById('{{ form.attestation.vars.id }}');
+        var messageMdp = mdp.value.length < 8 ? 'Choisissez un mot de passe de 8 caractères au moins.'
+            : (mdp.value !== confirmation.value ? 'Les mots de passe ne correspondent pas.' : '');
+        var zoneMdp = document.getElementById('mot-de-passe-erreur');
+        var zoneAttestation = document.getElementById('attestation-erreur');
+        zoneMdp.textContent = messageMdp;
+        zoneMdp.classList.toggle('hidden', !messageMdp);
+        if (messageMdp && !premier) premier = mdp;
+
+        var messageAttestation = attestation.checked ? '' : "Cochez la case pour attester sur l'honneur l'exactitude de vos informations.";
+        zoneAttestation.textContent = messageAttestation;
+        zoneAttestation.classList.toggle('hidden', attestation.checked);
+        if (!attestation.checked && !premier) premier = attestation;
+
+        if (premier) {
+            premier.focus();
+            return false;
+        }
+        return true;
+    }
+
+    function validateStep(step) {
+        if (step === 0) return validerEtape0();
+        if (step === 1) return validerEtape1();
+        if (step === 2) return validerEtape2();
+        if (step === 3) return validerEtape3();
         return true;
     }
 
@@ -563,35 +714,46 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Animation du spinner au submit
     form.addEventListener('submit', function(e) {
-        // Vérification finale avant soumission : on ramène l'utilisateur à l'étape des numéros.
-        var invalide = validerTelephones();
-        if (invalide) {
+        if (!validerEtape0()) {
             e.preventDefault();
-            currentStep = Array.from(steps).indexOf(invalide.closest('.step'));
+            currentStep = 0;
             updateSteps();
-            invalide.focus();
             return;
         }
-        // Mot de passe et attestation : même règle que le serveur (UserType).
-        var mdp = document.getElementById('{{ form.password.first.vars.id }}');
-        var confirmation = document.getElementById('{{ form.password.second.vars.id }}');
-        var attestation = document.getElementById('{{ form.attestation.vars.id }}');
-        var messageMdp = mdp.value.length < 8 ? 'Choisissez un mot de passe de 8 caractères au moins.'
-            : (mdp.value !== confirmation.value ? 'Les mots de passe ne correspondent pas.' : '');
-        var zoneMdp = document.getElementById('mot-de-passe-erreur');
-        var zoneAttestation = document.getElementById('attestation-erreur');
-        zoneMdp.textContent = messageMdp;
-        zoneMdp.classList.toggle('hidden', !messageMdp);
-        zoneAttestation.textContent = attestation.checked ? '' : "Cochez la case pour attester sur l'honneur l'exactitude de vos informations.";
-        zoneAttestation.classList.toggle('hidden', attestation.checked);
-        if (messageMdp || !attestation.checked) {
+        if (!validerEtape1()) {
             e.preventDefault();
-            (messageMdp ? mdp : attestation).focus();
+            currentStep = 1;
+            updateSteps();
+            return;
+        }
+        if (!validerEtape2()) {
+            e.preventDefault();
+            currentStep = 2;
+            updateSteps();
+            return;
+        }
+        if (!validerEtape3()) {
+            e.preventDefault();
+            currentStep = 3;
+            updateSteps();
             return;
         }
         
         spinner.classList.remove('hidden');
         submitBtn.disabled = true;
+    });
+
+    // Écouteurs pour effacer l'erreur à la saisie
+    ['{{ form.nom.vars.id }}', '{{ form.prenoms.vars.id }}', '{{ form.sexe.vars.id }}', '{{ form.lieunaissance.vars.id }}', '{{ nationalite.vars.id }}', '{{ form.residence.vars.id }}', '{{ form.email.vars.id }}'].forEach(function (id) {
+        var champ = document.getElementById(id);
+        if (champ) {
+            champ.addEventListener('input', function () {
+                if (champ.value.trim() !== '') { afficherErreurChamp(champ, ''); }
+            });
+            champ.addEventListener('change', function () {
+                if (champ.value.trim() !== '') { afficherErreurChamp(champ, ''); }
+            });
+        }
     });
 
     // Animation des champs au focus

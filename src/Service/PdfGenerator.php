@@ -24,7 +24,7 @@ class PdfGenerator
     public function generate($path, $fileName, $template, $object)
     {
         $pdfOptions = new Options();
-        $pdfOptions->set(['enable_remote' => true, 'chroot'  => '/public/']);
+        $pdfOptions->set(['enable_remote' => false, 'chroot'  => '/public/']);
         $dompdf = new Dompdf($pdfOptions);
         $dompdf->loadHtml($this->twig->render($template, $object));
         $dompdf->setPaper('A4', 'portrait');
@@ -40,7 +40,10 @@ class PdfGenerator
     public function stream($template, $object): Response
     {
         $pdfOptions = new Options();
-        $pdfOptions->setIsRemoteEnabled(true);
+        // Aucune ressource distante : logo et photo sont intégrés en base64
+        // (FicheInscriptionAssets). Autoriser le distant laisserait le serveur
+        // aller chercher n'importe quelle URL présente dans le HTML (SSRF).
+        $pdfOptions->setIsRemoteEnabled(false);
         $dompdf = new Dompdf($pdfOptions);
         $dompdf->loadHtml($this->twig->render($template, $object));
         $dompdf->setPaper('A4', 'portrait');

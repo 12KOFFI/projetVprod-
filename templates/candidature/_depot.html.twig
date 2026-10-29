@@ -11,12 +11,12 @@
 #}
 
 {# 1. Expérience professionnelle : années, repère du diplôme accessible, situation, diplôme obtenu. #}
-{% macro experience(form) %}
+{% macro experience(form, sous_titre = 'Vos années de métier déterminent le diplôme que vous pouvez viser') %}
 {% import 'partials/_ui.html.twig' as ui %}
 {% set annees_cqp = constant('App\\Referentiel\\ProfilProfessionnel::ANNEES_CQP') %}
 {% set annees_cap = constant('App\\Referentiel\\ProfilProfessionnel::ANNEES_CAP') %}
 <div class="bg-white rounded-lg border border-slate-200 p-6">
-    {{ ui.section('Expérience professionnelle', 'Vos années de métier déterminent le diplôme que vous pouvez viser', 'briefcase', 'amber') }}
+    {{ ui.section('Expérience professionnelle', sous_titre, 'briefcase', 'amber') }}
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
         {{ ui.champ(form.nbAnneesExperience, '', {
@@ -54,8 +54,8 @@
 </div>
 {% endmacro %}
 
-{# 2. Entreprise ou atelier : facultatif. #}
-{% macro entreprise(form, sous_titre = 'Facultatif — à renseigner si vous exercez actuellement') %}
+{# 2. Entreprise ou atelier. #}
+{% macro entreprise(form, sous_titre = 'Renseignements sur votre structure d\'exercice') %}
 {% import 'partials/_ui.html.twig' as ui %}
 <div class="bg-white rounded-lg border border-slate-200 p-6">
     {{ ui.section('Entreprise ou atelier', sous_titre, 'building', 'orange') }}
@@ -80,7 +80,7 @@
 {% macro formation(form, candidature = null, centre_fixe = null, sous_titre = null) %}
 {% import 'partials/_ui.html.twig' as ui %}
 <div class="bg-white rounded-lg border border-slate-200 p-6">
-    {{ ui.section('Centre de dépôt et métier de certification visé', sous_titre, 'graduation-cap', 'indigo') }}
+    {{ ui.section('Centre de dépôt et métier de certification visé', sous_titre ? (sous_titre ~ ' — Tous les champs de cette section sont obligatoires') : 'Tous les champs de cette section sont obligatoires', 'graduation-cap', 'indigo') }}
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
         {% if form.centre is defined %}
@@ -90,7 +90,7 @@
             }) }}
         {% else %}
             <div>
-                <p class="mb-1.5 block text-sm font-medium text-slate-700">Centre de dépôt</p>
+                <p class="mb-1.5 block text-sm font-medium text-slate-700">Centre de dépôt <span class="text-red-600 font-bold ml-1" aria-hidden="true">*</span></p>
                 <div class="flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
                     <i class="fas fa-lock text-xs text-slate-500" aria-hidden="true"></i>{{ centre_fixe ?: '—' }}
                 </div>

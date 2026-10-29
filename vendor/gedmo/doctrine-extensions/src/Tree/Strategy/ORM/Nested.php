@@ -10,6 +10,7 @@
 namespace Gedmo\Tree\Strategy\ORM;
 
 use Doctrine\Common\Collections\Criteria;
+use Doctrine\Common\Collections\Order;
 use Doctrine\Deprecations\Deprecation;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
@@ -325,9 +326,7 @@ class Nested implements Strategy
             if (empty($parentLeft) && empty($parentRight)) {
                 // parent node is a new node, but wasn't processed yet (due to Doctrine commit order calculator redordering)
                 // We delay processing of node to the moment parent node will be processed
-                if (!isset($this->delayedNodes[$parentOid])) {
-                    $this->delayedNodes[$parentOid] = [];
-                }
+                $this->delayedNodes[$parentOid] ??= [];
                 $this->delayedNodes[$parentOid][] = ['node' => $node, 'position' => $position];
 
                 return;
@@ -407,11 +406,15 @@ class Nested implements Strategy
                 $wrapped->setPropertyValue($config['right'], $right);
             }
             $newRoot = $parentRoot;
+
+            $trackedTreeEdge = isset($this->treeEdges[$meta->getName()]);
+            $this->treeEdges[$meta->getName()] ??= $this->max($em, $config['useObjectClass'], $newRoot) + 1;
+            if ($trackedTreeEdge && $isNewNode) {
+                $this->treeEdges[$meta->getName()] += $treeSize;
+            }
         } elseif (!isset($config['root'])
             || ($meta->isSingleValuedAssociation($config['root']) && null !== $parent && ($newRoot = $meta->getFieldValue($node, $config['root'])))) {
-            if (!isset($this->treeEdges[$meta->getName()])) {
-                $this->treeEdges[$meta->getName()] = $this->max($em, $config['useObjectClass'], $newRoot) + 1;
-            }
+            $this->treeEdges[$meta->getName()] ??= $this->max($em, $config['useObjectClass'], $newRoot) + 1;
 
             $level = 0;
             $parentLeft = 0;
@@ -472,12 +475,19 @@ class Nested implements Strategy
                 $newRoot = $node->$method();
                 $repo = $em->getRepository($config['useObjectClass']);
 
-                $criteria = new Criteria();
+                $criteria = Criteria::create(true);
                 $criteria->andWhere(Criteria::expr()->notIn($wrapped->getMetadata()->getIdentifier()[0], [$wrapped->getIdentifier()]));
                 $criteria->andWhere(Criteria::expr()->eq($config['root'], $node->$method()));
                 $criteria->andWhere(Criteria::expr()->isNull($config['parent']));
                 $criteria->andWhere(Criteria::expr()->eq($config['level'], 0));
-                $criteria->orderBy([$config['right'] => Criteria::ASC]);
+                if (!\defined(Criteria::class.'::ASC')) {
+                    $order = \SortDirection::Ascending; // doctrine/collections >= 3.1
+                } elseif (function_exists('enum_exists') && enum_exists(Order::class)) {
+                    $order = Order::Ascending; // doctrine/collections >= 2.2
+                } else {
+                    $order = Criteria::ASC;
+                }
+                $criteria->orderBy([$config['right'] => $order]);
                 $roots = $repo->matching($criteria)->toArray();
                 $last = array_pop($roots);
 

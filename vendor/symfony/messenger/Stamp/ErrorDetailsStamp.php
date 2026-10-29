@@ -13,6 +13,7 @@ namespace Symfony\Component\Messenger\Stamp;
 
 use Symfony\Component\ErrorHandler\Exception\FlattenException;
 use Symfony\Component\Messenger\Exception\HandlerFailedException;
+use Symfony\Component\Messenger\Exception\RecoverableExceptionInterface;
 
 /**
  * Stamp applied when a messages fails due to an exception in the handler.
@@ -24,7 +25,7 @@ final class ErrorDetailsStamp implements StampInterface
     private string $exceptionMessage;
     private ?FlattenException $flattenException;
 
-    public function __construct(string $exceptionClass, int|string $exceptionCode, string $exceptionMessage, FlattenException $flattenException = null)
+    public function __construct(string $exceptionClass, int|string $exceptionCode, string $exceptionMessage, ?FlattenException $flattenException = null)
     {
         $this->exceptionClass = $exceptionClass;
         $this->exceptionCode = $exceptionCode;
@@ -39,8 +40,12 @@ final class ErrorDetailsStamp implements StampInterface
         }
 
         $flattenException = null;
-        if (class_exists(FlattenException::class)) {
+        if (!$throwable instanceof RecoverableExceptionInterface && class_exists(FlattenException::class)) {
             $flattenException = FlattenException::createFromThrowable($throwable);
+            $flattenException->setTrace([], $throwable->getFile(), $throwable->getLine());
+            foreach ($flattenException->getAllPrevious() as $previous) {
+                $previous->setTrace([], $previous->getFile(), $previous->getLine());
+            }
         }
 
         return new self($throwable::class, $throwable->getCode(), $throwable->getMessage(), $flattenException);
@@ -72,14 +77,16 @@ final class ErrorDetailsStamp implements StampInterface
             return false;
         }
 
+        // compare codes as strings: XML does not preserve their type
         if ($this->flattenException && $that->flattenException) {
             return $this->flattenException->getClass() === $that->flattenException->getClass()
-                && $this->flattenException->getCode() === $that->flattenException->getCode()
-                && $this->flattenException->getMessage() === $that->flattenException->getMessage();
+                && (string) $this->flattenException->getCode() === (string) $that->flattenException->getCode()
+                && $this->flattenException->getFile() === $that->flattenException->getFile()
+                && $this->flattenException->getLine() === $that->flattenException->getLine();
         }
 
         return $this->exceptionClass === $that->exceptionClass
-            && $this->exceptionCode === $that->exceptionCode
+            && (string) $this->exceptionCode === (string) $that->exceptionCode
             && $this->exceptionMessage === $that->exceptionMessage;
     }
 }

@@ -34,6 +34,7 @@ class ArrayAdapter implements AdapterInterface, CacheInterface, LoggerAwareInter
     private array $values = [];
     private array $tags = [];
     private array $expiries = [];
+    private array $explicitExpiries = [];
     private int $defaultLifetime;
     private float $maxLifetime;
     private int $maxItems;
@@ -46,11 +47,11 @@ class ArrayAdapter implements AdapterInterface, CacheInterface, LoggerAwareInter
     public function __construct(int $defaultLifetime = 0, bool $storeSerialized = true, float $maxLifetime = 0, int $maxItems = 0)
     {
         if (0 > $maxLifetime) {
-            throw new InvalidArgumentException(sprintf('Argument $maxLifetime must be positive, %F passed.', $maxLifetime));
+            throw new InvalidArgumentException(\sprintf('Argument $maxLifetime must be positive, %F passed.', $maxLifetime));
         }
 
         if (0 > $maxItems) {
-            throw new InvalidArgumentException(sprintf('Argument $maxItems must be a positive integer, %d passed.', $maxItems));
+            throw new InvalidArgumentException(\sprintf('Argument $maxItems must be a positive integer, %d passed.', $maxItems));
         }
 
         $this->defaultLifetime = $defaultLifetime;
@@ -58,13 +59,16 @@ class ArrayAdapter implements AdapterInterface, CacheInterface, LoggerAwareInter
         $this->maxLifetime = $maxLifetime;
         $this->maxItems = $maxItems;
         self::$createCacheItem ??= \Closure::bind(
-            static function ($key, $value, $isHit, $tags) {
+            static function ($key, $value, $isHit, $tags, $expiry = null) {
                 $item = new CacheItem();
                 $item->key = $key;
                 $item->value = $value;
                 $item->isHit = $isHit;
                 if (null !== $tags) {
                     $item->metadata[CacheItem::METADATA_TAGS] = $tags;
+                }
+                if (null !== $expiry) {
+                    $item->metadata[CacheItem::METADATA_EXPIRY] = $expiry;
                 }
 
                 return $item;
@@ -74,7 +78,7 @@ class ArrayAdapter implements AdapterInterface, CacheInterface, LoggerAwareInter
         );
     }
 
-    public function get(string $key, callable $callback, float $beta = null, array &$metadata = null): mixed
+    public function get(string $key, callable $callback, ?float $beta = null, ?array &$metadata = null): mixed
     {
         $item = $this->getItem($key);
         $metadata = $item->getMetadata();
@@ -126,7 +130,7 @@ class ArrayAdapter implements AdapterInterface, CacheInterface, LoggerAwareInter
             $value = $this->storeSerialized ? $this->unfreeze($key, $isHit) : $this->values[$key];
         }
 
-        return (self::$createCacheItem)($key, $value, $isHit, $this->tags[$key] ?? null);
+        return (self::$createCacheItem)($key, $value, $isHit, $this->tags[$key] ?? null, $this->explicitExpiries[$key] ?? null);
     }
 
     public function getItems(array $keys = []): iterable
@@ -139,13 +143,17 @@ class ArrayAdapter implements AdapterInterface, CacheInterface, LoggerAwareInter
     public function deleteItem(mixed $key): bool
     {
         \assert('' !== CacheItem::validateKey($key));
-        unset($this->values[$key], $this->tags[$key], $this->expiries[$key]);
+        unset($this->values[$key], $this->tags[$key], $this->expiries[$key], $this->explicitExpiries[$key]);
 
         return true;
     }
 
     public function deleteItems(array $keys): bool
     {
+        foreach ($keys as $key) {
+            \assert('' !== CacheItem::validateKey($key));
+        }
+
         foreach ($keys as $key) {
             $this->deleteItem($key);
         }
@@ -193,12 +201,18 @@ class ArrayAdapter implements AdapterInterface, CacheInterface, LoggerAwareInter
                     break;
                 }
 
-                unset($this->values[$k], $this->tags[$k], $this->expiries[$k]);
+                unset($this->values[$k], $this->tags[$k], $this->expiries[$k], $this->explicitExpiries[$k]);
             }
         }
 
         $this->values[$key] = $value;
         $this->expiries[$key] = $expiry ?? \PHP_INT_MAX;
+
+        if (null !== $item["\0*\0expiry"] && \PHP_INT_MAX !== $this->expiries[$key]) {
+            $this->explicitExpiries[$key] = $this->expiries[$key];
+        } else {
+            unset($this->explicitExpiries[$key]);
+        }
 
         if (null === $this->tags[$key] = $item["\0*\0newMetadata"][CacheItem::METADATA_TAGS] ?? null) {
             unset($this->tags[$key]);
@@ -224,7 +238,7 @@ class ArrayAdapter implements AdapterInterface, CacheInterface, LoggerAwareInter
 
             foreach ($this->values as $key => $value) {
                 if (!isset($this->expiries[$key]) || $this->expiries[$key] <= $now || str_starts_with($key, $prefix)) {
-                    unset($this->values[$key], $this->tags[$key], $this->expiries[$key]);
+                    unset($this->values[$key], $this->tags[$key], $this->expiries[$key], $this->explicitExpiries[$key]);
                 }
             }
 
@@ -233,7 +247,7 @@ class ArrayAdapter implements AdapterInterface, CacheInterface, LoggerAwareInter
             }
         }
 
-        $this->values = $this->tags = $this->expiries = [];
+        $this->values = $this->tags = $this->expiries = $this->explicitExpiries = [];
 
         return true;
     }
@@ -260,6 +274,9 @@ class ArrayAdapter implements AdapterInterface, CacheInterface, LoggerAwareInter
         return $values;
     }
 
+    /**
+     * @return void
+     */
     public function reset()
     {
         $this->clear();
@@ -287,7 +304,7 @@ class ArrayAdapter implements AdapterInterface, CacheInterface, LoggerAwareInter
             }
             unset($keys[$i]);
 
-            yield $key => $f($key, $value, $isHit, $this->tags[$key] ?? null);
+            yield $key => $f($key, $value, $isHit, $this->tags[$key] ?? null, $this->explicitExpiries[$key] ?? null);
         }
 
         foreach ($keys as $key) {
@@ -295,7 +312,7 @@ class ArrayAdapter implements AdapterInterface, CacheInterface, LoggerAwareInter
         }
     }
 
-    private function freeze($value, string $key)
+    private function freeze($value, string $key): string|int|float|bool|array|\UnitEnum|null
     {
         if (null === $value) {
             return 'N;';
@@ -309,12 +326,14 @@ class ArrayAdapter implements AdapterInterface, CacheInterface, LoggerAwareInter
             try {
                 $serialized = serialize($value);
             } catch (\Exception $e) {
-                unset($this->values[$key], $this->tags[$key]);
+                if (!isset($this->expiries[$key])) {
+                    unset($this->values[$key]);
+                }
                 $type = get_debug_type($value);
-                $message = sprintf('Failed to save key "{key}" of type %s: %s', $type, $e->getMessage());
+                $message = \sprintf('Failed to save key "{key}" of type %s: %s', $type, $e->getMessage());
                 CacheItem::log($this->logger, $message, ['key' => $key, 'exception' => $e, 'cache-adapter' => get_debug_type($this)]);
 
-                return;
+                return null;
             }
             // Keep value serialized if it contains any objects or any internal references
             if ('C' === $serialized[0] || 'O' === $serialized[0] || preg_match('/;[OCRr]:[1-9]/', $serialized)) {
@@ -325,14 +344,14 @@ class ArrayAdapter implements AdapterInterface, CacheInterface, LoggerAwareInter
         return $value;
     }
 
-    private function unfreeze(string $key, bool &$isHit)
+    private function unfreeze(string $key, bool &$isHit): mixed
     {
         if ('N;' === $value = $this->values[$key]) {
             return null;
         }
         if (\is_string($value) && isset($value[2]) && ':' === $value[1]) {
             try {
-                $value = unserialize($value);
+                $value = unserialize($value, ['allowed_classes' => true]);
             } catch (\Exception $e) {
                 CacheItem::log($this->logger, 'Failed to unserialize key "{key}": '.$e->getMessage(), ['key' => $key, 'exception' => $e, 'cache-adapter' => get_debug_type($this)]);
                 $value = false;

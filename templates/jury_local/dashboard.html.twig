@@ -1,0 +1,194 @@
+{#
+    Espace du jury local : dossiers inscrits du centre dont la recevabilité est
+    à prononcer, et décisions déjà rendues.
+
+    Même composition que la liste du conseiller (conseiller/candidatures.html.twig) :
+    tableau à partir de 1280 px, liste empilée en dessous, sans largeur minimale.
+#}
+{% extends 'base_dashboard.html.twig' %}
+{% import 'partials/_ui.html.twig' as ui %}
+
+{% block title %}Recevabilité — {{ centre.nom }}{% endblock %}
+
+{% block body %}
+{% set dossiers = pagination.items %}
+{% set total = pagination.getTotalItemCount %}
+{% set a_statuer = vue != 'statues' %}
+{% set vues = [
+    { cle: 'a_statuer', libelle: 'À statuer', nombre: compteurs.a_statuer },
+    { cle: 'statues', libelle: 'Déjà statués', nombre: compteurs.recevables + compteurs.non_recevables }
+] %}
+
+<div class="mx-auto max-w-7xl">
+
+    {{ ui.bandeau(
+        'Recevabilité des dossiers',
+        centre.nom ~ ' — jury local',
+        'scale-balanced',
+        compteurs.a_statuer,
+        'dossier' ~ (compteurs.a_statuer > 1 ? 's' : '') ~ ' à statuer',
+        [],
+        'building'
+    ) }}
+
+    <p class="mb-5 max-w-3xl text-sm text-slate-700">
+        Ces dossiers ont été étudiés et acceptés par un conseiller VAE, et le candidat a réglé ses frais de dossier.
+        Ouvrez chaque dossier, vérifiez les pièces, puis déclarez-le recevable ou non recevable.
+    </p>
+
+    {# ===== Choix de la liste ===== #}
+    <nav aria-label="Listes de dossiers" class="mb-4 flex flex-wrap gap-2">
+        {% for v in vues %}
+            {% set courant = vue == v.cle %}
+            <a href="{{ path('app_jury_local_dashboard', v.cle == 'statues' ? {vue: 'statues'} : {}) }}"
+               {% if courant %}aria-current="page"{% endif %}
+               class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border px-4 text-sm font-semibold
+                      transition duration-150 motion-reduce:transition-none
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2
+                      {{ courant ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50' }}">
+                {{ v.libelle }}
+                <span class="rounded-full px-2 py-0.5 text-xs tabular-nums {{ courant ? 'bg-white text-indigo-700' : 'bg-slate-100 text-slate-700' }}">{{ v.nombre }}</span>
+            </a>
+        {% endfor %}
+    </nav>
+
+    {% if not a_statuer %}
+        <p class="mb-4 text-sm text-slate-700">
+            <span class="tabular-nums font-semibold text-green-700">{{ compteurs.recevables }}</span> recevable{{ compteurs.recevables > 1 ? 's' }}
+            · <span class="tabular-nums font-semibold text-red-700">{{ compteurs.non_recevables }}</span> non recevable{{ compteurs.non_recevables > 1 ? 's' }}
+        </p>
+    {% endif %}
+
+    {# ===== Recherche ===== #}
+    <form method="get" class="mb-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:flex-row sm:items-end sm:p-5">
+        {% if not a_statuer %}<input type="hidden" name="vue" value="statues">{% endif %}
+        <div class="flex-1">
+            <label for="recherche-jury" class="mb-1.5 block text-sm font-medium text-slate-700">Rechercher un dossier</label>
+            <div class="relative">
+                <i class="fas fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500" aria-hidden="true"></i>
+                <input id="recherche-jury" type="search" name="q" value="{{ recherche }}"
+                       placeholder="Numéro VAE ou nom du candidat"
+                       class="min-h-[44px] w-full rounded-lg border border-slate-500 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900
+                              caret-indigo-600 placeholder:text-slate-500
+                              transition duration-150 motion-reduce:transition-none
+                              focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600">
+            </div>
+        </div>
+        <div class="flex gap-3">
+            <button type="submit"
+                    class="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white
+                           transition duration-150 motion-reduce:transition-none hover:bg-indigo-700
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                Rechercher
+            </button>
+            {% if recherche is not empty %}
+                <a href="{{ path('app_jury_local_dashboard', a_statuer ? {} : {vue: 'statues'}) }}"
+                   class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700
+                          transition duration-150 motion-reduce:transition-none hover:bg-slate-50
+                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                    Effacer
+                </a>
+            {% endif %}
+        </div>
+    </form>
+
+    {# ===== Liste ===== #}
+    <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+        {% if total > 0 %}
+            <div class="hidden overflow-x-auto xl:block">
+                <table class="w-full">
+                    <caption class="sr-only">{{ a_statuer ? 'Dossiers à statuer' : 'Dossiers déjà statués' }} — {{ centre.nom }}</caption>
+                    <thead>
+                        <tr class="border-b border-slate-200 bg-slate-50">
+                            {{ ui.th('Numéro') }}
+                            {{ ui.th('Candidat') }}
+                            {{ ui.th('Métier et diplôme visé') }}
+                            {{ ui.th('Conseiller VAE') }}
+                            {{ ui.th(a_statuer ? 'Étude acceptée le' : 'Décision') }}
+                            {{ ui.th('', 'text-right') }}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        {% for candidature in dossiers %}
+                            {% set decision = candidature.resultatRecevabilite %}
+                            <tr class="transition-colors duration-150 motion-reduce:transition-none hover:bg-slate-50">
+                                <td class="px-4 py-4 align-top">
+                                    <span class="font-mono text-sm font-semibold text-slate-900 tabular-nums">{{ candidature.numero }}</span>
+                                </td>
+                                <td class="px-4 py-4 align-top text-sm font-medium text-slate-900">
+                                    {{ candidature.user ? candidature.user.nomComplet : 'Candidat non renseigné' }}
+                                </td>
+                                <td class="px-4 py-4 align-top text-sm">
+                                    <p class="text-slate-900">{{ candidature.metier ? candidature.metier.libelle : 'Non renseigné' }}</p>
+                                    <p class="mt-0.5 text-slate-600">{{ candidature.diplomedemande ?: 'Diplôme non renseigné' }}</p>
+                                </td>
+                                <td class="px-4 py-4 align-top text-sm text-slate-700">
+                                    {{ candidature.conseiller ? candidature.conseiller.nomComplet : 'Non renseigné' }}
+                                </td>
+                                <td class="px-4 py-4 align-top text-sm text-slate-700 tabular-nums">
+                                    {% if a_statuer %}
+                                        {{ candidature.etuDate ? candidature.etuDate|date('d/m/Y') : 'Non renseigné' }}
+                                    {% elseif decision %}
+                                        {{ ui.badge(decision.libelle, decision.couleur) }}
+                                        <p class="mt-1.5 text-slate-600">{{ candidature.recDate ? candidature.recDate|date('d/m/Y') : '' }}</p>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-4 align-top text-right">
+                                    {{ a_statuer
+                                        ? ui.bouton_lien(path('app_jury_local_candidature', {id: candidature.id}), 'scale-balanced', 'Statuer', 'indigo', 'sur le dossier ' ~ candidature.numero)
+                                        : ui.bouton_lien(path('app_jury_local_candidature', {id: candidature.id}), 'eye', 'Consulter', 'slate', 'le dossier ' ~ candidature.numero) }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <ul class="divide-y divide-slate-200 xl:hidden">
+                {% for candidature in dossiers %}
+                    {% set decision = candidature.resultatRecevabilite %}
+                    <li class="p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="font-mono text-sm font-semibold text-slate-900 tabular-nums">{{ candidature.numero }}</span>
+                            {% if not a_statuer and decision %}{{ ui.badge(decision.libelle, decision.couleur) }}{% endif %}
+                        </div>
+                        <p class="mt-2 break-words text-base font-semibold text-slate-900">
+                            {{ candidature.user ? candidature.user.nomComplet : 'Candidat non renseigné' }}
+                        </p>
+                        <dl class="mt-3 space-y-2 text-sm">
+                            <div class="flex flex-wrap gap-x-2">
+                                <dt class="w-32 shrink-0 text-slate-600">Métier</dt>
+                                <dd class="min-w-0 break-words font-medium text-slate-900">{{ candidature.metier ? candidature.metier.libelle : 'Non renseigné' }}</dd>
+                            </div>
+                            <div class="flex flex-wrap gap-x-2">
+                                <dt class="w-32 shrink-0 text-slate-600">Diplôme visé</dt>
+                                <dd class="min-w-0 break-words font-medium text-slate-900">{{ candidature.diplomedemande ?: 'Non renseigné' }}</dd>
+                            </div>
+                            <div class="flex flex-wrap gap-x-2">
+                                <dt class="w-32 shrink-0 text-slate-600">{{ a_statuer ? 'Étude acceptée le' : 'Statué le' }}</dt>
+                                <dd class="min-w-0 font-medium text-slate-900 tabular-nums">
+                                    {% set date = a_statuer ? candidature.etuDate : candidature.recDate %}
+                                    {{ date ? date|date('d/m/Y') : 'Non renseigné' }}
+                                </dd>
+                            </div>
+                        </dl>
+                        <div class="mt-4">
+                            {{ a_statuer
+                                ? ui.bouton_lien(path('app_jury_local_candidature', {id: candidature.id}), 'scale-balanced', 'Statuer', 'indigo', 'sur le dossier ' ~ candidature.numero)
+                                : ui.bouton_lien(path('app_jury_local_candidature', {id: candidature.id}), 'eye', 'Consulter', 'slate', 'le dossier ' ~ candidature.numero) }}
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+
+            {{ ui.pagination(pagination) }}
+        {% elseif recherche is not empty %}
+            {{ ui.etat_vide('magnifying-glass', 'Aucun dossier ne correspond', 'Vérifiez le numéro ou le nom saisi, ou effacez la recherche.') }}
+        {% elseif a_statuer %}
+            {{ ui.etat_vide('circle-check', 'Aucun dossier à statuer', 'Les dossiers apparaîtront ici dès que le candidat aura réglé ses frais de dossier après l\'étude du conseiller VAE.') }}
+        {% else %}
+            {{ ui.etat_vide('scale-balanced', 'Aucune décision rendue', 'Les dossiers que vous aurez déclarés recevables ou non recevables apparaîtront ici.') }}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

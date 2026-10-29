@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Doctrine\Bundle\DoctrineBundle\Mapping;
 
 use Doctrine\ORM\Mapping\ClassMetadata;
@@ -21,11 +23,9 @@ use function strpos;
  */
 class DisconnectedMetadataFactory
 {
-    private ManagerRegistry $registry;
-
-    public function __construct(ManagerRegistry $registry)
-    {
-        $this->registry = $registry;
+    public function __construct(
+        private readonly ManagerRegistry $registry,
+    ) {
     }
 
     /**
@@ -146,6 +146,7 @@ class DisconnectedMetadataFactory
     private function getMetadataForClass(string $entity): ClassMetadataCollection
     {
         foreach ($this->registry->getManagers() as $em) {
+            /* @phpstan-ignore class.notFound */
             $cmf = new DisconnectedClassMetadataFactory();
             $cmf->setEntityManager($em);
 
@@ -162,6 +163,7 @@ class DisconnectedMetadataFactory
     {
         $metadata = [];
         foreach ($this->registry->getManagers() as $em) {
+            /* @phpstan-ignore class.notFound */
             $cmf = new DisconnectedClassMetadataFactory();
             $cmf->setEntityManager($em);
             foreach ($cmf->getAllMetadata() as $m) {

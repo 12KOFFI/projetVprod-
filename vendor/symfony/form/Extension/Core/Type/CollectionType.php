@@ -21,6 +21,9 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class CollectionType extends AbstractType
 {
+    /**
+     * @return void
+     */
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
         $resizePrototypeOptions = null;
@@ -51,6 +54,9 @@ class CollectionType extends AbstractType
         $builder->addEventSubscriber($resizeListener);
     }
 
+    /**
+     * @return void
+     */
     public function buildView(FormView $view, FormInterface $form, array $options)
     {
         $view->vars = array_replace($view->vars, [
@@ -64,6 +70,9 @@ class CollectionType extends AbstractType
         }
     }
 
+    /**
+     * @return void
+     */
     public function finishView(FormView $view, FormInterface $form, array $options)
     {
         $prefixOffset = -2;
@@ -87,17 +96,16 @@ class CollectionType extends AbstractType
                 $view->vars['multipart'] = true;
             }
 
-            if ($prefixOffset > -3 && $prototype->getConfig()->getOption('block_prefix')) {
-                --$prefixOffset;
-            }
-
-            array_splice($view->vars['prototype']->vars['block_prefixes'], $prefixOffset, 0, 'collection_entry');
+            array_splice($view->vars['prototype']->vars['block_prefixes'], $prototype->getConfig()->getOption('block_prefix') ? -3 : -2, 0, 'collection_entry');
         }
     }
 
+    /**
+     * @return void
+     */
     public function configureOptions(OptionsResolver $resolver)
     {
-        $entryOptionsNormalizer = function (Options $options, $value) {
+        $entryOptionsNormalizer = static function (Options $options, $value) {
             $value['block_name'] = 'entry';
 
             return $value;

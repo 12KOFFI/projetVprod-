@@ -10,9 +10,41 @@ import "./styles/app.css";
 
 import Alpine from "alpinejs";
 import listeDeroulante, { formaterNumero } from "./composants/liste-deroulante";
-import { Chart, DoughnutController, ArcElement, Tooltip } from "chart.js";
+import {
+    Chart,
+    DoughnutController,
+    ArcElement,
+    BarController,
+    BarElement,
+    LineController,
+    LineElement,
+    PointElement,
+    CategoryScale,
+    LinearScale,
+    Filler,
+    Tooltip,
+} from "chart.js";
 
-Chart.register(DoughnutController, ArcElement, Tooltip);
+// Seuls les éléments réellement utilisés sont enregistrés : anneau, barres
+// horizontales et courbe. Chart.js ne charge rien d'autre.
+Chart.register(
+    DoughnutController,
+    ArcElement,
+    BarController,
+    BarElement,
+    LineController,
+    LineElement,
+    PointElement,
+    CategoryScale,
+    LinearScale,
+    Filler,
+    Tooltip
+);
+
+// Typographie et encre du projet : Plus Jakarta Sans, texte secondaire slate-600.
+Chart.defaults.font.family = "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.color = "#475569";
 
 /**
  * Palette imposée des graphiques.
@@ -40,13 +72,199 @@ const COULEURS_SEMANTIQUES = {
     neutre: "#94A3B8", // slate-400
 };
 
+/** Grille et axes discrets : ils situent la valeur sans la concurrencer. */
+const ENCRE = { texte: "#0F172A", grille: "#E2E8F0", axe: "#CBD5E1" };
+
+/** Infobulle commune : fond encre, chiffre en clair, sans pastille de couleur. */
+const INFOBULLE = {
+    backgroundColor: "#0F172A",
+    titleColor: "#FFFFFF",
+    bodyColor: "#E2E8F0",
+    titleFont: { weight: "600" },
+    padding: 10,
+    cornerRadius: 6,
+    displayColors: false,
+    callbacks: {
+        label: (contexte) => {
+            // Anneau : un nombre ; barres horizontales : x ; courbe : y.
+            const valeur = typeof contexte.parsed === "number"
+                ? contexte.parsed
+                : (contexte.chart.options.indexAxis === "y" ? contexte.parsed.x : contexte.parsed.y);
+            return `${valeur} dossier${valeur > 1 ? "s" : ""}`;
+        },
+    },
+};
+
+/** Animation courte à la première apparition ; aucune si l'utilisateur la refuse. */
+function animation() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? false
+        : { duration: 450, easing: "easeOutQuart" };
+}
+
+/** Libellé d'axe tronqué : le nom complet reste dans l'infobulle. */
+function tronquer(libelle, longueur = 30) {
+    return libelle.length > longueur ? `${libelle.slice(0, longueur - 1)}…` : libelle;
+}
+
 /**
- * Graphique circulaire d'un écran de pilotage.
+ * Configuration Chart.js d'un graphique, selon son type (`data-graphique`) :
+ * - « anneau » (défaut) : répartition en parts, palette DAIP ou couleurs sémantiques ;
+ * - « barres » : effectifs comparés, barres horizontales d'une seule teinte ;
+ * - « courbe » : évolution dans le temps, une seule série.
+ */
+function configurationGraphique(type, libelles, donnees, couleurs, options = {}) {
+    if (type === "barres") {
+        return {
+            type: "bar",
+            data: {
+                labels: libelles,
+                datasets: [
+                    {
+                        data: donnees,
+                        backgroundColor: PALETTE_GRAPHIQUE[0],
+                        hoverBackgroundColor: PALETTE_GRAPHIQUE[3],
+                        borderRadius: 4,
+                        borderSkipped: "start",
+                        maxBarThickness: 28,
+                        categoryPercentage: 0.82,
+                        barPercentage: 0.9,
+                    },
+                ],
+            },
+            options: {
+                indexAxis: "y",
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: animation(),
+                plugins: { legend: { display: false }, tooltip: INFOBULLE },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 },
+                        grid: { color: ENCRE.grille },
+                        border: { display: false },
+                    },
+                    y: {
+                        grid: { display: false },
+                        border: { color: ENCRE.axe },
+                        ticks: {
+                            color: ENCRE.texte,
+                            autoSkip: false,
+                            callback(valeur) {
+                                return tronquer(this.getLabelForValue(valeur));
+                            },
+                        },
+                    },
+                },
+            },
+        };
+    }
+
+    if (type === "courbe") {
+        return {
+            type: "line",
+            data: {
+                labels: libelles,
+                datasets: [
+                    {
+                        data: donnees,
+                        borderColor: PALETTE_GRAPHIQUE[0],
+                        borderWidth: 2,
+                        // Aire discrète sous la courbe : le bleu DAIP, de 12 % à 0 %.
+                        fill: "origin",
+                        backgroundColor: (contexte) => {
+                            const { ctx, chartArea } = contexte.chart;
+                            if (!chartArea) {
+                                return "transparent";
+                            }
+                            const degrade = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                            degrade.addColorStop(0, "rgba(11, 102, 157, 0.12)");
+                            degrade.addColorStop(1, "rgba(11, 102, 157, 0)");
+                            return degrade;
+                        },
+                        // Interpolation monotone : sans elle, la courbe plonge
+                        // sous zéro entre deux semaines creuses.
+                        cubicInterpolationMode: "monotone",
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: "#FFFFFF",
+                        pointBorderColor: PALETTE_GRAPHIQUE[0],
+                        pointBorderWidth: 2,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: animation(),
+                interaction: { mode: "index", intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        ...INFOBULLE,
+                        callbacks: {
+                            ...INFOBULLE.callbacks,
+                            // « Semaine du 05/10 » plutôt que « 05/10 » seul.
+                            title: (elements) => `${options.prefixe ?? ""}${elements[0].label}`,
+                        },
+                    },
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 },
+                        grid: { color: ENCRE.grille },
+                        border: { display: false },
+                        title: options.axeY ? { display: true, text: options.axeY, color: ENCRE.texte } : undefined,
+                    },
+                    x: {
+                        grid: { display: false },
+                        border: { color: ENCRE.axe },
+                        ticks: { maxRotation: 0, autoSkipPadding: 12 },
+                        title: options.axeX ? { display: true, text: options.axeX, color: ENCRE.texte } : undefined,
+                    },
+                },
+            },
+        };
+    }
+
+    return {
+        type: "doughnut",
+        data: {
+            labels: libelles,
+            datasets: [
+                {
+                    data: donnees,
+                    backgroundColor: couleurs,
+                    borderColor: "#FFFFFF",
+                    borderWidth: 2,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: animation(),
+            cutout: "62%",
+            plugins: {
+                // La légende est rendue en Twig sous le graphique, avec des
+                // effectifs chiffrés : celle de Chart.js ferait doublon.
+                legend: { display: false },
+                tooltip: INFOBULLE,
+            },
+        },
+    };
+}
+
+/**
+ * Graphiques des écrans de pilotage.
  *
  * Les données ne sont pas écrites en JavaScript dans le gabarit : le canvas
- * porte un attribut `data-valeurs` (JSON `{libellé: effectif}`) et, au besoin,
- * un `data-couleurs` listant des clés sémantiques. Un seul point d'entrée
- * évite un `<script>` par graphique.
+ * porte un attribut `data-valeurs` (JSON `{libellé: effectif}`), un
+ * `data-graphique` (anneau, barres, courbe) et, au besoin, un `data-couleurs`
+ * listant des clés sémantiques. Un seul point d'entrée évite un `<script>` par
+ * graphique ; les chiffres restent écrits en Twig à côté de chaque graphique.
  */
 function monterGraphiques() {
     document.querySelectorAll("canvas[data-valeurs]").forEach((canvas) => {
@@ -77,30 +295,14 @@ function monterGraphiques() {
             couleurs = libelles.map((_, index) => PALETTE_GRAPHIQUE[index % PALETTE_GRAPHIQUE.length]);
         }
 
-        new Chart(canvas, {
-            type: "doughnut",
-            data: {
-                labels: libelles,
-                datasets: [
-                    {
-                        data: Object.values(valeurs),
-                        backgroundColor: couleurs,
-                        borderColor: "#FFFFFF",
-                        borderWidth: 2,
-                    },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: "62%",
-                plugins: {
-                    // La légende est rendue en Twig sous le graphique, avec des
-                    // effectifs chiffrés : celle de Chart.js ferait doublon.
-                    legend: { display: false },
-                },
-            },
-        });
+        new Chart(
+            canvas,
+            configurationGraphique(canvas.dataset.graphique || "anneau", libelles, Object.values(valeurs), couleurs, {
+                prefixe: canvas.dataset.prefixe,
+                axeX: canvas.dataset.axeX,
+                axeY: canvas.dataset.axeY,
+            })
+        );
     });
 }
 
@@ -149,6 +351,73 @@ window.pieceJustificative = function () {
                 nom: brut.name,
                 taille: (brut.size / (1024 * 1024)).toFixed(2),
             };
+        },
+    };
+};
+
+/**
+ * Décision rendue depuis la fiche d'un dossier : étude du conseiller VAE,
+ * recevabilité du jury local. Une décision est définitive (ou fige le
+ * dossier) : le premier clic contrôle le choix et la saisie, puis demande une
+ * confirmation explicite ; seul le second envoie le formulaire.
+ *
+ * pieceExigee : pièce que l'auteur de la décision doit avoir jointe, sous la
+ * forme { present: bool, cible: id de la ligne de la pièce } — le justificatif
+ * d'expérience pour l'étude. La ligne de la pièce met `present` à jour quand
+ * un fichier est choisi.
+ *
+ * Sans JavaScript, le bouton reste un simple bouton d'envoi et le serveur
+ * applique les mêmes règles.
+ */
+window.decisionDossier = function (statutInitial = null, pieceExigee = null) {
+    const defilement = () =>
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+
+    return {
+        statut: statutInitial,
+        confirmation: false,
+        manque: false,
+        piece: pieceExigee,
+        pieceManquante: false,
+
+        enregistrer(bouton) {
+            if (!this.statut) {
+                this.manque = true;
+
+                return;
+            }
+
+            if (this.piece && !this.piece.present) {
+                this.pieceManquante = true;
+                const ligne = document.getElementById(this.piece.cible);
+
+                if (ligne) {
+                    ligne.scrollIntoView({ behavior: defilement(), block: "center" });
+                    const champ = ligne.querySelector("input[type=file]");
+                    if (champ) {
+                        champ.focus({ preventScroll: true });
+                    }
+                }
+
+                return;
+            }
+
+            // Champ invalide ailleurs dans le formulaire : l'envoi est demandé
+            // pour que la validation (verifierAvantEnvoi) affiche les erreurs
+            // et place le curseur sur le premier champ fautif.
+            if (!bouton.form.checkValidity()) {
+                bouton.form.requestSubmit();
+
+                return;
+            }
+
+            this.confirmation = true;
+            this.$nextTick(() => this.$refs.confirmer && this.$refs.confirmer.focus());
+        },
+
+        annuler() {
+            this.confirmation = false;
+            this.$nextTick(() => this.$refs.enregistrer && this.$refs.enregistrer.focus());
         },
     };
 };
@@ -272,6 +541,15 @@ window.depotCandidature = function () {
     const base = window.validationFormulaire();
     const initValidation = base.init;
 
+    // Requête en cours par liste (« metiers », « certifications »). Hors de
+    // l'état Alpine : ses proxys fausseraient la comparaison d'identité qui
+    // écarte une réponse dépassée.
+    const requetes = { metiers: null, certifications: null };
+    const indicateurs = { metiers: "chargement", certifications: "chargementCertifications" };
+    // L'indicateur n'apparaît que si la réponse tarde : une réponse rapide ne
+    // fait rien clignoter.
+    const DELAI_INDICATEUR = 200;
+
     return Object.assign(base, {
         chargement: false,
         chargementCertifications: false,
@@ -352,22 +630,76 @@ window.depotCandidature = function () {
                 return `La VAE demande au moins ${this.seuil("anneesCqp")} ans d'expérience dans le métier.`;
             }
             if (type === null) {
-                return "Saisissez vos années d'expérience : le diplôme accessible s'affiche ici.";
+                return "Saisissez les années d'expérience : le diplôme accessible s'affiche ici.";
             }
 
-            return `Avec ${parseInt(this.annees, 10)} ans d'expérience, vous visez un ${type}.`;
+            return `Avec ${parseInt(this.annees, 10)} ans d'expérience, le diplôme accessible est un ${type}.`;
         },
 
         messageCertification() {
             const type = this.typeRetenu();
 
             if (this.repliCqp()) {
-                return "Ce centre ne propose pas le CAP pour ce métier. Vous pouvez choisir un CQP.";
+                return "Ce centre ne propose pas le CAP pour ce métier : un CQP peut être choisi.";
             }
 
             return type === null
-                ? `Liste ouverte une fois vos années d'expérience saisies (${this.seuil("anneesCqp")} ans minimum).`
-                : `Seuls les ${type} sont proposés pour votre expérience.`;
+                ? `Liste ouverte une fois les années d'expérience saisies (${this.seuil("anneesCqp")} ans minimum).`
+                : `Seuls les ${type} sont proposés pour cette expérience.`;
+        },
+
+        /**
+         * GET JSON annulable. Une nouvelle requête sur la même liste annule la
+         * précédente : seule la réponse du dernier choix peut remplir la liste,
+         * quel que soit l'ordre d'arrivée. Une requête dépassée rejette avec
+         * une erreur « AbortError », que l'appelant ignore.
+         */
+        async requete(cle, url) {
+            this.annuler(cle);
+
+            const controleur = new AbortController();
+            requetes[cle] = controleur;
+
+            const minuteur = setTimeout(() => {
+                if (requetes[cle] === controleur) {
+                    this[indicateurs[cle]] = true;
+                }
+            }, DELAI_INDICATEUR);
+
+            try {
+                const reponse = await fetch(url, {
+                    headers: { Accept: "application/json" },
+                    signal: controleur.signal,
+                });
+
+                if (!reponse.ok) {
+                    throw new Error("Chargement impossible");
+                }
+
+                const donnees = await reponse.json();
+
+                // Annulée pendant la lecture du corps : la réponse est dépassée.
+                if (controleur.signal.aborted) {
+                    throw new DOMException("Requête dépassée", "AbortError");
+                }
+
+                return donnees;
+            } finally {
+                clearTimeout(minuteur);
+
+                if (requetes[cle] === controleur) {
+                    requetes[cle] = null;
+                    this[indicateurs[cle]] = false;
+                }
+            }
+        },
+
+        annuler(cle) {
+            if (requetes[cle]) {
+                requetes[cle].abort();
+                requetes[cle] = null;
+            }
+            this[indicateurs[cle]] = false;
         },
 
         async chargerMetiers() {
@@ -378,36 +710,42 @@ window.depotCandidature = function () {
                 return;
             }
 
-            this.chargement = true;
-            metier.innerHTML = "";
+            // Changer de centre invalide aussitôt le diplôme déjà choisi (et un
+            // chargement de diplômes en cours) : il appartenait à l'ancien couple.
+            this.annuler("certifications");
+            this.viderCertifications();
+
+            // La liste reste en place, bloquée, plutôt que vidée : pas de saut
+            // visuel ni de choix possible dans une liste en cours de chargement.
+            metier.disabled = true;
+            metier.replaceChildren(new Option("Chargement des métiers…", ""));
+
+            let options;
 
             try {
-                const reponse = await fetch(
-                    `/api/candidature/centres/${encodeURIComponent(centre.value)}/metiers`,
-                    { headers: { Accept: "application/json" } }
+                const metiers = await this.requete(
+                    "metiers",
+                    `/api/candidature/centres/${encodeURIComponent(centre.value)}/metiers`
                 );
 
-                if (!reponse.ok) {
-                    throw new Error("Chargement impossible");
-                }
+                options = metiers.length === 0
+                    ? [new Option("Aucun métier ouvert dans ce centre", "")]
+                    : [new Option("Sélectionnez un métier", ""), ...metiers.map((item) => {
+                        const option = new Option(item.libelle, item.id);
+                        option.dataset.filiere = item.filiere ?? "";
 
-                const metiers = await reponse.json();
-                metier.appendChild(new Option("Sélectionnez un métier", ""));
-
-                metiers.forEach((item) => {
-                    const option = new Option(item.libelle, item.id);
-                    option.dataset.filiere = item.filiere ?? "";
-                    metier.appendChild(option);
-                });
+                        return option;
+                    })];
             } catch (erreur) {
-                metier.appendChild(new Option("Aucun métier disponible", ""));
-            } finally {
-                this.chargement = false;
+                // Un autre centre a été choisi entre-temps : sa requête remplira la liste.
+                if (erreur.name === "AbortError") {
+                    return;
+                }
+                options = [new Option("Chargement impossible, choisissez à nouveau le centre", "")];
             }
 
-            // Changer de centre invalide la certification déjà choisie : elle
-            // appartenait à l'offre de l'ancien couple.
-            this.viderCertifications();
+            metier.replaceChildren(...options);
+            metier.disabled = false;
         },
 
         async chargerCertifications() {
@@ -424,43 +762,39 @@ window.depotCandidature = function () {
             const centreValeur = centre ? centre.value : certification.dataset.centre;
 
             if (!metier || !metier.value || !centreValeur) {
+                this.annuler("certifications");
                 this.viderCertifications();
 
                 return;
             }
 
-            this.chargementCertifications = true;
             this.certifications = [];
-            certification.innerHTML = "";
+            this.certificationsChargees = false;
+            certification.disabled = true;
+            certification.replaceChildren(new Option("Chargement des diplômes…", ""));
 
             try {
-                const reponse = await fetch(
-                    `/api/candidature/centres/${encodeURIComponent(centreValeur)}/metiers/${encodeURIComponent(metier.value)}/certifications`,
-                    { headers: { Accept: "application/json" } }
-                );
-
-                if (!reponse.ok) {
-                    throw new Error("Chargement impossible");
-                }
-
-                this.certifications = (await reponse.json()).map((item) => ({
+                this.certifications = (await this.requete(
+                    "certifications",
+                    `/api/candidature/centres/${encodeURIComponent(centreValeur)}/metiers/${encodeURIComponent(metier.value)}/certifications`
+                )).map((item) => ({
                     id: String(item.id),
                     libelle: item.libelle,
                     type: item.type || "",
                 }));
                 this.certificationsChargees = true;
             } catch (erreur) {
-                this.certificationsChargees = false;
-            } finally {
-                this.chargementCertifications = false;
+                // Un autre métier a été choisi entre-temps : sa requête remplira la liste.
+                if (erreur.name === "AbortError") {
+                    return;
+                }
+                certification.replaceChildren(new Option("Chargement impossible", ""));
+                certification.disabled = false;
+
+                return;
             }
 
-            if (this.certificationsChargees) {
-                this.afficherCertifications();
-            } else {
-                certification.innerHTML = "";
-                certification.appendChild(new Option("Chargement impossible", ""));
-            }
+            this.afficherCertifications();
         },
 
         /**
@@ -471,10 +805,13 @@ window.depotCandidature = function () {
         afficherCertifications() {
             const certification = this.champ("certification");
 
-            if (!certification || this.chargementCertifications) {
+            // Pendant un chargement, la liste appartient à la requête en cours
+            // (saisie des années comprise) : elle la réécrira à son retour.
+            if (!certification || requetes.certifications) {
                 return;
             }
 
+            certification.disabled = false;
             const courant = certification.value;
             const type = this.typeRetenu();
             const ajouter = (libelle, valeur = "") => certification.appendChild(new Option(libelle, valeur));
@@ -488,7 +825,7 @@ window.depotCandidature = function () {
             } else if (this.anneesInsuffisantes()) {
                 ajouter(`Aucun diplôme accessible avant ${this.seuil("anneesCqp")} ans d'expérience`);
             } else if (type === null) {
-                ajouter("Saisissez d'abord vos années d'expérience");
+                ajouter("Saisissez d'abord les années d'expérience");
             } else {
                 const proposees = this.certifications.filter((item) => item.type === type);
 

@@ -50,12 +50,13 @@ return static function (ContainerConfigurator $container) {
             ->abstract()
             ->args([
                 abstract_arg('token provider'),
-                param('kernel.secret'),
                 abstract_arg('user provider'),
                 service('request_stack'),
                 abstract_arg('options'),
                 service('logger')->nullOnInvalid(),
                 abstract_arg('token verifier'),
+                abstract_arg('signature properties'),
+                service('property_accessor')->nullOnInvalid(),
             ])
             ->tag('monolog.logger', ['channel' => 'security'])
 

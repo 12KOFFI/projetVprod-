@@ -19,6 +19,7 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Validator\Constraints\Email;
 use Symfony\Component\Validator\Constraints\Length;
+use Symfony\Component\Validator\Constraints\NotBlank;
 
 /**
  * Modification par un utilisateur de ses propres informations personnelles
@@ -40,11 +41,27 @@ class UserProfileType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
-            ->add('nom', TextType::class, ['constraints' => [new Length(max: 150)]])
-            ->add('prenoms', TextType::class, ['constraints' => [new Length(max: 150)]])
+            ->add('nom', TextType::class, [
+                'required' => true,
+                'constraints' => [
+                    new NotBlank(message: 'Le nom est obligatoire.'),
+                    new Length(max: 150),
+                ],
+            ])
+            ->add('prenoms', TextType::class, [
+                'required' => true,
+                'constraints' => [
+                    new NotBlank(message: 'Les prénoms sont obligatoires.'),
+                    new Length(max: 150),
+                ],
+            ])
             ->add('sexe', ChoiceType::class, [
                 'choices' => ['Féminin' => 'F', 'Masculin' => 'M'],
                 'placeholder' => 'Sélectionnez',
+                'required' => true,
+                'constraints' => [
+                    new NotBlank(message: 'Le sexe est obligatoire.'),
+                ],
             ])
             ->add('situationmat', ChoiceType::class, [
                 'label' => 'Situation matrimoniale',
@@ -61,10 +78,18 @@ class UserProfileType extends AbstractType
                 'label' => 'Date de naissance',
                 'widget' => 'single_text',
                 'input' => 'datetime',
+                'required' => true,
+                'constraints' => [
+                    new NotBlank(message: 'La date de naissance est obligatoire.'),
+                ],
             ])
             ->add('lieunaissance', TextType::class, [
                 'label' => 'Lieu de naissance',
-                'constraints' => [new Length(max: 150)],
+                'required' => true,
+                'constraints' => [
+                    new NotBlank(message: 'Le lieu de naissance est obligatoire.'),
+                    new Length(max: 150),
+                ],
             ])
             ->add('nationalite', ChoiceType::class, [
                 'choices' => [User::NATIONALITE_IVOIRIENNE => User::NATIONALITE_IVOIRIENNE],
@@ -74,7 +99,11 @@ class UserProfileType extends AbstractType
             ])
             ->add('residence', TextType::class, [
                 'label' => 'Ville de résidence',
-                'constraints' => [new Length(max: 255)],
+                'required' => true,
+                'constraints' => [
+                    new NotBlank(message: 'La ville de résidence est obligatoire.'),
+                    new Length(max: 255),
+                ],
             ])
             ->add('boitePostale', TextType::class, [
                 'label' => 'Boîte postale',
@@ -82,14 +111,23 @@ class UserProfileType extends AbstractType
                 'constraints' => [new Length(max: 50)],
             ])
             ->add('contact', TelephoneType::class, [
-                'label' => 'Contact 1',
+                'label' => 'Contact 1 (de préférence WhatsApp)',
+                'required' => true,
+                'constraints' => [
+                    new NotBlank(message: 'Saisissez votre numéro de téléphone.'),
+                ],
             ])
             ->add('contact2', TelephoneType::class, [
                 'label' => 'Contact 2',
                 'required' => false,
             ])
             ->add('email', EmailType::class, [
-                'constraints' => [new Email(), new Length(max: 150)],
+                'required' => true,
+                'constraints' => [
+                    new NotBlank(message: "L'adresse email est obligatoire."),
+                    new Email(message: "L'adresse email n'est pas valide."),
+                    new Length(max: 150),
+                ],
             ])
             ->add('motDePasseActuel', PasswordType::class, [
                 'label' => 'Mot de passe actuel',
