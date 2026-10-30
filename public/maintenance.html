@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>Maintenance en cours</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --encre: #1f2937;
+            --encre-douce: #6b7280;
+            --fond: #f9fafb;
+            --carte: #ffffff;
+            --bord: #e5e7eb;
+            --accent: #047857;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: var(--fond);
+            color: var(--encre);
+            font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+            line-height: 1.6;
+        }
+
+        main {
+            width: 100%;
+            max-width: 32rem;
+            background: var(--carte);
+            border: 1px solid var(--bord);
+            border-radius: 12px;
+            padding: 40px 32px;
+            text-align: center;
+        }
+
+        .pastille {
+            display: inline-block;
+            padding: 4px 12px;
+            margin-bottom: 20px;
+            border-radius: 999px;
+            background: #ecfdf5;
+            color: var(--accent);
+            font-size: 0.8125rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        h1 {
+            margin: 0 0 12px;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        p {
+            margin: 0 0 8px;
+            color: var(--encre-douce);
+        }
+
+        p:last-child { margin-bottom: 0; }
+
+        hr {
+            margin: 28px 0 20px;
+            border: 0;
+            border-top: 1px solid var(--bord);
+        }
+
+        .mention {
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <span class="pastille">Maintenance</span>
+        <h1>La plateforme est momentanement indisponible</h1>
+        <p>Une intervention technique est en cours sur la plateforme VAE. Aucune donnee n'est perdue : les dossiers deja deposes sont conserves.</p>
+        <p>Merci de reessayer dans quelques minutes.</p>
+        <hr>
+        <p class="mention">Si l'indisponibilite se prolonge, contactez le service charge du suivi des candidatures.</p>
+    </main>
+</body>
+</html>

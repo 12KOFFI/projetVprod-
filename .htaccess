@@ -2,9 +2,11 @@
 # .htaccess de la RACINE du projet.
 #
 # Il n'est lu par Apache que lorsque la racine web du domaine pointe sur le
-# dossier du projet. Lorsqu'elle pointe directement sur public/ (montage a
-# privilegier), ce fichier n'est jamais lu : c'est public/.htaccess qui fait
-# foi. La configuration est ecrite pour rester valable dans les deux cas.
+# dossier du projet. Or elle pointe directement sur public/ (confirme dans
+# cPanel > Domaines) : ce fichier n'est donc PAS lu sur le serveur actuel,
+# c'est public/.htaccess qui fait foi et qui porte le meme durcissement.
+# Il reste en place comme filet, pour le cas ou la racine web serait un jour
+# ramenee au dossier du projet.
 #
 # Durcissement repris de la branche de developpement (audit du 2026-10-29) et
 # adapte : la ou l'amont sert l'application depuis la racine, on conserve ici

@@ -70,3 +70,6 @@ yarn-error.log
 /modifs.txt
 /final.txt
 /php.ini.bak
+
+# Mode maintenance : le verrou est pose a la main sur le serveur, jamais versionne.
+/public/maintenance.lock
