@@ -100,12 +100,25 @@ Options -Indexes
 # ======================================================================
 # 3. MODE MAINTENANCE
 # S'active en deposant un fichier « maintenance.lock » dans la racine web,
-# se desactive en le supprimant. L'adresse ci-dessous garde l'acces au site
-# pendant l'intervention : la remplacer par celle de l'administrateur.
+# se desactive en le supprimant.
+#
+# AUCUNE exception d'adresse n'est active : pendant l'intervention, la page de
+# maintenance s'affiche pour TOUT LE MONDE, administrateur compris. Pour
+# reprendre la main, supprimer maintenance.lock (FTP ou gestionnaire de
+# fichiers cPanel).
+#
+# Pour se reserver l'acces, decommenter la ligne ci-dessous en y mettant son
+# adresse IP publique (relevable sur https://api.ipify.org). Les points
+# doivent etre echappes, sans quoi ils valent « n'importe quel caractere » :
+#
+#     RewriteCond %{REMOTE_ADDR} !^203\.0\.113\.42$
+#
+# Attention : sur un acces grand public l'adresse est generalement dynamique,
+# l'exception cessera donc de fonctionner apres un renouvellement de bail.
 # ======================================================================
 <IfModule mod_rewrite.c>
     RewriteCond %{DOCUMENT_ROOT}/maintenance.lock -f
-    RewriteCond %{REMOTE_ADDR} !^196\.192\.121\.140$
+#   RewriteCond %{REMOTE_ADDR} !^VOTRE\.ADRESSE\.IP\.ICI$
     RewriteCond %{REQUEST_URI} !^/maintenance\.html$
     RewriteRule ^(.*)$ /maintenance.html [R=503,L]
     ErrorDocument 503 /maintenance.html
