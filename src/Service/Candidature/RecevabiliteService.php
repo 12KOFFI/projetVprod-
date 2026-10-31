@@ -10,6 +10,7 @@ use App\Enum\StatutCandidature;
 use App\Enum\StatutEtude;
 use App\Enum\StatutRecevabilite;
 use App\Exception\RecevabiliteException;
+use App\Security\Role;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -60,6 +61,12 @@ class RecevabiliteService
      */
     public function etudier(Candidature $candidature, EtudeDto $dto, User $auteur): Candidature
     {
+        // Seul un conseiller VAE étudie un dossier, jamais l'administrateur
+        // (rôle stocké sur le compte, hors hiérarchie des rôles).
+        if (!in_array(Role::CONSEILLER, $auteur->getRoles(), true)) {
+            throw RecevabiliteException::etudeReserveeAuConseiller();
+        }
+
         if (!$this->resolver->estEnAttenteEtude($candidature)) {
             throw RecevabiliteException::etudeImpossible((string) $candidature->getNumero());
         }
@@ -78,11 +85,10 @@ class RecevabiliteService
             throw RecevabiliteException::justificatifExperienceManquant();
         }
 
-        // Le conseiller qui se prononce prend le dossier en charge s'il n'était
-        // affecté à personne : la charge affichée à l'agent d'accueil reste juste.
-        if ($candidature->getConseiller() === null) {
-            $candidature->setConseiller($auteur);
-        }
+        // Le dossier est rattaché au conseiller qui rend l'étude, même si un
+        // collègue l'avait pris en charge avant lui : c'est l'auteur réel de
+        // l'analyse qui figure dans les listes et dans « Mes dossiers ».
+        $candidature->setConseiller($auteur);
 
         $candidature->setEtuStatut($statut->value);
         $candidature->setEtuDate(new \DateTime());

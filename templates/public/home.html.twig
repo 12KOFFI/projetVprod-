@@ -121,7 +121,12 @@
         {# Le parcours VAE en motion design, en 5 « phases » (la page, elle, a
            4 « étapes » : deux numérotations distinctes, deux mots distincts).
            Sans JavaScript, la liste statique des phases reste affichée ; avec,
-           elle devient la version lue par les lecteurs d'écran. #}
+           elle devient la version lue par les lecteurs d'écran.
+
+           Au chargement, le serveur dessine déjà la première phase (classes
+           initiales en dur) : rien ne saute pendant qu'app.js se charge.
+           Alpine reprend ensuite le même état ; ses :class sont en syntaxe
+           objet pour pouvoir retirer ces classes initiales au fil des phases. #}
         <div class="lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1 lg:self-center">
             <div x-data="parcoursVae"
                  @mouseenter="survol = true; planifier()" @mouseleave="survol = false; planifier()"
@@ -129,7 +134,7 @@
                  role="group" aria-label="Le parcours VAE en 5 phases"
                  class="relative flex flex-col rounded-lg border border-primary-200 bg-white p-4 sm:p-6 lg:h-[32rem]">
 
-                <ol :class="anime ? 'sr-only' : ''" class="space-y-3">
+                <ol class="space-y-3 [.js_&]:sr-only">
                     {% for e in parcours %}
                         <li class="flex items-center gap-3">
                             <span class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary-200 bg-primary-50 text-primary-700" aria-hidden="true">
@@ -146,35 +151,39 @@
                     {% endfor %}
                 </ol>
 
-                <div x-cloak class="flex flex-1 flex-col">
+                <div class="flex flex-1 flex-col [html:not(.js)_&]:hidden">
                     <button type="button" @click="basculer()"
+                            aria-label="Mettre l'animation en pause"
                             :aria-label="enPause ? 'Reprendre l\'animation' : 'Mettre l\'animation en pause'"
                             class="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-md border border-primary-200 bg-white text-primary-800 transition-colors duration-200 hover:bg-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700">
-                        <i class="fas" :class="enPause ? 'fa-play' : 'fa-pause'" aria-hidden="true"></i>
+                        <i class="fas fa-pause" :class="{ 'fa-play': enPause, 'fa-pause': !enPause }" aria-hidden="true"></i>
                     </button>
 
                     <div aria-hidden="true" class="relative {{ avatars ? 'h-[19rem] sm:h-[22rem]' : 'h-56 sm:h-60' }} lg:h-auto lg:flex-1">
                         {% for e in parcours %}
                             {% set i = loop.index0 %}
-                            <div class="absolute inset-0 flex flex-col items-center justify-center px-6 text-center transition-opacity motion-reduce:transition-none"
-                                 :class="estActive({{ i }}) ? 'opacity-100 duration-300' : 'opacity-0 duration-200'">
+                            {% set initiale = i == 0 %}
+                            <div class="absolute inset-0 flex flex-col items-center justify-center px-6 text-center transition-opacity motion-reduce:transition-none {{ initiale ? 'opacity-100 duration-300' : 'opacity-0 duration-200' }}"
+                                 :class="{ 'opacity-100 duration-300': estActive({{ i }}), 'opacity-0 duration-200': !estActive({{ i }}) }">
                                 {% if avatars %}
                                     {# Personnage dans un hexagone : la tête dépasse du haut,
-                                       le buste est coupé par les deux pans du bas. #}
+                                       le buste est coupé par les deux pans du bas. La
+                                       première image est chargée en priorité. #}
                                     <div class="relative h-52 w-52 sm:h-64 sm:w-64 lg:h-72 lg:w-72">
-                                        <div class="absolute inset-x-0 bottom-0 h-[82%] transition-transform duration-500 ease-out motion-reduce:transition-none [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)] {{ loop.last ? 'bg-[#ED8F33]/25' : (loop.index is odd ? 'bg-primary-100' : 'bg-primary-200') }}"
-                                             :class="estActive({{ i }}) ? 'scale-100' : 'scale-90'"></div>
-                                        <img src="{{ asset(avatars[i]) }}" alt="" width="512" height="512" loading="lazy" decoding="async"
-                                             class="absolute inset-0 h-full w-full object-contain object-bottom transition duration-700 ease-out motion-reduce:transition-none [clip-path:polygon(0_0,100%_0,100%_79.5%,50%_100%,0_79.5%)]"
-                                             :class="estActive({{ i }}) ? 'translate-y-0 opacity-100 delay-100' : 'translate-y-4 opacity-0'">
+                                        <div class="absolute inset-x-0 bottom-0 h-[82%] transition-transform duration-500 ease-out motion-reduce:transition-none [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)] {{ loop.last ? 'bg-[#ED8F33]/25' : (loop.index is odd ? 'bg-primary-100' : 'bg-primary-200') }} {{ initiale ? 'scale-100' : 'scale-90' }}"
+                                             :class="{ 'scale-100': estActive({{ i }}), 'scale-90': !estActive({{ i }}) }"></div>
+                                        <img src="{{ asset(avatars[i]) }}" alt="" width="512" height="512"
+                                             loading="{{ initiale ? 'eager' : 'lazy' }}" {% if initiale %}fetchpriority="high"{% endif %} decoding="async"
+                                             class="absolute inset-0 h-full w-full object-contain object-bottom transition duration-700 ease-out motion-reduce:transition-none [clip-path:polygon(0_0,100%_0,100%_79.5%,50%_100%,0_79.5%)] {{ initiale ? 'translate-y-0 opacity-100 delay-100' : 'translate-y-4 opacity-0' }}"
+                                             :class="{ 'translate-y-0 opacity-100 delay-100': estActive({{ i }}), 'translate-y-4 opacity-0': !estActive({{ i }}) }">
                                     </div>
                                 {% else %}
                                 <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                     class="h-24 w-24 text-primary-700 lg:h-32 lg:w-32 [&_*]:[stroke-dasharray:1] [&_*]:transition-[stroke-dashoffset] [&_*]:duration-700 [&_*]:ease-out motion-reduce:[&_*]:transition-none"
-                                     :class="estActive({{ i }}) ? '[&_*]:[stroke-dashoffset:0]' : '[&_*]:[stroke-dashoffset:1]'">{{ page.picto(loop.index) }}</svg>
+                                     class="h-24 w-24 text-primary-700 lg:h-32 lg:w-32 [&_*]:[stroke-dasharray:1] [&_*]:transition-[stroke-dashoffset] [&_*]:duration-700 [&_*]:ease-out motion-reduce:[&_*]:transition-none {{ initiale ? '[&_*]:[stroke-dashoffset:0]' : '[&_*]:[stroke-dashoffset:1]' }}"
+                                     :class="{ '[&_*]:[stroke-dashoffset:0]': estActive({{ i }}), '[&_*]:[stroke-dashoffset:1]': !estActive({{ i }}) }">{{ page.picto(loop.index) }}</svg>
                                 {% endif %}
-                                <div class="mt-4 transition duration-[400ms] ease-out motion-reduce:transition-none"
-                                     :class="estActive({{ i }}) ? 'opacity-100 translate-y-0 delay-150' : 'opacity-0 translate-y-2'">
+                                <div class="mt-4 transition duration-[400ms] ease-out motion-reduce:transition-none {{ initiale ? 'opacity-100 translate-y-0 delay-150' : 'opacity-0 translate-y-2' }}"
+                                     :class="{ 'opacity-100 translate-y-0 delay-150': estActive({{ i }}), 'opacity-0 translate-y-2': !estActive({{ i }}) }">
                                     <p class="text-lg font-bold leading-snug text-primary-900 text-balance sm:text-xl">{{ e.libelle }}</p>
                                 </div>
                             </div>
@@ -185,17 +194,19 @@
                        (zone tactile de 44 px autour d'un point de 12 à 16 px). #}
                     <div class="relative mt-4">
                         <span class="absolute left-[22px] right-[22px] top-1/2 h-0.5 -translate-y-1/2 bg-primary-100" aria-hidden="true"></span>
-                        <span class="absolute left-[22px] right-[22px] top-1/2 h-0.5 -translate-y-1/2 origin-left bg-primary-700 transition-transform ease-out motion-reduce:transition-none"
-                              :class="[echelles[active], active === 0 ? 'duration-0' : 'duration-[600ms]']" aria-hidden="true"></span>
+                        <span class="absolute left-[22px] right-[22px] top-1/2 h-0.5 -translate-y-1/2 origin-left bg-primary-700 transition-transform ease-out motion-reduce:transition-none scale-x-0 duration-0"
+                              :class="classeRail()" aria-hidden="true"></span>
                         <ol class="relative flex items-center justify-between">
                             {% for e in parcours %}
                                 {% set i = loop.index0 %}
                                 <li>
                                     <button type="button" @click="aller({{ i }})"
+                                            {% if i == 0 %}aria-current="step"{% endif %}
                                             :aria-current="active === {{ i }} ? 'step' : false"
                                             aria-label="Phase {{ loop.index }} : {{ e.libelle }}"
                                             class="group flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700">
-                                        <span class="block rounded-full transition-all duration-300 ease-out motion-reduce:transition-none" :class="classePoint({{ i }})" aria-hidden="true"></span>
+                                        <span class="block rounded-full transition-all duration-300 ease-out motion-reduce:transition-none {{ i == 0 ? 'h-4 w-4 bg-primary-700 ring-4 ring-primary-100' : 'h-3 w-3 border-2 border-primary-500 bg-white group-hover:bg-primary-100' }}"
+                                              :class="classePoint({{ i }})" aria-hidden="true"></span>
                                     </button>
                                 </li>
                             {% endfor %}
@@ -556,8 +567,6 @@ document.addEventListener('alpine:init', function () {
         return {
             active: 0,
             total: 5,
-            demarre: false,
-            anime: false,
             enPause: false,
             survol: false,
             focus: false,
@@ -565,17 +574,25 @@ document.addEventListener('alpine:init', function () {
             premier: true,
             echelles: ['scale-x-0', 'scale-x-[0.25]', 'scale-x-50', 'scale-x-75', 'scale-x-100'],
 
+            // La première phase est déjà dessinée par le serveur : Alpine
+            // reprend cet état tel quel, sans la masquer puis la réafficher
+            // (ce qui faisait clignoter la carte au rechargement).
             init: function () {
                 var soi = this;
-                this.anime = true;
                 this.enPause = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
                 document.addEventListener('visibilitychange', function () { soi.planifier(); });
-                // Deux images plus tard, pour que la première étape se dessine.
-                requestAnimationFrame(function () {
-                    requestAnimationFrame(function () { soi.demarre = true; soi.planifier(); });
-                });
+                this.planifier();
             },
-            estActive: function (i) { return this.demarre && this.active === i; },
+            estActive: function (i) { return this.active === i; },
+            // Syntaxe objet : les classes du rail posées par le serveur sont
+            // retirées quand la phase change (une chaîne ne ferait qu'ajouter).
+            classeRail: function () {
+                var classes = { 'duration-0': this.active === 0, 'duration-[600ms]': this.active !== 0 };
+                for (var i = 0; i < this.echelles.length; i++) {
+                    classes[this.echelles[i]] = i === this.active;
+                }
+                return classes;
+            },
             planifier: function () {
                 var soi = this;
                 clearTimeout(this.minuteur);
@@ -597,10 +614,14 @@ document.addEventListener('alpine:init', function () {
             },
             // Point actif plus grand et cerclé ; phases passées pleines ; phases
             // à venir en anneau primary-500 (4,3:1 sur blanc, lisible).
+            // Syntaxe objet, comme le rail : Alpine retire d'abord les classes
+            // fausses puis ajoute les vraies, les classes communes restent.
             classePoint: function (i) {
-                if (i === this.active) { return 'h-4 w-4 bg-primary-700 ring-4 ring-primary-100'; }
-                if (i < this.active) { return 'h-3 w-3 bg-primary-500 group-hover:bg-primary-700'; }
-                return 'h-3 w-3 border-2 border-primary-500 bg-white group-hover:bg-primary-100';
+                return {
+                    'h-4 w-4 bg-primary-700 ring-4 ring-primary-100': i === this.active,
+                    'h-3 w-3 bg-primary-500 group-hover:bg-primary-700': i < this.active,
+                    'h-3 w-3 border-2 border-primary-500 bg-white group-hover:bg-primary-100': i > this.active
+                };
             }
         };
     });

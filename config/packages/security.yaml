@@ -61,7 +61,7 @@ security:
     # limite à l'inscription et à la reprise des dossiers. Ni l'un ni l'autre
     # n'hérite de ces rôles : l'exclusion est déclarative, sans test dans le
     # contrôleur. ROLE_ADMIN, qui hérite de tous, reste admis par ROLE_CONSEILLER.
-    - { path: "^/indicateurs", roles: [ROLE_CONSEILLER, ROLE_ACCOMPAGNATEUR] }
+    - { path: "^/indicateurs", roles: [ROLE_CONSEILLER, ROLE_ACCOMPAGNATEUR, ROLE_JURY_LOCAL] }
     - { path: "^/impressions", roles: ROLE_USER }
     # Pièces justificatives : connexion exigée ; le droit fin est vérifié par
     # CandidatureVoter dans PieceController.

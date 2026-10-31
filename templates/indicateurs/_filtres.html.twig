@@ -1,0 +1,139 @@
+{#
+    Filtres de l'écran Indicateurs (administration), repris de l'ancien écran
+    de pilotage : direction régionale → localité → centre, filière → métier,
+    sexe, période de dépôt. Ils restent dans l'URL.
+
+    Pas de soumission au `change` (au clavier sous Windows, chaque option
+    parcourue soumettait le formulaire) : un bouton explicite. Le navigateur
+    masque les choix incompatibles avec le parent ; le serveur corrige de toute
+    façon une combinaison incohérente. Formulaire, pastilles et réinitialisation
+    sont pris en charge sans rechargement par indicateursDynamiques
+    (assets/app.js) ; sans JavaScript, ce sont de simples liens et un GET.
+#}
+{% set champ = 'min-h-[44px] w-full rounded-lg border border-slate-500 bg-white px-3 py-2.5 text-sm text-slate-900 transition duration-150 motion-reduce:transition-none focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600' %}
+{% set bouton_secondaire = 'inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition duration-150 motion-reduce:transition-none hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2' %}
+
+<form method="get" action="{{ path('app_indicateurs') }}"
+      class="mb-6 rounded-lg border border-slate-200 bg-white p-4 sm:p-5"
+      x-data="{ dr: '{{ filtres.dr }}', localite: '{{ filtres.localite }}', centre: '{{ filtres.centre }}', filiere: '{{ filtres.filiere }}', metier: '{{ filtres.metier }}', periode: '{{ filtres.periode }}' }">
+    <h2 class="sr-only">Filtrer le périmètre</h2>
+    <input type="hidden" name="etape" :value="etape" value="{{ filtres.etape }}">
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+            <label for="f-dr" class="mb-1.5 block text-sm font-medium text-slate-700">Direction régionale</label>
+            <select id="f-dr" name="dr" class="{{ champ }}" x-model="dr"
+                    @change="if (localite && $refs.localite.querySelector('option[value=\'' + localite + '\']')?.dataset.dr !== dr) localite = ''; if (centre && $refs.centre.querySelector('option[value=\'' + centre + '\']')?.dataset.dr !== dr) centre = ''">
+                <option value="">Toutes</option>
+                {% for id, libelle in options.dr %}
+                    <option value="{{ id }}" {{ filtres.dr == id ? 'selected' }}>{{ libelle }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="f-localite" class="mb-1.5 block text-sm font-medium text-slate-700">Localité</label>
+            <select id="f-localite" name="localite" class="{{ champ }}" x-model="localite" x-ref="localite"
+                    @change="if (centre && $refs.centre.querySelector('option[value=\'' + centre + '\']')?.dataset.localite !== localite) centre = ''">
+                <option value="">Toutes</option>
+                {% for id, l in options.localite %}
+                    <option value="{{ id }}" data-dr="{{ l.dr }}" {{ filtres.localite == id ? 'selected' }}
+                            :hidden="dr !== '' && dr !== '{{ l.dr }}'">{{ l.libelle }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="sm:col-span-2">
+            <label for="f-centre" class="mb-1.5 block text-sm font-medium text-slate-700">Centre</label>
+            <select id="f-centre" name="centre" class="{{ champ }}" x-model="centre" x-ref="centre">
+                <option value="">Tous les centres</option>
+                {% for id, c in options.centre %}
+                    <option value="{{ id }}" data-dr="{{ c.dr }}" data-localite="{{ c.localite }}" {{ filtres.centre == id ? 'selected' }}
+                            :hidden="(dr !== '' && dr !== '{{ c.dr }}') || (localite !== '' && localite !== '{{ c.localite }}')">{{ c.libelle }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="f-filiere" class="mb-1.5 block text-sm font-medium text-slate-700">Filière</label>
+            <select id="f-filiere" name="filiere" class="{{ champ }}" x-model="filiere"
+                    @change="if (metier && $refs.metier.querySelector('option[value=\'' + metier + '\']')?.dataset.filiere !== filiere) metier = ''">
+                <option value="">Toutes</option>
+                {% for id, libelle in options.filiere %}
+                    <option value="{{ id }}" {{ filtres.filiere == id ? 'selected' }}>{{ libelle }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="f-metier" class="mb-1.5 block text-sm font-medium text-slate-700">Métier</label>
+            <select id="f-metier" name="metier" class="{{ champ }}" x-model="metier" x-ref="metier">
+                <option value="">Tous</option>
+                {% for id, m in options.metier %}
+                    <option value="{{ id }}" data-filiere="{{ m.filiere }}" {{ filtres.metier == id ? 'selected' }}
+                            :hidden="filiere !== '' && filiere !== '{{ m.filiere }}'">{{ m.libelle }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="f-sexe" class="mb-1.5 block text-sm font-medium text-slate-700">Sexe</label>
+            <select id="f-sexe" name="sexe" class="{{ champ }}">
+                <option value="">Tous</option>
+                {% for valeur, libelle in options.sexe %}
+                    <option value="{{ valeur }}" {{ filtres.sexe == valeur ? 'selected' }}>{{ libelle }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="f-periode" class="mb-1.5 block text-sm font-medium text-slate-700">Période de dépôt</label>
+            <select id="f-periode" name="periode" class="{{ champ }}" x-model="periode">
+                {% for valeur, libelle in options.periode %}
+                    <option value="{{ valeur }}" {{ filtres.periode == valeur ? 'selected' }}>{{ libelle }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="grid grid-cols-2 gap-4 sm:col-span-2" x-show="periode === 'perso'" {{ filtres.periode != 'perso' ? 'x-cloak' }}>
+            <div>
+                <label for="f-du" class="mb-1.5 block text-sm font-medium text-slate-700">Du</label>
+                <input id="f-du" type="date" name="du" value="{{ filtres.du ? filtres.du|date('Y-m-d') }}" class="{{ champ }}" :disabled="periode !== 'perso'">
+            </div>
+            <div>
+                <label for="f-au" class="mb-1.5 block text-sm font-medium text-slate-700">Au</label>
+                <input id="f-au" type="date" name="au" value="{{ filtres.au ? filtres.au|date('Y-m-d') }}" class="{{ champ }}" :disabled="periode !== 'perso'">
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4">
+        <button type="submit"
+                class="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white
+                       transition duration-150 motion-reduce:transition-none hover:bg-indigo-700
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+            <i class="fas fa-filter text-xs" aria-hidden="true"></i>Appliquer les filtres
+        </button>
+        {% if filtres.estFiltre %}
+            <a href="{{ path('app_indicateurs', filtres.etape != 'preinscrits' ? {etape: filtres.etape} : {}) }}" data-filtre class="{{ bouton_secondaire }}">
+                <i class="fas fa-rotate-left text-xs" aria-hidden="true"></i>Tout réinitialiser
+            </a>
+        {% endif %}
+        <a href="{{ path('app_impressions') }}"
+           class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 text-sm font-medium text-indigo-700
+                  transition duration-150 motion-reduce:transition-none hover:bg-indigo-100
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 sm:ml-auto">
+            <i class="fas fa-file-export text-xs" aria-hidden="true"></i>Exporter depuis Impressions
+        </a>
+    </div>
+
+    {% if pastilles is not empty %}
+        <ul class="mt-4 flex flex-wrap gap-2" aria-label="Filtres actifs">
+            {% for pastille in pastilles %}
+                <li>
+                    <a href="{{ path('app_indicateurs', pastille.parametres) }}" data-filtre
+                       class="inline-flex min-h-[36px] items-center gap-2 rounded-full border border-slate-300 bg-slate-50 py-1 pl-3 pr-2 text-sm text-slate-700
+                              transition duration-150 motion-reduce:transition-none hover:border-slate-500 hover:bg-white
+                              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                        <span><span class="text-slate-600">{{ pastille.libelle }} :</span> <span class="font-medium text-slate-900">{{ pastille.valeur }}</span></span>
+                        <i class="fas fa-xmark text-xs text-slate-500" aria-hidden="true"></i>
+                        <span class="sr-only">— retirer ce filtre</span>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</form>

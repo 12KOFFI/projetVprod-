@@ -95,11 +95,21 @@ const INFOBULLE = {
     },
 };
 
+/** L'utilisateur a-t-il demandé de réduire les animations ? */
+function mouvementReduit() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 /** Animation courte à la première apparition ; aucune si l'utilisateur la refuse. */
 function animation() {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    return mouvementReduit() ? false : { duration: 450, easing: "easeOutQuart" };
+}
+
+/** Anneau : rotation et ouverture depuis le centre, à l'entrée comme à chaque changement d'étape. */
+function animationAnneau() {
+    return mouvementReduit()
         ? false
-        : { duration: 450, easing: "easeOutQuart" };
+        : { duration: 900, easing: "easeOutQuart", animateRotate: true, animateScale: true };
 }
 
 /** Libellé d'axe tronqué : le nom complet reste dans l'infobulle. */
@@ -186,8 +196,9 @@ function configurationGraphique(type, libelles, donnees, couleurs, options = {})
                         // Interpolation monotone : sans elle, la courbe plonge
                         // sous zéro entre deux semaines creuses.
                         cubicInterpolationMode: "monotone",
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
+                        // La semaine la plus chargée est mise en valeur.
+                        pointRadius: (contexte) => (contexte.raw === Math.max(...donnees) && contexte.raw > 0 ? 6 : 4),
+                        pointHoverRadius: 7,
                         pointBackgroundColor: "#FFFFFF",
                         pointBorderColor: PALETTE_GRAPHIQUE[0],
                         pointBorderWidth: 2,
@@ -239,13 +250,16 @@ function configurationGraphique(type, libelles, donnees, couleurs, options = {})
                     backgroundColor: couleurs,
                     borderColor: "#FFFFFF",
                     borderWidth: 2,
+                    // Une part survolée se détache légèrement de l'anneau.
+                    hoverOffset: mouvementReduit() ? 0 : 6,
                 },
             ],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: animation(),
+            animation: animationAnneau(),
+            layout: { padding: 6 },
             cutout: "62%",
             plugins: {
                 // La légende est rendue en Twig sous le graphique, avec des
@@ -266,47 +280,347 @@ function configurationGraphique(type, libelles, donnees, couleurs, options = {})
  * listant des clés sémantiques. Un seul point d'entrée évite un `<script>` par
  * graphique ; les chiffres restent écrits en Twig à côté de chaque graphique.
  */
-function monterGraphiques() {
-    document.querySelectorAll("canvas[data-valeurs]").forEach((canvas) => {
-        let valeurs;
+/** Couleurs d'une série : clés sémantiques (« palette », « neutre »…) ou palette DAIP par défaut. */
+function couleursSerie(cles, nombre) {
+    if (cles) {
+        return cles
+            .split(",")
+            .map((cle, index) => COULEURS_SEMANTIQUES[cle.trim()] ?? PALETTE_GRAPHIQUE[index % PALETTE_GRAPHIQUE.length]);
+    }
 
-        try {
-            valeurs = JSON.parse(canvas.dataset.valeurs);
-        } catch (e) {
+    return Array.from({ length: nombre }, (_, index) => PALETTE_GRAPHIQUE[index % PALETTE_GRAPHIQUE.length]);
+}
+
+/**
+ * Données à afficher d'un canvas : `data-valeurs` ({libellé: effectif}), ou,
+ * pour un anneau des écrans de pilotage, la série de l'étape courante dans
+ * `data-series` ({étape: {libelles, valeurs, couleurs}}).
+ */
+function donneesCanvas(canvas, etape = null) {
+    try {
+        if (canvas.dataset.series) {
+            const series = JSON.parse(canvas.dataset.series);
+            const serie = series[etape ?? canvas.dataset.etape] ?? { libelles: [], valeurs: [], couleurs: "" };
+
+            return { libelles: serie.libelles, valeurs: serie.valeurs, cles: serie.couleurs };
+        }
+
+        const valeurs = JSON.parse(canvas.dataset.valeurs);
+
+        return { libelles: Object.keys(valeurs), valeurs: Object.values(valeurs), cles: canvas.dataset.couleurs };
+    } catch (e) {
+        return null;
+    }
+}
+
+/**
+ * Monte les graphiques d'une zone de la page (toute la page par défaut, ou un
+ * fragment remplacé sans rechargement). Un canvas déjà monté est ignoré.
+ */
+function monterGraphiques(racine = document) {
+    racine.querySelectorAll("canvas[data-valeurs], canvas[data-series]").forEach((canvas) => {
+        if (Chart.getChart(canvas)) {
             return;
         }
 
-        const libelles = Object.keys(valeurs);
+        const donnees = donneesCanvas(canvas);
 
         // Un graphique sans donnée afficherait un disque vide et trompeur :
         // le gabarit prévoit un état vide à la place, on n'instancie rien.
-        if (libelles.length === 0) {
+        // Un anneau à étapes est monté quand même : une autre étape peut
+        // avoir des données.
+        if (donnees === null || (donnees.libelles.length === 0 && !canvas.dataset.series)) {
             return;
-        }
-
-        let couleurs;
-        const cles = canvas.dataset.couleurs;
-
-        if (cles) {
-            couleurs = cles
-                .split(",")
-                .map((cle, index) => COULEURS_SEMANTIQUES[cle.trim()] ?? PALETTE_GRAPHIQUE[index % PALETTE_GRAPHIQUE.length]);
-        } else {
-            couleurs = libelles.map((_, index) => PALETTE_GRAPHIQUE[index % PALETTE_GRAPHIQUE.length]);
         }
 
         new Chart(
             canvas,
-            configurationGraphique(canvas.dataset.graphique || "anneau", libelles, Object.values(valeurs), couleurs, {
-                prefixe: canvas.dataset.prefixe,
-                axeX: canvas.dataset.axeX,
-                axeY: canvas.dataset.axeY,
-            })
+            configurationGraphique(
+                canvas.dataset.graphique || "anneau",
+                donnees.libelles,
+                donnees.valeurs,
+                couleursSerie(donnees.cles, donnees.libelles.length),
+                {
+                    prefixe: canvas.dataset.prefixe,
+                    axeX: canvas.dataset.axeX,
+                    axeY: canvas.dataset.axeY,
+                }
+            )
         );
     });
 }
 
-document.addEventListener("DOMContentLoaded", monterGraphiques);
+/** Démonte les graphiques d'une zone avant de la remplacer. */
+function demonterGraphiques(racine) {
+    racine.querySelectorAll("canvas").forEach((canvas) => Chart.getChart(canvas)?.destroy());
+}
+
+/**
+ * Changement d'étape analysée (cartes des étapes, écrans de pilotage) : les
+ * anneaux à étapes passent à la série de la nouvelle étape, avec l'animation
+ * de rotation de Chart.js.
+ */
+document.addEventListener("etape-change", (evenement) => {
+    document.querySelectorAll("canvas[data-series]").forEach((canvas) => {
+        const graphique = Chart.getChart(canvas);
+        const donnees = donneesCanvas(canvas, evenement.detail.etape);
+
+        if (!graphique || donnees === null) {
+            return;
+        }
+
+        canvas.dataset.etape = evenement.detail.etape;
+        graphique.data.labels = donnees.libelles;
+        graphique.data.datasets[0].data = donnees.valeurs;
+        graphique.data.datasets[0].backgroundColor = couleursSerie(donnees.cles, donnees.libelles.length);
+        graphique.reset();
+        graphique.update();
+    });
+});
+
+document.addEventListener("DOMContentLoaded", () => monterGraphiques());
+
+/** Nombre au format français : espace insécable fine pour les milliers. */
+const FORMAT_NOMBRE = new Intl.NumberFormat("fr-FR");
+
+/**
+ * Chiffre qui défile de 0 à sa valeur à l'apparition, une seule fois. Le
+ * gabarit écrit la valeur finale : sans JavaScript ou avec les animations
+ * réduites, elle s'affiche telle quelle.
+ */
+window.compteur = function (valeur) {
+    return {
+        affiche: FORMAT_NOMBRE.format(valeur),
+
+        init() {
+            if (mouvementReduit() || valeur === 0) {
+                return;
+            }
+
+            const debut = performance.now();
+            const duree = 900;
+            const pas = (instant) => {
+                const avancement = Math.min(1, (instant - debut) / duree);
+                this.affiche = FORMAT_NOMBRE.format(Math.round(valeur * (1 - Math.pow(1 - avancement, 3))));
+                if (avancement < 1) {
+                    requestAnimationFrame(pas);
+                }
+            };
+
+            this.affiche = "0";
+            requestAnimationFrame(pas);
+        },
+    };
+};
+
+/**
+ * Étape analysée sur un écran de pilotage. `choisir()` émet `etape-change`,
+ * écouté plus haut pour les anneaux et par l'écran Indicateurs pour l'URL.
+ */
+window.etapeAnalysee = function (initiale = "preinscrits") {
+    return {
+        etape: initiale,
+
+        choisir(cle) {
+            if (cle === this.etape) {
+                return;
+            }
+            this.etape = cle;
+            this.$dispatch("etape-change", { etape: cle });
+        },
+    };
+};
+
+/**
+ * Liste paginée côté navigateur, avec défilement automatique des pages
+ * (tableau des centres du tableau de bord).
+ *
+ * `lignes` : texte de recherche de chaque ligne, en minuscules, dans l'ordre
+ * d'affichage. Le défilement s'arrête dès que l'utilisateur interagit
+ * (survol, focus, toucher, clic) et ne reprend que par le bouton Lecture ; il
+ * ne démarre pas si l'utilisateur a demandé de réduire les animations.
+ */
+window.paginationAuto = function ({ lignes, parPage = 5, delai = 6000 }) {
+    return {
+        page: 0,
+        q: "",
+        pause: mouvementReduit(),
+        ecoule: 0,
+        minuteur: null,
+
+        init() {
+            this.minuteur = setInterval(() => {
+                if (this.pause || document.hidden || this.nbPages() < 2) {
+                    return;
+                }
+                this.ecoule += 100;
+                if (this.ecoule >= delai) {
+                    this.ecoule = 0;
+                    this.page = (this.page + 1) % this.nbPages();
+                }
+            }, 100);
+        },
+
+        destroy() {
+            clearInterval(this.minuteur);
+        },
+
+        /** Index des lignes retenues par la recherche. */
+        retenues() {
+            const q = this.q.trim().toLowerCase();
+
+            return lignes.reduce((retenues, texte, index) => {
+                if (q === "" || texte.includes(q)) {
+                    retenues.push(index);
+                }
+
+                return retenues;
+            }, []);
+        },
+
+        nbPages() {
+            return Math.max(1, Math.ceil(this.retenues().length / parPage));
+        },
+
+        visible(index) {
+            const position = this.retenues().indexOf(index);
+
+            return position !== -1 && Math.floor(position / parPage) === this.page;
+        },
+
+        aller(page) {
+            const nb = this.nbPages();
+            this.page = ((page % nb) + nb) % nb;
+            this.arreter();
+        },
+
+        chercher() {
+            this.page = 0;
+            this.arreter();
+        },
+
+        arreter() {
+            this.pause = true;
+            this.ecoule = 0;
+        },
+
+        basculer() {
+            this.pause = !this.pause;
+            this.ecoule = 0;
+        },
+
+        progression() {
+            return this.pause ? 0 : Math.min(100, (this.ecoule / delai) * 100);
+        },
+
+        plage() {
+            const total = this.retenues().length;
+            if (total === 0) {
+                return "Aucun centre trouvé";
+            }
+            const debut = this.page * parPage + 1;
+
+            return `Centres ${debut}–${Math.min(debut + parPage - 1, total)} sur ${total}`;
+        },
+    };
+};
+
+/**
+ * Écran Indicateurs de l'administration : filtres, pastilles et parts
+ * d'anneau appliqués sans rechargement. Le contenu est redemandé au serveur
+ * (en-tête X-Requested-With : il ne renvoie que le fragment), remplacé, puis
+ * ses graphiques remontés ; l'URL suit, pour partager et recharger la vue.
+ */
+window.indicateursDynamiques = function () {
+    return {
+        chargement: false,
+        erreur: false,
+        derniereUrl: null,
+
+        init() {
+            window.addEventListener("popstate", () => this.charger(window.location.href, false));
+        },
+
+        /** L'étape choisie à l'écran reste dans l'URL partagée. */
+        etapeChangee(etape) {
+            const url = new URL(window.location.href);
+            if (etape === "preinscrits") {
+                url.searchParams.delete("etape");
+            } else {
+                url.searchParams.set("etape", etape);
+            }
+            history.replaceState(null, "", url);
+        },
+
+        /** Clic sur un lien de filtre : pastille, réinitialisation, part d'anneau. */
+        lien(evenement) {
+            const a = evenement.target.closest("a[data-filtre]");
+            if (!a || evenement.button !== 0 || evenement.metaKey || evenement.ctrlKey || evenement.shiftKey || evenement.altKey) {
+                return;
+            }
+            evenement.preventDefault();
+
+            // Le lien a été écrit par le serveur avec l'étape de l'époque :
+            // l'étape choisie depuis à l'écran (gardée dans l'URL) l'emporte.
+            const url = new URL(a.href);
+            const etape = new URL(window.location.href).searchParams.get("etape");
+            if (etape) {
+                url.searchParams.set("etape", etape);
+            } else {
+                url.searchParams.delete("etape");
+            }
+            this.charger(url.toString());
+        },
+
+        soumettre(evenement) {
+            const formulaire = evenement.target;
+            const parametres = new URLSearchParams();
+            new FormData(formulaire).forEach((valeur, cle) => {
+                // Valeurs par défaut omises, comme dans FiltresPilotage::parametres().
+                if (valeur !== "" && !(cle === "etape" && valeur === "preinscrits") && !(cle === "periode" && valeur === "session")) {
+                    parametres.append(cle, valeur);
+                }
+            });
+            const chaine = parametres.toString();
+            this.charger(formulaire.action + (chaine ? `?${chaine}` : ""));
+        },
+
+        async charger(url, historique = true) {
+            this.chargement = true;
+            this.erreur = false;
+            this.derniereUrl = url;
+
+            try {
+                const reponse = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest", Accept: "text/html" } });
+                if (!reponse.ok) {
+                    throw new Error("Chargement impossible");
+                }
+                const html = await reponse.text();
+                const zone = this.$refs.contenu;
+
+                demonterGraphiques(zone);
+                zone.innerHTML = html;
+                // Alpine initialise seul le nouveau contenu ; les graphiques
+                // attendent qu'il soit en place.
+                this.$nextTick(() => monterGraphiques(zone));
+
+                if (historique) {
+                    history.pushState(null, "", url);
+                }
+            } catch (e) {
+                this.erreur = true;
+            } finally {
+                this.chargement = false;
+            }
+        },
+
+        reessayer() {
+            if (this.derniereUrl) {
+                this.charger(this.derniereUrl);
+            }
+        },
+    };
+};
 
 /**
  * Contrôle client d'une pièce justificative (partials/_ui.html.twig, macro

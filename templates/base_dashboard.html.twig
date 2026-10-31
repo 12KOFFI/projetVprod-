@@ -80,7 +80,11 @@ optgroup {
            de débordement casserait le `sticky` de la barre supérieure, qui se
            positionne alors par rapport à lui et non à la fenêtre. #}
         <!-- Main Content -->
-        <div class="flex-1 flex flex-col lg:overflow-hidden">
+        {# min-w-0 : sans lui, un contenu insécable (une liste déroulante aux
+           options très longues, par exemple les noms complets des centres)
+           élargissait toute la zone sur téléphone et faisait défiler la page
+           horizontalement. #}
+        <div class="flex-1 flex min-w-0 flex-col lg:overflow-hidden">
             <!-- Navbar -->
             <header class="sticky top-0 z-30 border-b border-slate-200 bg-white lg:static">
                 <div class="px-4 py-3 sm:px-6 sm:py-4 flex justify-between items-center gap-3">

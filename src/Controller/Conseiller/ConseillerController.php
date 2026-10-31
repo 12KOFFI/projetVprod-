@@ -143,7 +143,9 @@ class ConseillerController extends AbstractController
 
         // Mode édition tant que l'étude reste à rendre ; une fois acceptée, le
         // dossier reste préinscrit jusqu'au paiement mais n'est plus modifiable.
-        if ($this->resolver->estEnAttenteEtude($candidature)) {
+        // Lecture seule pour qui n'étudie pas (l'administrateur, notamment).
+        if ($this->resolver->estEnAttenteEtude($candidature)
+            && $this->isGranted(CandidatureVoter::EVALUATE_RECEVABILITE, $candidature)) {
             $formCandidature = $this->createForm(
                 CandidatureDepotType::class,
                 CandidatureDepotDto::depuisCandidature(

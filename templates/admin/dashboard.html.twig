@@ -1,295 +1,454 @@
 {#
-    Tableau de bord national de l'administration.
+    Tableau de bord de l'administration : le pilotage de la campagne, tous
+    établissements confondus, sans filtre (les filtres vivent sur Indicateurs).
 
-    Lecture de haut en bas : un en-tête compact, quatre indicateurs, le
-    parcours VAE décision par décision (une ligne par décision : en attente,
-    franchie, refusée, acceptation), puis les dépôts par semaine. Chaque nombre
-    n'apparaît qu'une fois sur l'écran. Les ventilations par centre, sexe,
-    métier ou direction régionale restent sur l'écran Indicateurs.
+    Lecture de haut en bas, selon la maquette validée le 30/10/2026 :
+    l'avancement du parcours (six étapes, qui choisissent aussi l'étape
+    analysée) et ses répartitions en anneaux ; les dépôts par semaine à côté
+    des points d'attention, à la même hauteur ; le classement des centres pour
+    l'étape choisie ; le tableau centre × étape, cinq centres par page, qui
+    défile seul tant que personne ne s'en sert.
 
-    Mouvement : les blocs apparaissent l'un après l'autre (animate-apparition,
-    tailwind.config.js), uniquement si l'utilisateur n'a pas demandé de réduire
-    les animations (motion-safe). Les couleurs sont celles de la charte DAIP.
+    Les données des six étapes sont rendues d'avance : changer d'étape ne
+    recharge rien (etapeAnalysee, assets/app.js). Les composants partagés avec
+    Indicateurs viennent de partials/_pilotage.html.twig.
+
+    Mouvement : apparition échelonnée (animate-apparition), chiffres qui
+    défilent, anneaux qui tournent, léger soulèvement des cartes au survol
+    (exception à DESIGN.md propre à cet écran). Tout est coupé quand
+    l'utilisateur a demandé de réduire les animations.
 #}
 {% extends 'base_dashboard.html.twig' %}
 {% import 'partials/_ui.html.twig' as ui %}
+{% import 'partials/_pilotage.html.twig' as pilotage %}
 
-{# Nombre en attente : la seule valeur cliquable d'une ligne du parcours. #}
-{% macro attente(cle, effectif, libelle, taille = 'text-2xl') %}
-{% if effectif > 0 %}
-    <a href="{{ path('app_admin_candidature_index', {onglet: cle}) }}"
-       class="inline-flex min-h-[44px] min-w-[44px] items-center justify-end rounded-md px-2 font-bold tabular-nums text-indigo-700 underline decoration-indigo-200 decoration-2 underline-offset-4
-              transition-colors duration-150 ease-expo motion-reduce:transition-none hover:bg-indigo-50 hover:text-indigo-900 hover:decoration-indigo-500
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 {{ taille }}">
-        {{ effectif }}<span class="sr-only"> dossiers en attente — {{ libelle }}, voir la liste</span>
-    </a>
-{% else %}
-    <span class="inline-flex min-h-[44px] min-w-[44px] items-center justify-end px-2 {{ taille }} font-normal tabular-nums text-slate-500">0</span>
-{% endif %}
-{% endmacro %}
-
-{#
-  Indicateur de tête : libellé, valeur, icône dans une pastille de la même
-  famille de couleur que celles des écrans de pilotage (ui.stat).
-#}
-{% macro indicateur(libelle, valeur, icone, ton, delai) %}
-<div class="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 motion-safe:animate-apparition {{ delai }}">
-    <div class="flex items-start justify-between gap-3">
-        <p class="text-sm font-medium text-slate-600">{{ libelle }}</p>
-        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg
-                     {% if ton == 'green' %}bg-green-50 text-green-600
-                     {% elseif ton == 'red' %}bg-red-50 text-red-600
-                     {% elseif ton == 'amber' %}bg-amber-50 text-amber-600
-                     {% else %}bg-indigo-50 text-indigo-600{% endif %}" aria-hidden="true">
-            <i class="fas fa-{{ icone }} text-sm"></i>
-        </span>
-    </div>
-    <p class="mt-2 text-3xl font-bold leading-none tabular-nums text-slate-900">{{ valeur }}</p>
-</div>
-{% endmacro %}
+{# Fond d'une cellule du tableau : intensité selon la valeur rapportée au maximum de la colonne. #}
+{% macro chaleur(valeur, maximum) %}{% if valeur == 0 or maximum == 0 %}text-slate-600{% elseif valeur * 3 > maximum * 2 %}bg-blue-200 font-semibold text-slate-900{% elseif valeur * 3 > maximum %}bg-blue-100 font-semibold text-slate-900{% else %}bg-blue-50 font-semibold text-slate-900{% endif %}{% endmacro %}
 
 {% block title %}Tableau de bord — Administration VAE{% endblock %}
 
 {% block body %}
 {% import _self as page %}
 
-{# Icône de chaque décision du parcours, dans l'ordre des étapes. #}
-{% set icones = {
-    preinscrits: 'folder-open',
-    acceptes: 'money-bill-wave',
-    inscrits: 'scale-balanced',
-    recevables: 'clipboard-check',
-    eligibles: 'gavel',
-    admissibles: 'award'
-} %}
+{% set preinscrits = indicateurs[0].effectif %}
+{% set carte_survol = 'transition duration-200 ease-expo motion-reduce:transition-none hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-[0_10px_24px_-14px_rgba(1,47,95,0.35)] motion-reduce:hover:translate-y-0' %}
+{% set titre_section = 'text-base font-bold text-slate-900' %}
+{% set tuile_icone = 'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600' %}
 
-{# ===== En-tête compact ===== #}
-<header class="relative mb-6 overflow-hidden rounded-2xl border border-primary-200 bg-primary-100 px-4 py-4 text-primary-900 sm:px-6 sm:py-5 motion-safe:animate-apparition">
-    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div class="flex min-w-0 items-center gap-3 sm:gap-4">
-            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary-200 bg-white text-lg text-primary-700" aria-hidden="true">
-                <i class="fas fa-gauge"></i>
-            </span>
-            <div class="min-w-0">
-                <h1 class="text-xl font-bold tracking-tight text-primary-900 sm:text-2xl">Administration VAE</h1>
-                <p class="mt-0.5 text-sm text-primary-800">
-                    Vue nationale <span aria-hidden="true">·</span> au <time datetime="{{ 'now'|date('Y-m-d\\TH:i') }}" class="tabular-nums">{{ 'now'|date('d/m/Y à H\\hi') }}</time>
+<div class="mx-auto flex max-w-7xl flex-col gap-6 selection:bg-indigo-100 selection:text-indigo-900"
+     x-data="etapeAnalysee('preinscrits')">
+
+    {# ===== Bandeau ===== #}
+    <header class="relative overflow-hidden rounded-2xl border border-primary-200 bg-primary-100 px-4 pb-6 pt-4 text-primary-900 motion-safe:animate-apparition sm:px-6 sm:pt-5">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex min-w-0 items-center gap-3 sm:gap-4">
+                <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary-200 bg-white text-xl text-primary-700 sm:h-14 sm:w-14" aria-hidden="true">
+                    <i class="fas fa-gauge"></i>
+                </span>
+                <div class="min-w-0">
+                    <h1 class="text-xl font-bold tracking-tight text-primary-900 sm:text-2xl md:text-3xl">Tableau de bord</h1>
+                    <p class="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-primary-800">
+                        <i class="fas fa-location-dot text-[#ED8F33]" aria-hidden="true"></i>
+                        Vue nationale <span aria-hidden="true">·</span> tous les établissements <span aria-hidden="true">·</span>
+                        au <time datetime="{{ 'now'|date('Y-m-d\\TH:i') }}" class="tabular-nums">{{ 'now'|date('d/m/Y à H\\hi') }}</time>
+                    </p>
+                </div>
+            </div>
+            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                <a href="{{ path('app_admin_candidature_index') }}"
+                   class="inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary-700 px-4 text-sm font-semibold text-white
+                          transition-colors duration-150 ease-expo motion-reduce:transition-none hover:bg-primary-800
+                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-primary-100">
+                    <i class="fas fa-folder-open text-xs" aria-hidden="true"></i>Voir les dossiers
+                </a>
+                <a href="{{ path('app_indicateurs') }}"
+                   class="inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-primary-300 bg-white px-4 text-sm font-semibold text-primary-800
+                          transition-colors duration-150 ease-expo motion-reduce:transition-none hover:border-primary-400 hover:bg-primary-50
+                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-primary-100">
+                    <i class="fas fa-chart-column text-xs" aria-hidden="true"></i>Indicateurs
+                </a>
+                <p class="inline-flex min-h-[44px] items-baseline justify-center gap-1.5 whitespace-nowrap rounded-xl border border-primary-200 bg-white px-3.5 leading-[42px]">
+                    <span class="text-xl font-extrabold tabular-nums text-primary-900">{{ pilotage.n(preinscrits) }}</span>
+                    <span class="text-xs font-semibold text-primary-800">préinscrit{{ preinscrits > 1 ? 's' }}</span>
                 </p>
             </div>
         </div>
-        <div class="flex flex-col gap-2 sm:flex-row">
-            <a href="{{ path('app_admin_candidature_index') }}"
-               class="inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary-700 px-4 text-sm font-semibold text-white
-                      transition-colors duration-150 ease-expo motion-reduce:transition-none hover:bg-primary-800
-                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-primary-100">
-                <i class="fas fa-folder-open text-xs" aria-hidden="true"></i>Voir les dossiers
-            </a>
-            <a href="{{ path('app_indicateurs') }}"
-               class="inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-primary-300 bg-white px-4 text-sm font-semibold text-primary-800
-                      transition-colors duration-150 ease-expo motion-reduce:transition-none hover:border-primary-400 hover:bg-primary-50
-                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-primary-100">
-                <i class="fas fa-chart-column text-xs" aria-hidden="true"></i>Indicateurs et répartitions
-            </a>
+        <div class="absolute inset-x-0 bottom-0 h-1 bg-[#ED8F33]" aria-hidden="true"></div>
+    </header>
+
+    {# ===== Avancement du parcours ===== #}
+    <section aria-labelledby="titre-avancement" class="rounded-lg border border-slate-200 bg-white motion-safe:animate-apparition [animation-delay:60ms]">
+        <div class="flex items-center gap-3 border-b border-slate-200 px-4 py-4 sm:px-6">
+            <span class="{{ tuile_icone }}" aria-hidden="true"><i class="fas fa-chart-pie text-sm"></i></span>
+            <h2 id="titre-avancement" class="{{ titre_section }}">
+                Avancement et répartition des
+                {% for cle, libelle in etapes %}<span x-show="etape === '{{ cle }}'" {{ cle != 'preinscrits' ? 'x-cloak' }}>{{ libelle|lower }}</span>{% endfor %}
+            </h2>
         </div>
-    </div>
-    <div class="absolute inset-x-0 bottom-0 h-1 bg-[#ED8F33]" aria-hidden="true"></div>
-</header>
+        <div class="p-4 sm:p-6">
+            {{ pilotage.cartes_etapes(indicateurs, true, courbe.semaine) }}
+        </div>
+    </section>
 
-{# ===== Indicateurs de tête =====
-   Trois chiffres que le tableau ne donne pas : le volume, le résultat final et
-   le total des refus. Les dossiers en attente n'y figurent pas : le tableau les
-   donne étape par étape, avec un lien vers chaque liste. #}
-<section aria-label="Indicateurs clés" class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-    {{ page.indicateur('Dossiers déposés', parcours.deposes, 'folder-open', 'indigo', '[animation-delay:60ms]') }}
-    {{ page.indicateur('Admis définitifs', parcours.admis, 'award', 'green', '[animation-delay:120ms]') }}
-    {{ page.indicateur('Parcours arrêtés', parcours.arretes, 'circle-xmark', 'red', '[animation-delay:180ms]') }}
-</section>
+    {# ===== Répartitions de l'étape choisie ===== #}
+    <section aria-label="Répartitions de l'étape choisie" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 motion-safe:animate-apparition [animation-delay:120ms]">
+        {% for cle_rep in ['centre', 'localite', 'dr', 'metier', 'sexe'] %}
+            {{ pilotage.anneau(repartitions|map(r => r[cle_rep]), 'preinscrits', etapes, 'app_indicateurs', {}, false, true) }}
+        {% endfor %}
+    </section>
 
-{# ===== Le parcours, en deux tableaux ===== #}
-{#
-  Seules les étapes qui se concluent par une décision (acceptée ou refusée)
-  sont affichées. Le règlement des frais de dossier, qui ne se refuse pas
-  (`refuse` à null dans StatistiqueService::parcours()), est retiré de
-  l'écran pour l'instant.
+    {# ===== Dépôts par semaine | Points d'attention : même hauteur ===== #}
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <section aria-labelledby="titre-depots" class="flex flex-col rounded-lg border border-slate-200 bg-white motion-safe:animate-apparition [animation-delay:180ms] lg:col-span-2 lg:h-[29rem]">
+            <div class="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <div class="flex items-center gap-3">
+                    <span class="{{ tuile_icone }}" aria-hidden="true"><i class="fas fa-chart-line text-sm"></i></span>
+                    <div>
+                        <h2 id="titre-depots" class="{{ titre_section }}">Dépôts par semaine</h2>
+                        <p class="text-sm text-slate-600">{{ courbe.series|length }} dernières semaines</p>
+                    </div>
+                </div>
+                <dl class="flex gap-6 pl-12 sm:pl-0">
+                    <div><dt class="text-xs text-slate-600">Sur la période</dt><dd class="text-xl font-extrabold tabular-nums text-slate-900">{{ pilotage.n(courbe.total) }}</dd></div>
+                    <div><dt class="text-xs text-slate-600">Cette semaine</dt><dd class="text-xl font-extrabold tabular-nums text-slate-900">{{ pilotage.n(courbe.semaine) }}</dd></div>
+                    <div><dt class="text-xs text-slate-600">Semaine précédente</dt><dd class="text-xl font-extrabold tabular-nums text-slate-900">{{ pilotage.n(courbe.precedente) }}</dd></div>
+                </dl>
+            </div>
+            {% if courbe.total > 0 %}
+                <div class="min-h-0 flex-1 p-4 sm:p-6">
+                    <div class="relative h-64 w-full lg:h-full">
+                        <canvas data-valeurs="{{ courbe.series|json_encode }}" data-graphique="courbe" data-prefixe="Semaine du " data-axe-y="Dossiers déposés"
+                                role="img" aria-label="Dépôts par semaine : {{ courbe.total }} dossiers sur la période. Détail dans le tableau qui suit."></canvas>
+                    </div>
+                    <table class="sr-only">
+                        <caption>Dépôts par semaine</caption>
+                        <thead><tr><th scope="col">Semaine du</th><th scope="col">Dossiers déposés</th></tr></thead>
+                        <tbody>{% for semaine, effectif in courbe.series %}<tr><th scope="row">{{ semaine }}</th><td>{{ effectif }}</td></tr>{% endfor %}</tbody>
+                    </table>
+                </div>
+            {% else %}
+                {{ ui.etat_vide('chart-line', 'Aucun dépôt sur la période', 'La courbe apparaîtra dès le prochain dépôt de candidature.') }}
+            {% endif %}
+        </section>
 
-  Le nombre « en attente » est la seule valeur cliquable ; une valeur nulle
-  s'affiche en gris normal, une valeur active en gras.
-#}
-{% set etapes_decision = parcours.etapes|filter(e => e.refuse is not null) %}
-{% set attente_etude = parcours.etapes[0].en_attente %}
-{% set groupes_decision = {
-    preinscrits: {libelle: 'Préinscrits', total: attente_etude, precision: "d'étude"},
-    inscrits: {libelle: 'Inscrits et suite du parcours', total: etapes_decision|filter(e => e.cle != 'preinscrits')|reduce((t, e) => t + e.en_attente, 0), precision: "d'une décision du jury"}
-} %}
+        {# Points d'attention : une carte par alerte, qui se partagent la hauteur
+           du bloc ; chacune rapporte son nombre à sa base (barre). Le meilleur
+           taux d'admission ferme le bloc. #}
+        {% set sans_dossier = alertes.centres_sans_dossier %}
+        {% set nb_centres = centres|length %}
+        {% set liste_alertes = [
+            sans_dossier.total > 0 ? {
+                n: sans_dossier.total, ton: 'red',
+                titre: sans_dossier.total > 1 ? 'Centres sans dossier' : 'Centre sans dossier',
+                apercu: sans_dossier.elements|slice(0, 3)|map(c => c.sigle)|join(', ') ~ (sans_dossier.total > 3 ? ' et ' ~ (sans_dossier.total - 3) ~ ' autres' : ''),
+                base: 'sur ' ~ nb_centres,
+                part: nb_centres > 0 ? (sans_dossier.total * 100 / nb_centres)|round : 0,
+                url: '#tableau-centres', action: 'Voir les centres'
+            } : null,
+            alertes.en_attente_etude > 0 ? {
+                n: alertes.en_attente_etude, ton: 'amber',
+                titre: "En attente d'étude",
+                apercu: 'Préinscrits à étudier par les conseillers VAE',
+                base: 'sur ' ~ preinscrits,
+                part: preinscrits > 0 ? (alertes.en_attente_etude * 100 / preinscrits)|round : 0,
+                url: path('app_admin_candidature_index', {onglet: 'preinscrits'}), action: 'Ouvrir la liste'
+            } : null
+        ]|filter(a => a is not null) %}
 
-{% set th_classe = 'whitespace-nowrap px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600' %}
+        <section aria-labelledby="titre-attention" class="flex flex-col rounded-lg border border-slate-200 bg-white motion-safe:animate-apparition [animation-delay:240ms] lg:h-[29rem]">
+            <div class="flex items-center gap-3 border-b border-slate-200 px-4 py-3.5 sm:px-5">
+                <span class="{{ tuile_icone }}" aria-hidden="true"><i class="fas fa-triangle-exclamation text-sm"></i></span>
+                <h2 id="titre-attention" class="{{ titre_section }}">Points d'attention</h2>
+                {% if liste_alertes is not empty %}
+                    <span class="ml-auto text-xs tabular-nums text-slate-600">{{ liste_alertes|length }} alerte{{ liste_alertes|length > 1 ? 's' }}</span>
+                {% endif %}
+            </div>
 
-<section aria-labelledby="titre-parcours" class="mb-6 overflow-hidden rounded-lg border border-slate-200 bg-white motion-safe:animate-apparition [animation-delay:300ms]">
-    <div class="flex items-center gap-3 border-b border-slate-200 px-4 py-3.5 sm:px-6">
-        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600" aria-hidden="true">
-            <i class="fas fa-route text-xs"></i>
-        </span>
-        <h2 id="titre-parcours" class="text-base font-semibold text-slate-900">Parcours des dossiers</h2>
-    </div>
-
-    {% if parcours.deposes > 0 %}
-        {# ----- Étapes avec décision ----- #}
-        <h3 id="titre-decisions" class="sr-only">Étapes avec décision</h3>
-
-        <table class="hidden w-full lg:table" aria-labelledby="titre-decisions">
-            <thead>
-                <tr class="border-b border-slate-200 bg-slate-50">
-                    <th scope="col" class="{{ th_classe }} pl-6 text-left">Décision</th>
-                    <th scope="col" class="{{ th_classe }} w-36 text-right">En attente</th>
-                    <th scope="col" class="{{ th_classe }} w-36 text-right">Acceptée</th>
-                    <th scope="col" class="{{ th_classe }} w-36 pr-6 text-right">Refusée</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for etape in etapes_decision %}
-                    {% if groupes_decision[etape.cle] is defined %}
-                        {% set groupe = groupes_decision[etape.cle] %}
-                        <tr class="border-y border-primary-100 bg-primary-50">
-                            <th scope="colgroup" colspan="4" class="py-2 pl-6 pr-6 text-left font-normal">
-                                <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                    <span class="text-sm font-semibold text-primary-900">{{ groupe.libelle }}</span>
-                                    <span class="inline-flex min-w-[1.75rem] justify-center rounded-full border border-primary-200 bg-white px-2 py-0.5 text-xs font-semibold tabular-nums text-primary-800">{{ groupe.total }}</span>
-                                    <span class="text-xs text-slate-600">dossiers en attente {{ groupe.precision }}</span>
-                                </span>
-                            </th>
-                        </tr>
-                    {% endif %}
-                    <tr class="border-b border-slate-100 transition-colors duration-150 ease-expo motion-reduce:transition-none last:border-b-0 hover:bg-slate-50">
-                        <th scope="row" class="py-1.5 pl-6 pr-4 text-left font-normal">
-                            <span class="flex items-center gap-3">
-                                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500" aria-hidden="true">
-                                    <i class="fas fa-{{ icones[etape.cle] }} text-xs"></i>
-                                </span>
-                                <span class="text-sm font-medium text-slate-900">{{ etape.libelle }}</span>
+            {# Liste de registre : filets fins, chiffres en navy ; la couleur se
+               limite à la pastille d'état. Les lignes se partagent la hauteur. #}
+            <ul class="flex min-h-0 flex-1 flex-col divide-y divide-slate-200" aria-label="Points d'attention">
+                {% for a in liste_alertes %}
+                    <li class="lg:flex-1">
+                        <a href="{{ a.url }}" title="{{ a.action }}"
+                           class="group flex h-full items-center gap-4 px-4 py-4 transition-colors duration-150 motion-reduce:transition-none hover:bg-slate-50 sm:px-5
+                                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-600">
+                            <span class="w-16 shrink-0 text-right">
+                                <span class="block text-3xl font-extrabold leading-none tabular-nums text-primary-900">{{ pilotage.n(a.n) }}</span>
+                                <span class="mt-1 block text-xs tabular-nums text-slate-600">{{ a.base }}</span>
                             </span>
-                        </th>
-                        <td class="px-4 py-0.5 text-right">{{ page.attente(etape.cle, etape.en_attente, etape.libelle, 'text-lg') }}</td>
-                        <td class="px-4 py-1.5 text-right text-sm tabular-nums {{ etape.franchie > 0 ? 'font-semibold text-slate-900' : 'text-slate-500' }}">{{ etape.franchie }}</td>
-                        <td class="py-1.5 pl-4 pr-6 text-right text-sm tabular-nums {{ etape.refuse > 0 ? 'font-semibold text-red-700' : 'text-slate-500' }}">{{ etape.refuse }}</td>
-                    </tr>
+                            <span class="min-w-0 flex-1 border-l border-slate-200 pl-4">
+                                <span class="flex items-start gap-2 text-sm font-semibold leading-snug text-slate-900">
+                                    <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full {{ a.ton == 'red' ? 'bg-red-500' : 'bg-amber-500' }}" aria-hidden="true"></span>
+                                    <span>{{ a.titre }}</span>
+                                </span>
+                                <span class="mt-1 block truncate text-xs text-slate-600" title="{{ a.apercu }}">{{ a.apercu }}</span>
+                                <span class="mt-1.5 flex items-center justify-between gap-2 text-xs">
+                                    <span class="inline-flex items-center gap-1.5 font-semibold text-primary-700 underline-offset-2 group-hover:underline">
+                                        {{ a.action }}<i class="fas fa-arrow-right text-[10px] transition-transform duration-150 motion-reduce:transition-none group-hover:translate-x-0.5" aria-hidden="true"></i>
+                                    </span>
+                                    <span class="shrink-0 font-semibold tabular-nums text-slate-600">{{ a.part }} %</span>
+                                </span>
+                            </span>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="flex items-center px-4 py-6 text-sm text-slate-600 sm:px-5 lg:flex-1">
+                        <span class="mr-2 h-2 w-2 shrink-0 rounded-full bg-green-500" aria-hidden="true"></span>Aucune alerte : chaque centre a des dossiers et aucune étude n'attend.
+                    </li>
                 {% endfor %}
-            </tbody>
-        </table>
 
-        <ul class="lg:hidden" aria-labelledby="titre-decisions">
-            {% for etape in etapes_decision %}
-                {% if groupes_decision[etape.cle] is defined %}
-                    {% set groupe = groupes_decision[etape.cle] %}
-                    <li class="border-y border-primary-100 bg-primary-50 px-4 py-2">
-                        <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                            <span class="text-sm font-semibold text-primary-900">{{ groupe.libelle }}</span>
-                            <span class="inline-flex min-w-[1.75rem] justify-center rounded-full border border-primary-200 bg-white px-2 py-0.5 text-xs font-semibold tabular-nums text-primary-800">{{ groupe.total }}</span>
-                            <span class="text-xs text-slate-600">dossiers en attente<span class="hidden sm:inline"> {{ groupe.precision }}</span></span>
-                        </p>
+                {% if alertes.meilleure_reussite %}
+                    {% set m = alertes.meilleure_reussite %}
+                    <li class="flex items-center gap-4 px-4 py-4 sm:px-5 lg:flex-1">
+                        <span class="w-16 shrink-0 text-right">
+                            <span class="block text-3xl font-extrabold leading-none tabular-nums text-primary-900">{{ m.taux }}<span class="text-lg"> %</span></span>
+                            <span class="mt-1 block text-xs tabular-nums text-slate-600">{{ m.admis }} sur {{ m.preinscrits }}</span>
+                        </span>
+                        <span class="min-w-0 flex-1 border-l border-slate-200 pl-4">
+                            <span class="flex items-start gap-2 text-sm font-semibold leading-snug text-slate-900">
+                                <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-green-500" aria-hidden="true"></span>
+                                <span>Meilleur taux d'admission</span>
+                            </span>
+                            <span class="mt-1 block truncate text-xs font-semibold text-slate-800" title="{{ m.nom }}">{{ m.sigle }} <span class="font-normal text-slate-600">· {{ m.localite }}</span></span>
+                            <span class="mt-1.5 block text-xs text-slate-600">Admis définitifs sur préinscrits</span>
+                        </span>
                     </li>
                 {% endif %}
-                <li class="border-b border-slate-100 px-4 py-3 last:border-b-0">
-                    <div class="flex items-center justify-between gap-4">
-                        <div class="flex min-w-0 items-center gap-3">
-                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500" aria-hidden="true">
-                                <i class="fas fa-{{ icones[etape.cle] }} text-xs"></i>
-                            </span>
-                            <p class="text-sm font-medium text-slate-900">{{ etape.libelle }}</p>
-                        </div>
-                        {{ page.attente(etape.cle, etape.en_attente, etape.libelle, 'text-lg') }}
-                    </div>
-                    <dl class="mt-1 flex flex-wrap gap-x-5 gap-y-1 pl-10 text-sm">
-                        <div class="flex gap-1.5">
-                            <dt class="text-slate-600">Acceptée</dt>
-                            <dd class="tabular-nums {{ etape.franchie > 0 ? 'font-semibold text-slate-900' : 'text-slate-500' }}">{{ etape.franchie }}</dd>
-                        </div>
-                        <div class="flex gap-1.5">
-                            <dt class="text-slate-600">Refusée</dt>
-                            <dd class="tabular-nums {{ etape.refuse > 0 ? 'font-semibold text-red-700' : 'text-slate-500' }}">{{ etape.refuse }}</dd>
-                        </div>
-                    </dl>
-                </li>
-            {% endfor %}
-        </ul>
-
-        {# Motifs des refus, repliés : utiles au cas par cas, pas au pilotage. #}
-        {% if derniers_refus is not empty %}
-            <details class="group border-t border-slate-200">
-                <summary class="flex min-h-[44px] cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-indigo-700 sm:px-6
-                                transition-colors duration-150 ease-expo motion-reduce:transition-none hover:bg-slate-50 hover:text-indigo-900
-                                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600">
-                    <i class="fas fa-chevron-right text-xs transition-transform duration-200 ease-expo motion-reduce:transition-none group-open:rotate-90" aria-hidden="true"></i>
-                    Motifs des derniers refus d'étude
-                </summary>
-                <ul class="divide-y divide-slate-200 border-t border-slate-200 motion-safe:group-open:animate-apparition">
-                    {% for dossier in derniers_refus %}
-                        <li class="px-4 py-3 sm:px-6">
-                            <p class="flex flex-wrap items-baseline gap-x-3 text-sm text-slate-600">
-                                <span class="font-mono font-semibold tabular-nums text-slate-900">{{ dossier.numero }}</span>
-                                {{ dossier.user ? dossier.user.nomComplet|title : '' }}
-                                <span class="tabular-nums">{{ dossier.etuDate ? dossier.etuDate|date('d/m/Y') : '' }}</span>
-                            </p>
-                            <p class="mt-0.5 text-sm text-slate-900">{{ dossier.etuCom ?: 'Motif non renseigné' }}</p>
-                        </li>
-                    {% endfor %}
-                </ul>
-            </details>
-        {% endif %}
-    {% else %}
-        {{ ui.etat_vide('folder-open', 'Aucun dossier déposé', 'Les chiffres du parcours apparaîtront ici dès le premier dépôt de candidature.') }}
-    {% endif %}
-</section>
-
-{# ===== Dépôts par semaine ===== #}
-{% set semaines = depots_par_semaine|keys %}
-{% set total_periode = depots_par_semaine|reduce((total, n) => total + n, 0) %}
-<section aria-labelledby="titre-depots" class="overflow-hidden rounded-lg border border-slate-200 bg-white motion-safe:animate-apparition [animation-delay:360ms]">
-    <div class="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div class="flex items-center gap-3">
-            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600" aria-hidden="true">
-                <i class="fas fa-chart-line text-sm"></i>
-            </span>
-            <div>
-                <h2 id="titre-depots" class="text-base font-semibold text-slate-900">Dépôts par semaine</h2>
-                <p class="text-sm text-slate-600">
-                    Semaines du <span class="tabular-nums">{{ semaines|first }}</span> au <span class="tabular-nums">{{ semaines|last }}</span>
-                </p>
-            </div>
-        </div>
-        <dl class="flex gap-6 pl-12 sm:pl-0">
-            <div>
-                <dt class="text-xs text-slate-600">Sur la période</dt>
-                <dd class="text-lg font-bold tabular-nums text-slate-900">{{ total_periode }}</dd>
-            </div>
-            <div>
-                <dt class="text-xs text-slate-600">Cette semaine</dt>
-                <dd class="text-lg font-bold tabular-nums text-slate-900">{{ depots_par_semaine|last }}</dd>
-            </div>
-        </dl>
+            </ul>
+        </section>
     </div>
 
-    {% if total_periode > 0 %}
-        <div class="p-4 sm:p-6">
-            <div class="relative h-64 w-full">
-                <canvas data-valeurs="{{ depots_par_semaine|json_encode }}"
-                        data-graphique="courbe"
-                        data-prefixe="Semaine du "
-                        data-axe-y="Dossiers déposés"
-                        role="img"
-                        aria-label="Dépôts par semaine, du {{ semaines|first }} au {{ semaines|last }} : {{ total_periode }} dossiers. Détail dans le tableau qui suit."></canvas>
+    {# ===== Classement des centres pour l'étape choisie ===== #}
+    {% set total_centres = centres|length %}
+    {% set bouton_tableau %}
+        <a href="#tableau-centres"
+           class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border-[1.5px] border-primary-600 bg-white px-4 text-sm font-semibold text-primary-700 shadow-[0_1px_0_rgba(1,47,95,0.06)]
+                  transition-colors duration-150 motion-reduce:transition-none hover:border-primary-700 hover:bg-primary-50
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2">
+            Voir le tableau des centres<i class="fas fa-arrow-down text-xs" aria-hidden="true"></i>
+        </a>
+    {% endset %}
+    <section aria-labelledby="titre-classement" class="rounded-lg border border-slate-200 bg-white motion-safe:animate-apparition [animation-delay:300ms]">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 sm:px-6">
+            <div class="flex items-center gap-3">
+                <span class="{{ tuile_icone }}" aria-hidden="true"><i class="fas fa-trophy text-sm"></i></span>
+                <h2 id="titre-classement" class="{{ titre_section }}">
+                    Centres ayant le plus
+                    {% for cle, libelle in etapes %}<span x-show="etape === '{{ cle }}'" {{ cle != 'preinscrits' ? 'x-cloak' }}>{{ (libelle|lower|slice(0, 1) in ['a', 'e', 'é', 'i'] ? "d'" : 'de ') ~ libelle|lower }}</span>{% endfor %}
+                </h2>
             </div>
-            <table class="sr-only">
-                <caption>Dépôts par semaine</caption>
-                <thead><tr><th scope="col">Semaine du</th><th scope="col">Dossiers déposés</th></tr></thead>
-                <tbody>
-                    {% for semaine, effectif in depots_par_semaine %}
-                        <tr><th scope="row">{{ semaine }}</th><td>{{ effectif }}</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <span class="inline-flex items-center rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-800">
+                Étape :&nbsp;{% for cle, libelle in etapes %}<span x-show="etape === '{{ cle }}'" {{ cle != 'preinscrits' ? 'x-cloak' }}>{{ libelle }}</span>{% endfor %}
+            </span>
         </div>
-    {% else %}
-        {{ ui.etat_vide('chart-line', 'Aucun dépôt sur la période', 'La courbe apparaîtra dès le prochain dépôt de candidature.') }}
-    {% endif %}
-</section>
+
+        {% for cle, classement in classements %}
+            <div x-show="etape === '{{ cle }}'" {{ cle != 'preinscrits' ? 'x-cloak' }}
+                 class="grid grid-cols-1 gap-6 p-4 sm:p-6 lg:grid-cols-5">
+                {# Podium : lu dans l'ordre 1, 2, 3, affiché 2e, 1er, 3e (order). #}
+                <ol class="grid grid-cols-3 items-end gap-2 sm:gap-4 lg:col-span-3" aria-label="Trois premiers centres">
+                    {% for rang in [1, 2, 3] %}
+                        {% set c = classement[rang - 1] ?? null %}
+                        <li class="flex flex-col gap-2.5 {{ rang == 1 ? 'order-2' : (rang == 2 ? 'order-1' : 'order-3') }}" {% if c %}aria-label="Rang {{ rang }} : {{ c.sigle }}, {{ c.effectif }}"{% endif %}>
+                            {% if c %}
+                                <div class="rounded-lg border border-slate-200 bg-white px-2 py-3 text-center sm:px-4 {{ carte_survol }}" title="{{ c.nom }}">
+                                    <p class="truncate text-sm font-bold text-slate-900 sm:text-base">{{ c.sigle }}</p>
+                                    <p class="truncate text-xs text-slate-600">{{ c.localite }}</p>
+                                    <p class="mt-2.5 text-2xl font-extrabold leading-none tabular-nums text-primary-900 sm:text-4xl">{{ pilotage.n(c.effectif) }}</p>
+                                    <p class="mt-1.5 text-xs tabular-nums text-slate-600">{{ cle == 'preinscrits' ? 'préinscrits' : (c.part ?? 0) ~ ' % de ses préinscrits' }}</p>
+                                </div>
+                            {% else %}
+                                <div class="rounded-lg border border-dashed border-slate-300 px-2 py-3 text-center text-xs text-slate-600">Aucun autre centre à cette étape</div>
+                            {% endif %}
+                            <div class="flex justify-center rounded-t-lg border border-b-0 pt-3 motion-safe:origin-bottom motion-safe:animate-apparition
+                                        {{ rang == 1 ? 'h-32' : (rang == 2 ? 'h-24' : 'h-[4.5rem]') }}
+                                        {{ c ? (rang == 1 ? 'border-primary-200 bg-primary-100' : (rang == 2 ? 'border-primary-200 bg-primary-50' : 'border-primary-200 bg-slate-50')) : 'border-dashed border-slate-300 bg-slate-50' }}"
+                                 aria-hidden="true">
+                                <span class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-extrabold text-white
+                                             {{ c ? (rang == 1 ? 'bg-primary-900' : (rang == 2 ? 'bg-primary-600' : 'bg-primary-400')) : 'bg-slate-400' }}">{{ rang }}</span>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ol>
+
+                {# Rangs 4 à 10 #}
+                <div class="flex flex-col gap-2.5 lg:col-span-2">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">Rangs 4 à 10</p>
+                    {% set suite = classement|slice(3, 7) %}
+                    {% if suite is empty %}
+                        <div class="flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center">
+                            <i class="fas fa-building text-xl text-slate-500" aria-hidden="true"></i>
+                            <p class="text-sm font-semibold text-slate-800">{{ total_centres - classement|length }} centre{{ total_centres - classement|length > 1 ? 's' }} sans dossier {{ cle == 'preinscrits' ? 'déposé' : 'à cette étape' }}</p>
+                            {{ bouton_tableau }}
+                        </div>
+                    {% else %}
+                        <ol class="flex flex-col gap-1.5" start="4">
+                            {% set maximum = classement[0].effectif %}
+                            {% for c in suite %}
+                                <li class="relative flex min-h-[40px] items-center gap-3 overflow-hidden rounded-lg border border-slate-200 bg-white px-3 py-1" title="{{ c.nom }}">
+                                    <span class="absolute inset-y-0 left-0 bg-primary-50 transition-[width] duration-700 ease-expo motion-reduce:transition-none" style="width: {{ maximum > 0 ? (c.effectif * 100 / maximum)|round : 0 }}%" aria-hidden="true"></span>
+                                    <span class="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold tabular-nums text-slate-700">{{ loop.index + 3 }}</span>
+                                    <span class="relative flex min-w-0 flex-1 items-baseline gap-2">
+                                        <span class="whitespace-nowrap text-sm font-semibold text-slate-900">{{ c.sigle }}</span>
+                                        <span class="truncate text-xs text-slate-600">{{ c.localite }}</span>
+                                    </span>
+                                    <span class="relative text-base font-extrabold tabular-nums text-primary-900">{{ pilotage.n(c.effectif) }}</span>
+                                </li>
+                            {% endfor %}
+                        </ol>
+                        <div>{{ bouton_tableau }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </section>
+
+    {# ===== Centres et étapes du parcours : 5 par page, défilement automatique ===== #}
+    {% set maxima = {} %}
+    {% for cle in etapes|keys %}{% set maxima = maxima|merge({(cle): max(centres|map(c => c.etapes[cle])|merge([0]))}) %}{% endfor %}
+    {% set textes_recherche = centres|map(c => (c.nom ~ ' ' ~ c.sigle ~ ' ' ~ c.localite ~ ' ' ~ c.dr)|lower) %}
+    <section id="tableau-centres" aria-labelledby="titre-centres"
+             class="scroll-mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white motion-safe:animate-apparition [animation-delay:360ms]"
+             x-data="paginationAuto({ lignes: {{ textes_recherche|json_encode }}, parPage: 5, delai: 6000 })"
+             @mouseenter="arreter()" @focusin="arreter()" @touchstart.passive="arreter()">
+        <div class="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex items-center gap-3">
+                <span class="{{ tuile_icone }}" aria-hidden="true"><i class="fas fa-building text-sm"></i></span>
+                <h2 id="titre-centres" class="{{ titre_section }}">Centres et étapes du parcours</h2>
+            </div>
+            <div class="flex flex-wrap items-center gap-2" role="search">
+                <label for="recherche-centre" class="sr-only">Rechercher un centre</label>
+                <div class="relative">
+                    <i class="fas fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-500" aria-hidden="true"></i>
+                    <input id="recherche-centre" type="search" x-model="q" @input="chercher()" placeholder="Centre ou localité"
+                           class="min-h-[44px] w-60 max-w-full rounded-lg border border-slate-500 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                </div>
+                <button type="button" @click="basculer()"
+                        :aria-label="pause ? 'Relancer le défilement automatique des pages' : 'Mettre en pause le défilement automatique des pages'"
+                        class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700
+                               transition-colors duration-150 motion-reduce:transition-none hover:bg-slate-50
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
+                    <i class="fas text-xs" :class="pause ? 'fa-play' : 'fa-pause'" aria-hidden="true"></i>
+                    <span x-text="pause ? 'Lecture' : 'Pause'">Pause</span>
+                </button>
+            </div>
+        </div>
+        <div class="h-[3px] bg-slate-100" aria-hidden="true">
+            <div class="h-full bg-primary-600" :style="`width: ${progression()}%`" style="width: 0"></div>
+        </div>
+
+        {% if centres is empty %}
+            {{ ui.etat_vide('building', 'Aucun centre', 'Aucun centre n\'est enregistré pour le moment.') }}
+        {% else %}
+            {# Grand écran : tableau #}
+            <div class="hidden overflow-x-auto lg:block">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:px-6">Centre</th>
+                            {% for cle, libelle in etapes %}
+                                <th scope="col" class="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">{{ cle == 'admis' ? 'Admis déf.' : libelle }}</th>
+                            {% endfor %}
+                            <th scope="col" class="px-3 py-3 pr-6 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">Admission</th>
+                        </tr>
+                    </thead>
+                    {% for c in centres %}
+                        {% set actif = c.etapes.preinscrits > 0 %}
+                        <tbody x-data="{ ouvert: false }" x-show="visible({{ loop.index0 }})" {{ loop.index0 >= 5 ? 'x-cloak' }}
+                               x-transition:enter="transition-opacity duration-300 ease-expo" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                               class="border-t border-slate-200 {{ actif ? '' : 'bg-slate-50/60' }}">
+                            <tr class="transition-colors duration-150 motion-reduce:transition-none hover:bg-slate-50">
+                                <th scope="row" class="px-4 py-2 text-left font-normal sm:px-6">
+                                    <button type="button" @click="ouvert = !ouvert" :aria-expanded="ouvert.toString()" aria-controls="metiers-{{ c.id }}"
+                                            {% if c.metiers is empty %}disabled{% endif %}
+                                            class="group flex min-h-[44px] w-full items-center gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:cursor-default">
+                                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white {{ c.metiers is empty ? 'text-slate-300' : 'text-slate-500' }}" aria-hidden="true">
+                                            <i class="fas fa-chevron-right text-xs transition-transform duration-150 motion-reduce:transition-none" :class="ouvert && 'rotate-90'"></i>
+                                        </span>
+                                        <span class="min-w-0">
+                                            <span class="block font-bold {{ actif ? 'text-slate-900' : 'text-slate-600' }}" title="{{ c.nom }}">{{ c.sigle }}</span>
+                                            <span class="block text-xs text-slate-600">{{ c.localite }}{% if c.dr %} · {{ c.dr }}{% endif %}</span>
+                                        </span>
+                                        <span class="sr-only">{{ c.metiers is empty ? '(aucun dossier)' : '— détail par métier' }}</span>
+                                    </button>
+                                </th>
+                                {% for cle in etapes|keys %}
+                                    <td class="px-3 py-2 text-right tabular-nums {{ page.chaleur(c.etapes[cle], maxima[cle]) }}">
+                                        {% if cle == 'preinscrits' and c.etapes[cle] > 0 %}
+                                            <a href="{{ path('app_admin_candidature_index', {centre: c.id}) }}" title="Voir les dossiers de ce centre"
+                                               class="underline-offset-2 hover:text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600">{{ pilotage.n(c.etapes[cle]) }}</a>
+                                        {% else %}{{ pilotage.n(c.etapes[cle]) }}{% endif %}
+                                    </td>
+                                {% endfor %}
+                                <td class="px-3 py-2 pr-6 text-right tabular-nums text-slate-700">{{ c.reussite is not null ? c.reussite ~ ' %' : '—' }}</td>
+                            </tr>
+                            {% for m in c.metiers|slice(0, 10) %}
+                                <tr id="{{ loop.first ? 'metiers-' ~ c.id }}" x-show="ouvert" x-cloak class="bg-slate-50">
+                                    <th scope="row" class="py-2 pl-[4.25rem] pr-3 text-left text-sm font-normal text-slate-700">{{ m.libelle }}</th>
+                                    {% for cle in etapes|keys %}
+                                        <td class="px-3 py-2 text-right text-sm tabular-nums text-slate-700">{{ pilotage.n(m.etapes[cle]) }}</td>
+                                    {% endfor %}
+                                    <td class="px-3 py-2 pr-6 text-right text-sm tabular-nums text-slate-700">{{ m.reussite is not null ? m.reussite ~ ' %' : '—' }}</td>
+                                </tr>
+                            {% endfor %}
+                            {% if c.metiers|length > 10 %}
+                                <tr x-show="ouvert" x-cloak class="bg-slate-50">
+                                    <td colspan="8" class="py-2 pl-[4.25rem] pr-3 text-sm text-slate-600">
+                                        et {{ c.metiers|length - 10 }} autre{{ c.metiers|length - 10 > 1 ? 's' }} métier{{ c.metiers|length - 10 > 1 ? 's' }} :
+                                        <a href="{{ path('app_indicateurs', {centre: c.id}) }}" class="text-blue-700 underline-offset-2 hover:underline">voir dans Indicateurs</a>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    {% endfor %}
+                </table>
+            </div>
+
+            {# Petit écran : une carte par centre #}
+            <ul class="divide-y divide-slate-200 lg:hidden">
+                {% for c in centres %}
+                    {% set actif = c.etapes.preinscrits > 0 %}
+                    <li class="px-4 py-4 {{ actif ? '' : 'bg-slate-50/60' }}" x-show="visible({{ loop.index0 }})" {{ loop.index0 >= 5 ? 'x-cloak' }}
+                        x-transition:enter="transition-opacity duration-300 ease-expo" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                        <p class="font-bold {{ actif ? 'text-slate-900' : 'text-slate-600' }}">{{ c.sigle }}</p>
+                        <p class="text-xs text-slate-600">{{ c.localite }}{% if c.dr %} · {{ c.dr }}{% endif %}</p>
+                        <dl class="mt-3 grid grid-cols-3 gap-2 text-center">
+                            {% for cle, libelle in etapes %}
+                                <div class="rounded-md border border-slate-200 px-1 py-2 {{ page.chaleur(c.etapes[cle], maxima[cle]) }}">
+                                    <dt class="text-xs text-slate-600">{{ cle == 'admis' ? 'Admis déf.' : libelle }}</dt>
+                                    <dd class="mt-0.5 tabular-nums">{{ pilotage.n(c.etapes[cle]) }}</dd>
+                                </div>
+                            {% endfor %}
+                        </dl>
+                        <p class="mt-2 text-sm text-slate-700">Admission : <span class="font-semibold tabular-nums">{{ c.reussite is not null ? c.reussite ~ ' %' : '—' }}</span></p>
+                    </li>
+                {% endfor %}
+            </ul>
+
+            <p class="px-4 py-8 text-center text-sm text-slate-600 sm:px-6" x-show="retenues().length === 0" x-cloak>
+                Aucun centre ne correspond à « <span x-text="q"></span> ».
+            </p>
+
+            <div class="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <p class="text-sm tabular-nums text-slate-700" x-text="plage()" aria-live="polite">Centres 1–{{ min(5, centres|length) }} sur {{ centres|length }}</p>
+                <nav aria-label="Pages du tableau des centres" class="flex flex-wrap items-center gap-1.5">
+                    <button type="button" @click="aller(page - 1)"
+                            class="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition-colors duration-150 motion-reduce:transition-none hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600">
+                        <i class="fas fa-chevron-left text-xs" aria-hidden="true"></i>Précédent
+                    </button>
+                    <template x-for="n in nbPages()" :key="n">
+                        <button type="button" @click="aller(n - 1)" x-text="n" :aria-current="page === n - 1 ? 'page' : null"
+                                :aria-label="'Page ' + n"
+                                class="min-h-[40px] min-w-[40px] rounded-lg border text-sm font-semibold tabular-nums transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2"
+                                :class="page === n - 1 ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'"></button>
+                    </template>
+                    <button type="button" @click="aller(page + 1)"
+                            class="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition-colors duration-150 motion-reduce:transition-none hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600">
+                        Suivant<i class="fas fa-chevron-right text-xs" aria-hidden="true"></i>
+                    </button>
+                </nav>
+            </div>
+        {% endif %}
+    </section>
+</div>
 {% endblock %}

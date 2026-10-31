@@ -1,0 +1,125 @@
+{#
+    Contenu de l'écran Indicateurs. Rendu seul quand l'administration applique
+    un filtre sans rechargement (voir IndicateursController).
+
+    Administration : filtres en cascade, six cartes d'étapes cliquables (elles
+    choisissent l'étape des anneaux), anneaux, effectifs par centre et tableau
+    croisé, le tout sur le périmètre filtré. Autres rôles : leur périmètre,
+    sans filtre ; cartes non cliquables.
+#}
+{% import 'partials/_ui.html.twig' as ui %}
+{% import 'partials/_pilotage.html.twig' as pilotage %}
+
+{% set etape_initiale = est_admin ? filtres.etape : 'preinscrits' %}
+{% set total = est_admin ? indicateurs[0].effectif : total %}
+
+<div x-data="etapeAnalysee('{{ etape_initiale }}')">
+    {{ ui.bandeau('Indicateurs', perimetre, 'chart-column', pilotage.n(total), 'dossier' ~ (total > 1 ? 's' : '') ~ (est_admin and filtres.estFiltre ? ' après filtrage' : '')) }}
+
+    {% if est_admin %}
+        {% include 'indicateurs/_filtres.html.twig' %}
+    {% endif %}
+
+    {# ===== Étapes du parcours ===== #}
+    <section aria-label="Étapes du parcours" class="mb-6">
+        {{ pilotage.cartes_etapes(indicateurs, est_admin) }}
+    </section>
+
+    {# ===== Répartitions ===== #}
+    {% if est_admin %}
+        <section aria-labelledby="titre-repartitions" class="mb-8">
+            <h2 id="titre-repartitions" class="mb-3 text-base font-bold text-slate-900">
+                Répartition des
+                {% for cle, libelle in etapes %}<span x-show="etape === '{{ cle }}'" {{ cle != etape_initiale ? 'x-cloak' }}>{{ libelle|lower }}</span>{% endfor %}
+            </h2>
+            {% set parametres_base = filtres.parametres|filter((v, k) => k != 'etape') %}
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {% for cle_rep in ['statut', 'sexe', 'metier', 'dr'] %}
+                    {{ pilotage.anneau(repartitions|map(r => r[cle_rep]), etape_initiale, etapes, 'app_indicateurs', parametres_base|filter((v, k) => k != cle_rep), true) }}
+                {% endfor %}
+            </div>
+        </section>
+    {% else %}
+        <div class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+            {{ ui.graphique('Par statut', 'chart-pie', par_statut, null, 'Étape où se trouve chaque dossier') }}
+            {{ ui.graphique('Par sexe', 'venus-mars', par_sexe) }}
+            {{ ui.graphique('Par métier', 'screwdriver-wrench', par_metier) }}
+        </div>
+    {% endif %}
+
+    {# ===== Ventilations détaillées, administration seule ===== #}
+    {% if est_admin %}
+        {# Répartition par centre #}
+        <div class="mb-6 overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <div class="border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-5">
+                <h2 class="text-sm font-bold text-slate-800">Effectifs par centre</h2>
+                <p class="mt-0.5 text-xs text-slate-600">Tous statuts confondus</p>
+            </div>
+
+            {% if par_centre is not empty %}
+                <div class="divide-y divide-slate-100">
+                    {% for centre, effectif in par_centre %}
+                        <div class="flex items-center justify-between gap-4 px-6 py-3">
+                            <span class="truncate text-sm text-slate-700">{{ centre }}</span>
+                            <span class="shrink-0 text-sm font-semibold tabular-nums text-slate-900">{{ effectif }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                {{ ui.etat_vide('building', 'Aucun effectif', 'Aucun dossier ne correspond à ce périmètre pour le moment.') }}
+            {% endif %}
+        </div>
+
+        {# Tableau croisé centre × statut #}
+        <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <div class="border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-5">
+                <h2 class="text-sm font-bold text-slate-800">Répartition par centre et par étape</h2>
+                <p class="mt-0.5 text-xs text-slate-600">{{ tableau_croise.total_general }} dossier(s) au total</p>
+            </div>
+
+            {% if tableau_croise.centres is not empty %}
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[900px]">
+                        <thead class="border-b border-slate-200 bg-slate-50">
+                            <tr>
+                                {{ ui.th('Centre') }}
+                                {% for statut in tableau_croise.statuts %}
+                                    {{ ui.th(statut.libelle, 'text-center') }}
+                                {% endfor %}
+                                {{ ui.th('Total', 'text-center') }}
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for ligne in tableau_croise.centres %}
+                                <tr class="transition duration-200 hover:bg-slate-50/70">
+                                    <td class="px-4 py-3 text-sm font-medium text-slate-800">
+                                        {{ ligne.centre }}
+                                        {% if ligne.localite %}
+                                            <span class="block text-xs font-normal text-slate-600">{{ ligne.localite }}</span>
+                                        {% endif %}
+                                    </td>
+                                    {% for statut in tableau_croise.statuts %}
+                                        {% set effectif = ligne.effectifs[statut.value]|default(0) %}
+                                        <td class="px-4 py-3 text-center text-sm tabular-nums {{ effectif > 0 ? 'font-semibold text-slate-900' : 'text-slate-600' }}">{{ effectif }}</td>
+                                    {% endfor %}
+                                    <td class="px-4 py-3 text-center text-sm font-bold tabular-nums text-indigo-700">{{ ligne.total }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="border-t border-slate-200 bg-slate-50">
+                            <tr>
+                                <td class="px-4 py-3 text-sm font-bold text-slate-800">Total</td>
+                                {% for statut in tableau_croise.statuts %}
+                                    <td class="px-4 py-3 text-center text-sm font-bold tabular-nums text-slate-800">{{ tableau_croise.totaux[statut.value]|default(0) }}</td>
+                                {% endfor %}
+                                <td class="px-4 py-3 text-center text-sm font-bold tabular-nums text-indigo-700">{{ tableau_croise.total_general }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            {% else %}
+                {{ ui.etat_vide('chart-column', 'Aucune donnée', 'Aucun dossier ne correspond à ce périmètre pour le moment.') }}
+            {% endif %}
+        </div>
+    {% endif %}
+</div>

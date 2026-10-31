@@ -51,6 +51,11 @@ class RecevabiliteException extends VaeException
         ));
     }
 
+    public static function etudeReserveeAuConseiller(): self
+    {
+        return new self("L'étude d'un dossier est réservée au conseiller VAE du centre.");
+    }
+
     public static function etudeDejaRendue(string $numero): self
     {
         return new self(sprintf(

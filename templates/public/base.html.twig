@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {# Classe « js » posée avant tout rendu : les gabarits distinguent ainsi,
+       dès la première image, une page avec ou sans JavaScript, sans attendre
+       app.js (chargé en différé). #}
+    <script>document.documentElement.classList.add('js');</script>
     <title>{% block title %}Côte d'Ivoire VAE — Faites reconnaître votre expérience{% endblock %}</title>
 
     {% block meta %}

@@ -33,7 +33,7 @@
                     <h2 class="text-sm font-bold text-slate-800">Statut du dossier</h2>
                     <p class="text-xs text-slate-600 mt-0.5 tabular-nums">
                         Déposé le {{ candidature.creation ? candidature.creation|date('d/m/Y') : '—' }}
-                        {% if candidature.conseiller %} · suivi par {{ candidature.conseiller.nomComplet }}{% endif %}
+                        {% if candidature.conseiller %} · suivi par {{ candidature.conseiller.nomAffiche }}{% endif %}
                     </p>
                 </div>
                 {{ include('partials/_statut_badge.html.twig', { statut: statut_candidature(candidature) }) }}

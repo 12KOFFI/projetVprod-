@@ -80,9 +80,10 @@ class CandidatureVoter extends Voter
             return false;
         }
 
-        // L'administrateur a un périmètre national sur tout, sauf le paiement :
-        // seul le candidat règle ses propres frais.
-        if ($attribute !== self::PAY && $this->authorization->isGranted(Role::ADMIN)) {
+        // L'administrateur a un périmètre national sur tout, sauf deux actes
+        // personnels : le paiement (seul le candidat règle ses propres frais) et
+        // l'étude du dossier (réservée au conseiller VAE du centre).
+        if (!in_array($attribute, [self::PAY, self::EVALUATE_RECEVABILITE], true) && $this->authorization->isGranted(Role::ADMIN)) {
             return true;
         }
 

@@ -1,0 +1,164 @@
+{#
+  Composants des écrans de pilotage (tableau de bord de l'administration,
+  Indicateurs) : cartes des étapes du parcours et anneaux de répartition.
+
+  L'étape analysée est un état Alpine `etape` (clé de PilotageService::ETAPES)
+  porté par un ancêtre ; `choisir(cle)` le change et émet `etape-change`, que
+  assets/app.js écoute pour faire tourner les anneaux. Les données des six
+  étapes sont rendues d'avance : changer d'étape ne recharge rien.
+
+  Tailwind uniquement, classes écrites en toutes lettres.
+#}
+
+{# Nombre au format français (espace pour les milliers). #}
+{% macro n(valeur) %}{{ valeur|number_format(0, ',', ' ') }}{% endmacro %}
+
+{#
+  Cartes des étapes. `cliquables` : la carte choisit l'étape analysée.
+  `semaine` : dépôts de la semaine, affichés sur la carte Préinscrits (null :
+  la carte rappelle seulement qu'il s'agit des dossiers déposés).
+#}
+{% macro cartes_etapes(indicateurs, cliquables = true, semaine = null) %}
+{% set icones = {preinscrits: 'folder-open', inscrits: 'user-check', recevables: 'clipboard-check', eligibles: 'gavel', admissibles: 'award', admis: 'graduation-cap'} %}
+<div {% if cliquables %}role="tablist" aria-label="Étape analysée"{% endif %}
+     class="grid grid-cols-2 gap-3 sm:grid-cols-3 {{ indicateurs|length > 3 ? 'xl:grid-cols-6' : '' }}">
+    {% for i in indicateurs %}
+        {% set contenu %}
+            <span class="flex items-center justify-between gap-2">
+                <span class="text-sm font-semibold {{ cliquables ? '' : 'text-slate-600' }}"
+                      {% if cliquables %}:class="etape === '{{ i.cle }}' ? 'text-primary-900' : 'text-slate-600'"{% endif %}>{{ i.libelle }}</span>
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors duration-200 motion-reduce:transition-none
+                             {{ cliquables ? '' : (i.cle == 'admis' ? 'bg-green-50 text-green-600' : 'bg-primary-50 text-primary-600') }}"
+                      {% if cliquables %}:class="etape === '{{ i.cle }}' ? 'bg-primary-700 text-white' : '{{ i.cle == 'admis' ? 'bg-green-50 text-green-600' : 'bg-primary-50 text-primary-600' }}'"{% endif %}
+                      aria-hidden="true">
+                    <i class="fas fa-{{ icones[i.cle] }} text-sm"></i>
+                </span>
+            </span>
+            <span class="mt-2 block text-3xl font-extrabold leading-none tabular-nums text-slate-900"
+                  x-data="compteur({{ i.effectif }})" x-text="affiche">{{ _self.n(i.effectif) }}</span>
+            <span class="mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-600">
+                {% if i.passage is not null %}
+                    <span class="inline-flex items-center rounded-full px-2 py-0.5 font-bold tabular-nums transition-colors duration-200 motion-reduce:transition-none {{ cliquables ? '' : 'bg-primary-100 text-primary-800' }}"
+                          {% if cliquables %}:class="etape === '{{ i.cle }}' ? 'bg-primary-700 text-white' : 'bg-primary-100 text-primary-800'"{% endif %}>{{ i.passage }} %</span>
+                    des {{ i.precedente }}
+                {% elseif semaine is not null %}
+                    <span><span class="tabular-nums">{{ _self.n(semaine) }}</span> dépôt{{ semaine > 1 ? 's' }} cette semaine</span>
+                {% elseif i.precedente is null %}
+                    dossiers déposés
+                {% else %}
+                    Aucun dossier à l'étape précédente
+                {% endif %}
+            </span>
+            <span class="mt-3 block h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+                <span class="block h-full rounded-full transition-[width] duration-700 ease-expo motion-reduce:transition-none {{ i.cle == 'admis' ? 'bg-green-600' : 'bg-primary-400' }}"
+                      style="width: {{ i.part ?? 100 }}%"></span>
+            </span>
+        {% endset %}
+
+        {% if cliquables %}
+            <button type="button" role="tab" @click="choisir('{{ i.cle }}')"
+                    :aria-selected="etape === '{{ i.cle }}' ? 'true' : 'false'"
+                    title="{{ i.part is not null ? i.part ~ ' % des ' ~ (i.cle == 'inscrits' ? 'préinscrits' : 'inscrits') : '' }}"
+                    class="motion-safe:animate-apparition block w-full rounded-lg border bg-white p-4 text-left
+                           transition duration-200 ease-expo motion-reduce:transition-none
+                           hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-[0_10px_24px_-14px_rgba(1,47,95,0.35)] motion-reduce:hover:translate-y-0
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2"
+                    :class="etape === '{{ i.cle }}' ? 'border-primary-600 bg-primary-50 ring-1 ring-inset ring-primary-600' : 'border-slate-200'">
+                {{ contenu }}
+            </button>
+        {% else %}
+            <div class="rounded-lg border border-slate-200 bg-white p-4">{{ contenu }}</div>
+        {% endif %}
+    {% endfor %}
+</div>
+{% endmacro %}
+
+{#
+  Anneau d'une répartition, pour les six étapes.
+
+  `par_etape` : {cle d'étape: répartition de PilotageService (titre, filtre,
+  parts, total, nombre_parts, unite)}. `route` et `parametres` construisent le
+  lien de chaque part (filtre posé sur l'écran Indicateurs) ; `dynamique`
+  ajoute `data-filtre`, que l'écran Indicateurs charge sans rechargement.
+  `etapes_libelles` : {cle: libellé}, pour l'étiquette lue par les lecteurs
+  d'écran.
+#}
+{% macro anneau(par_etape, etape_initiale, etapes_libelles, route = null, parametres = {}, dynamique = false, carte_animee = false) %}
+{% set pastilles_palette = ['bg-blue-600', 'bg-blue-400', 'bg-blue-200', 'bg-blue-700', 'bg-blue-300', 'bg-blue-800'] %}
+{% set premiere = par_etape|first %}
+{% set series = {} %}{% set totaux = {} %}
+{% for cle, rep in par_etape %}
+    {% set libelles = [] %}{% set valeurs = [] %}{% set couleurs = [] %}
+    {% for part in rep.parts %}
+        {% set libelles = libelles|merge([part.autres is defined ? 'Autres (' ~ part.nombre ~ ' ' ~ rep.unite ~ ')' : part.libelle]) %}
+        {% set valeurs = valeurs|merge([part.effectif]) %}
+        {% set couleurs = couleurs|merge([part.autres is defined ? 'neutre' : 'palette']) %}
+    {% endfor %}
+    {% set series = series|merge({(cle): {libelles: libelles, valeurs: valeurs, couleurs: couleurs|join(',')}}) %}
+    {% set totaux = totaux|merge({(cle): rep.total}) %}
+{% endfor %}
+<div x-data="{ totaux: {{ totaux|json_encode }} }"
+     class="flex flex-col gap-3.5 rounded-lg border border-slate-200 bg-white p-4
+            {{ carte_animee ? 'transition duration-200 ease-expo motion-reduce:transition-none hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-[0_10px_24px_-14px_rgba(1,47,95,0.35)] motion-reduce:hover:translate-y-0' : '' }}">
+    <div class="flex items-center justify-between gap-2">
+        <h3 class="text-sm font-bold text-slate-800">{{ premiere.titre }}</h3>
+        {% for cle, rep in par_etape %}
+            <span class="text-xs tabular-nums text-slate-600" x-show="etape === '{{ cle }}'" {{ cle != etape_initiale ? 'x-cloak' }}>{{ rep.nombre_parts }} part{{ rep.nombre_parts > 1 ? 's' }}</span>
+        {% endfor %}
+    </div>
+
+    <div class="relative mx-auto h-36 w-36" x-show="totaux[etape] > 0" {{ par_etape[etape_initiale].total == 0 ? 'x-cloak' }}>
+        <canvas data-graphique="anneau"
+                data-series="{{ series|json_encode }}"
+                data-etape="{{ etape_initiale }}"
+                role="img" :aria-label="'{{ premiere.titre|e('js') }}, ' + ({{ etapes_libelles|json_encode }})[etape].toLowerCase() + ' : ' + totaux[etape] + ' dossier(s)'"></canvas>
+        <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+            {% for cle, rep in par_etape %}
+                <span class="text-2xl font-extrabold leading-none tabular-nums text-slate-900" x-show="etape === '{{ cle }}'" {{ cle != etape_initiale ? 'x-cloak' }}>{{ _self.n(rep.total) }}</span>
+            {% endfor %}
+            <span class="mt-1 text-xs text-slate-600">dossiers</span>
+        </div>
+    </div>
+
+    {% for cle, rep in par_etape %}
+        <div x-show="etape === '{{ cle }}'" {{ cle != etape_initiale ? 'x-cloak' }}>
+            {% if rep.total > 0 %}
+                <ul class="space-y-0.5 text-sm">
+                    {% for part in rep.parts %}
+                        {% set libelle = part.autres is defined ? 'Autres (' ~ part.nombre ~ ' ' ~ rep.unite ~ ')' : part.libelle %}
+                        {% set ligne %}
+                            <span class="h-2.5 w-2.5 shrink-0 rounded-full {{ part.autres is defined ? 'bg-slate-400' : pastilles_palette[loop.index0 % 6] }}" aria-hidden="true"></span>
+                            <span class="min-w-0 flex-1 truncate text-slate-700">{{ libelle }}</span>
+                            <span class="shrink-0 font-bold tabular-nums text-slate-900">{{ _self.n(part.effectif) }}</span>
+                            <span class="w-10 shrink-0 text-right text-xs tabular-nums text-slate-600">{{ (part.effectif * 100 / rep.total)|round }} %</span>
+                        {% endset %}
+                        <li>
+                            {% if route and rep.filtre and part.id is not null %}
+                                <a href="{{ path(route, parametres|merge({(rep.filtre): part.id})|merge(cle != 'preinscrits' ? {etape: cle} : {})) }}"
+                                   {% if dynamique %}data-filtre{% endif %}
+                                   title="Filtrer sur {{ part.libelle }}"
+                                   class="-mx-2 flex min-h-[32px] items-center gap-2 rounded-md px-2 transition-colors duration-150 motion-reduce:transition-none hover:bg-primary-50
+                                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600">
+                                    {{ ligne }}<span class="sr-only"> — filtrer sur cette valeur</span>
+                                </a>
+                            {% else %}
+                                <span class="-mx-2 flex min-h-[32px] items-center gap-2 px-2">{{ ligne }}</span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+                {% if route and rep.parts|filter(p => p.autres is defined)|length > 0 %}
+                    <a href="{{ path(route, parametres|merge(cle != 'preinscrits' ? {etape: cle} : {})) }}"
+                       {% if dynamique %}data-filtre{% endif %}
+                       class="mt-1 inline-flex min-h-[32px] items-center gap-1.5 rounded text-sm font-semibold text-primary-600 underline-offset-2 hover:text-primary-800 hover:underline
+                              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600">
+                        Voir les {{ rep.nombre_parts }} {{ rep.unite }}<i class="fas fa-arrow-right text-xs" aria-hidden="true"></i>
+                    </a>
+                {% endif %}
+            {% else %}
+                <p class="py-8 text-center text-sm text-slate-600">Aucun dossier à cette étape.</p>
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>
+{% endmacro %}

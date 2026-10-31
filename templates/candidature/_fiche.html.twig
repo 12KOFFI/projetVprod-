@@ -165,7 +165,7 @@
                 {% if etude and etude.name != 'EN_ATTENTE' %}
                     {{ ui.badge(etude.libelle, etude.couleur) }}
                     <p class="mt-2 text-sm text-slate-600">
-                        {% if candidature.conseiller %}{{ candidature.conseiller.nomComplet }}, conseiller VAE{% endif %}
+                        {% if candidature.conseiller %}{{ candidature.conseiller.nomAffiche }}, conseiller VAE{% endif %}
                         {% if candidature.etuDate %}<span class="tabular-nums">· {{ candidature.etuDate|date('d/m/Y') }}</span>{% endif %}
                     </p>
                     {% if candidature.etuCom %}

@@ -218,7 +218,7 @@
     </div>
     {% endif %}
 
-    {% if is_granted('ROLE_CONSEILLER') or is_granted('ROLE_ACCOMPAGNATEUR') %}
+    {% if is_granted('ROLE_CONSEILLER') or is_granted('ROLE_ACCOMPAGNATEUR') or is_granted('ROLE_JURY_LOCAL') %}
     <!-- Indicateurs : écran transverse, fermé au candidat et à l'agent d'accueil (cf. security.yaml) -->
     <a href="{{ path('app_indicateurs') }}"
        class="{{ nav_classes.base_link }} {{ app.current_route == 'app_indicateurs' ? nav_classes.active_link : nav_classes.inactive_link }}">

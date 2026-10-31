@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Dto\FiltresPilotage;
 use App\Entity\Candidature;
 use App\Entity\Centre;
 use App\Entity\Metier;
@@ -981,5 +982,100 @@ class CandidatureRepository extends ServiceEntityRepository
             ->addOrderBy('u.prenoms', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Écran de pilotage : effectifs groupés par centre, métier, sexe, statut
+     * et résultat d'étude, en UNE requête de lecture.
+     *
+     * Le résultat est compact (une ligne par combinaison réellement présente,
+     * jamais une ligne par dossier) : PilotageService en tire tous les
+     * indicateurs, répartitions et tableaux de l'écran sans autre requête sur
+     * les dossiers. Le statut vient de CandidatureStatusResolver::expressionDql(),
+     * comme partout ailleurs.
+     *
+     * @return list<array{centre: int, metier: ?int, sexe: ?string, statut: int, etude: int, effectif: int}>
+     */
+    public function agregatPilotage(User $user, FiltresPilotage $filtres): array
+    {
+        $qb = $this->createQueryBuilder('c')
+            ->select('IDENTITY(c.centre) AS centre_id', 'IDENTITY(c.metier) AS metier_id', 'cand.sexe AS sexe')
+            ->addSelect($this->statut() . ' AS statut', 'COALESCE(c.etuStatut, 0) AS etude', 'COUNT(c.id) AS effectif')
+            ->groupBy('centre_id')
+            ->addGroupBy('metier_id')
+            ->addGroupBy('sexe')
+            ->addGroupBy('statut')
+            ->addGroupBy('etude');
+
+        $this->filtrerPilotage($qb, $user, $filtres);
+
+        return array_map(static fn (array $l): array => [
+            'centre' => (int) $l['centre_id'],
+            'metier' => $l['metier_id'] !== null ? (int) $l['metier_id'] : null,
+            'sexe' => $l['sexe'] !== null && $l['sexe'] !== '' ? (string) $l['sexe'] : null,
+            'statut' => (int) $l['statut'],
+            'etude' => (int) $l['etude'],
+            'effectif' => (int) $l['effectif'],
+        ], $qb->getQuery()->getScalarResult());
+    }
+
+    /**
+     * Dates de dépôt du périmètre filtré depuis une date, pour la courbe
+     * hebdomadaire de l'écran de pilotage.
+     *
+     * @return list<\DateTimeInterface>
+     */
+    public function datesDepotPilotage(User $user, FiltresPilotage $filtres, \DateTimeInterface $depuis): array
+    {
+        $qb = $this->createQueryBuilder('c')
+            ->select('c.creation AS creation')
+            ->andWhere('c.creation >= :depuisCourbe')
+            ->setParameter('depuisCourbe', $depuis);
+
+        $this->filtrerPilotage($qb, $user, $filtres);
+
+        return array_values(array_filter(array_map(
+            static fn (array $ligne): ?\DateTimeInterface => $ligne['creation'] instanceof \DateTimeInterface ? $ligne['creation'] : null,
+            $qb->getQuery()->getArrayResult()
+        )));
+    }
+
+    /**
+     * Jointures et filtres communs aux requêtes de pilotage. Le périmètre du
+     * rôle s'applique toujours en premier (règle D.1) ; les filtres d'écran
+     * ne font que le restreindre.
+     */
+    private function filtrerPilotage(QueryBuilder $qb, User $user, FiltresPilotage $f): void
+    {
+        $qb->join('c.user', 'cand')
+            ->join('c.centre', 'pce')
+            ->join('pce.localite', 'ploc')
+            ->leftJoin('c.metier', 'pmet');
+
+        $this->appliquerPerimetre($qb, $user);
+
+        $filtres = [
+            'ploc.directionRegionale' => $f->dr,
+            'pce.localite' => $f->localite,
+            'c.centre' => $f->centre,
+            'pmet.filiere' => $f->filiere,
+            'c.metier' => $f->metier,
+            'cand.sexe' => $f->sexe,
+        ];
+        $n = 0;
+        foreach ($filtres as $champ => $valeur) {
+            if ($valeur !== null) {
+                $qb->andWhere(sprintf('%s = :pf%d', $champ, $n))->setParameter('pf' . $n, $valeur);
+                ++$n;
+            }
+        }
+
+        if ($f->du !== null) {
+            $qb->andWhere('c.creation >= :pdu')->setParameter('pdu', $f->du);
+        }
+        if ($f->au !== null) {
+            // Borne de fin incluse : jusqu'à la fin de la journée choisie.
+            $qb->andWhere('c.creation < :pau')->setParameter('pau', $f->au->modify('+1 day'));
+        }
     }
 }

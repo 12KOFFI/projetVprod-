@@ -21,6 +21,24 @@
 </div>
 {% endmacro %}
 
+{#
+  Conseiller rattaché à un dossier. Un compte sans nom ni prénoms est désigné
+  par son e-mail, en retrait et signalé : la cellule ne reste jamais vide, et
+  l'administrateur voit qu'il faut compléter le compte.
+#}
+{% macro conseiller_rattache(conseiller, classe_nom) %}
+{% if conseiller is null %}
+    <span class="inline-flex items-center gap-1.5 font-medium text-amber-700">
+        <i class="fas fa-triangle-exclamation text-xs" aria-hidden="true"></i>Non affecté
+    </span>
+{% elseif conseiller.nomComplet %}
+    <span class="{{ classe_nom }}">{{ conseiller.nomComplet }}</span>
+{% else %}
+    <span class="block break-all text-slate-600">{{ conseiller.nomAffiche }}</span>
+    <span class="mt-0.5 block text-xs text-slate-600">Nom non renseigné</span>
+{% endif %}
+{% endmacro %}
+
 {% block title %}Étude de dossier — {{ centre.nom }}{% endblock %}
 
 
@@ -198,13 +216,7 @@
                                 {{ include('partials/_statut_badge.html.twig', { statut: statut_candidature(candidature) }) }}
                             </td>
                             <td class="px-4 py-4 align-top text-sm">
-                                {% if candidature.conseiller %}
-                                    <span class="text-slate-700">{{ candidature.conseiller.nomComplet }}</span>
-                                {% else %}
-                                    <span class="inline-flex items-center gap-1.5 font-medium text-amber-700">
-                                        <i class="fas fa-triangle-exclamation text-xs" aria-hidden="true"></i>Non affecté
-                                    </span>
-                                {% endif %}
+                                {{ liste.conseiller_rattache(candidature.conseiller, 'text-slate-700') }}
                             </td>
                             <td class="whitespace-nowrap px-4 py-4 align-top text-sm text-slate-700 tabular-nums">
                                 {{ candidature.creation ? candidature.creation|date('d/m/Y') : 'Non déposé' }}
@@ -248,13 +260,7 @@
                             <div class="flex flex-wrap gap-x-2">
                                 <dt class="w-28 shrink-0 text-slate-600">Conseiller</dt>
                                 <dd class="min-w-0 break-words">
-                                    {% if candidature.conseiller %}
-                                        <span class="font-medium text-slate-900">{{ candidature.conseiller.nomComplet }}</span>
-                                    {% else %}
-                                        <span class="inline-flex items-center gap-1.5 font-medium text-amber-700">
-                                            <i class="fas fa-triangle-exclamation text-xs" aria-hidden="true"></i>Non affecté
-                                        </span>
-                                    {% endif %}
+                                    {{ liste.conseiller_rattache(candidature.conseiller, 'font-medium text-slate-900') }}
                                 </dd>
                             </div>
                             <div class="flex flex-wrap gap-x-2">

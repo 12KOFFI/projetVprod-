@@ -94,10 +94,12 @@ class SuiviRecevabiliteService
     /**
      * Étapes présentées dans le suivi : les états transitoires n'y figurent
      * pas, l'administration suivant des décisions, non des files d'attente.
+     * Public : PilotageService reprend les mêmes colonnes pour son tableau
+     * croisé filtré.
      *
      * @return list<StatutCandidature>
      */
-    private function statutsSuivis(): array
+    public static function statutsSuivis(): array
     {
         return [
             StatutCandidature::INSCRIT,

@@ -381,6 +381,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Equatab
         return trim(sprintf('%s %s', (string) $this->nom, (string) $this->prenoms));
     }
 
+    /**
+     * Nom à afficher pour désigner ce compte dans une liste : jamais vide.
+     * Un compte du personnel sans nom ni prénoms est désigné par son e-mail,
+     * à défaut par son téléphone, plutôt que par une cellule vide qui laisse
+     * croire que personne n'est rattaché.
+     */
+    public function getNomAffiche(): string
+    {
+        return $this->getNomComplet() ?: ($this->email ?: ($this->contact ?: sprintf('Compte n° %d', (int) $this->id)));
+    }
+
     #[ORM\PreUpdate]
     public function setModificationValue(): void
     {

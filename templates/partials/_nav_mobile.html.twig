@@ -30,6 +30,7 @@
 {% elseif is_granted('ROLE_JURY_LOCAL') %}
     {% set onglets = [
         { url: path('app_jury_local_dashboard'), libelle: 'À statuer', icone: 'fa-scale-balanced', routes: ['app_jury_local_'] },
+        { url: path('app_indicateurs'), libelle: 'Indicateurs', icone: 'fa-chart-column', routes: ['app_indicateurs'] },
         { url: path('app_impressions'), libelle: 'Impressions', icone: 'fa-print', routes: ['app_impressions'] }
     ] %}
 {% elseif is_granted('ROLE_AGENT_ACCEUIL') %}
